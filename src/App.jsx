@@ -498,7 +498,13 @@ const availableForPick = availableGolfers.filter(g =>
               ) : (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Submit Your Pick</h2>
-                
+                {/* Current Week Only Warning */}
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                  <p className="text-yellow-800">
+                    <strong>Note:</strong> You can only make picks for the current tournament. 
+                    Future week picks will open on Monday after the current tournament ends.
+                  </p>
+                </div>
                 {/* Backup Pick Explanation */}
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                   <div className="flex items-start gap-3">
@@ -658,8 +664,8 @@ const availableForPick = availableGolfers.filter(g =>
                               const isLocked = lockTime && now >= lockTime;
                               const isCurrentUser = player.id === currentUser?.id;
                               
-                              // Show picks if locked OR if it's the current user
-                              if (isLocked || isCurrentUser) {
+                              // Current user can always see their own pick
+                              if (isCurrentUser) {
                                 return player.currentPick?.golfer_name ? (
                                   <div>
                                     <div className="text-green-700">{player.currentPick.golfer_name}</div>
@@ -670,14 +676,28 @@ const availableForPick = availableGolfers.filter(g =>
                                 ) : (
                                   <span className="text-red-500">Not submitted</span>
                                 );
-                              } else {
-                                // Hide other users' picks before lock
+                              }
+                              
+                              // Other users - hide if NOT locked yet
+                              if (!isLocked) {
                                 return player.currentPick?.golfer_name ? (
                                   <span className="text-gray-500">🔒 Hidden</span>
                                 ) : (
                                   <span className="text-red-500">Not submitted</span>
                                 );
                               }
+                              
+                              // Locked - show everyone's picks
+                              return player.currentPick?.golfer_name ? (
+                                <div>
+                                  <div className="text-green-700">{player.currentPick.golfer_name}</div>
+                                  {player.currentPick.backup_golfer_name && (
+                                    <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-red-500">Not submitted</span>
+                              );
                             })()}
                           </td>
                         </tr>
