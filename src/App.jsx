@@ -749,7 +749,7 @@ const availableForPick = availableGolfers.filter(g =>
               </div>
             )}
 
-            {activeTab === 'admin' && (
+{activeTab === 'admin' && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h2>
                 
@@ -783,55 +783,44 @@ const availableForPick = availableGolfers.filter(g =>
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4">Week {currentWeek} Pick Status</h3>
                     <div className="space-y-2">
-                      {players.map(player => (
-                        <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                          <div>
-                            <p className="font-semibold">{player.name}</p>
-                            <p className="text-sm text-gray-600">{player.email}</p>
-                          </div>
-                         <div className="text-right">
-                            {(() => {
-                              const now = new Date();
-                              const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                              const isLocked = lockTime && now >= lockTime;
-                              
-                              if (player.currentPick?.golfer_name) {
-                                if (isLocked) {
-                                  return (
-                                    <div>
-                                      <CheckCircle className="inline text-green-600 mr-2" size={20} />
-                                      <span className="text-green-700 font-semibold">Submitted</span>
-                                      <p className="text-xs text-gray-600 mt-1">
-                                        {player.currentPick.golfer_name}
-                                        {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                                      </p>
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div>
-                                      <CheckCircle className="inline text-green-600 mr-2" size={20} />
-                                      <span className="text-green-700 font-semibold">Submitted (Hidden)</span>
-                                    </div>
-                                  );
-                                }
-                              } else {
-                                return (
+                      {players.map(player => {
+                        const now = new Date();
+                        const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                        const isLocked = lockTime && now >= lockTime;
+                        
+                        return (
+                          <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                            <div>
+                              <p className="font-semibold">{player.name}</p>
+                              <p className="text-sm text-gray-600">{player.email}</p>
+                            </div>
+                            <div className="text-right">
+                              {player.currentPick?.golfer_name ? (
+                                isLocked ? (
                                   <div>
-                                    <XCircle className="inline text-red-600 mr-2" size={20} />
-                                    <span className="text-red-700 font-semibold">Pending</span>
+                                    <CheckCircle className="inline text-green-600 mr-2" size={20} />
+                                    <span className="text-green-700 font-semibold">Submitted</span>
+                                    <p className="text-xs text-gray-600 mt-1">
+                                      {player.currentPick.golfer_name}
+                                      {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                                    </p>
                                   </div>
-                                );
-                              }
-                            })()}
+                                ) : (
+                                  <div>
+                                    <CheckCircle className="inline text-green-600 mr-2" size={20} />
+                                    <span className="text-green-700 font-semibold">Submitted (Hidden)</span>
+                                  </div>
+                                )
+                              ) : (
+                                <div>
+                                  <XCircle className="inline text-red-600 mr-2" size={20} />
+                                  <span className="text-red-700 font-semibold">Pending</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                                <XCircle className="inline text-red-600 mr-2" size={20} />
-                                <span className="text-red-700 font-semibold">Pending</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
