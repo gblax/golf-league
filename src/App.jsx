@@ -651,17 +651,34 @@ const availableForPick = availableGolfers.filter(g =>
                           <td className="py-3 px-4">{player.name}</td>
                           <td className="py-3 px-4 text-center">{player.points}</td>
                           <td className="py-3 px-4 text-center">{player.picks.length}</td>
-                          <td className="py-3 px-4 text-center">
-                            {player.currentPick?.golfer_name ? (
-                              <div>
-                                <div className="text-green-700">{player.currentPick.golfer_name}</div>
-                                {player.currentPick.backup_golfer_name && (
-                                  <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-red-500">Not submitted</span>
-                            )}
+<td className="py-3 px-4 text-center">
+                            {(() => {
+                              const now = new Date();
+                              const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                              const isLocked = lockTime && now >= lockTime;
+                              const isCurrentUser = player.id === currentUser?.id;
+                              
+                              // Show picks if locked OR if it's the current user
+                              if (isLocked || isCurrentUser) {
+                                return player.currentPick?.golfer_name ? (
+                                  <div>
+                                    <div className="text-green-700">{player.currentPick.golfer_name}</div>
+                                    {player.currentPick.backup_golfer_name && (
+                                      <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-red-500">Not submitted</span>
+                                );
+                              } else {
+                                // Hide other users' picks before lock
+                                return player.currentPick?.golfer_name ? (
+                                  <span className="text-gray-500">🔒 Hidden</span>
+                                ) : (
+                                  <span className="text-red-500">Not submitted</span>
+                                );
+                              }
+                            })()}
                           </td>
                         </tr>
                       ))}
@@ -752,18 +769,44 @@ const availableForPick = availableGolfers.filter(g =>
                             <p className="font-semibold">{player.name}</p>
                             <p className="text-sm text-gray-600">{player.email}</p>
                           </div>
-                          <div className="text-right">
-                            {player.currentPick?.golfer_name ? (
-                              <div>
-                                <CheckCircle className="inline text-green-600 mr-2" size={20} />
-                                <span className="text-green-700 font-semibold">Submitted</span>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  {player.currentPick.golfer_name}
-                                  {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                                </p>
-                              </div>
-                            ) : (
-                              <div>
+                         <div className="text-right">
+                            {(() => {
+                              const now = new Date();
+                              const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                              const isLocked = lockTime && now >= lockTime;
+                              
+                              if (player.currentPick?.golfer_name) {
+                                if (isLocked) {
+                                  // Show details after lock
+                                  return (
+                                    <div>
+                                      <CheckCircle className="inline text-green-600 mr-2" size={20} />
+                                      <span className="text-green-700 font-semibold">Submitted</span>
+                                      <p className="text-xs text-gray-600 mt-1">
+                                        {player.currentPick.golfer_name}
+                                        {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                                      </p>
+                                    </div>
+                                  );
+                                } else {
+                                  // Hide details before lock
+                                  return (
+                                    <div>
+                                      <CheckCircle className="inline text-green-600 mr-2" size={20} />
+                                      <span className="text-green-700 font-semibold">Submitted (Hidden)</span>
+                                    </div>
+                                  );
+                                }
+                              } else {
+                                return (
+                                  <div>
+                                    <XCircle className="inline text-red-600 mr-2" size={20} />
+                                    <span className="text-red-700 font-semibold">Pending</span>
+                                  </div>
+                                );
+                              }
+                            })()}
+                          </div>
                                 <XCircle className="inline text-red-600 mr-2" size={20} />
                                 <span className="text-red-700 font-semibold">Pending</span>
                               </div>
