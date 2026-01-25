@@ -63,19 +63,23 @@ const App = () => {
     }
   }, [currentWeekPick]);
 
-  const loadData = async () => {
+const loadData = async () => {
     try {
-      // Load tournaments
+      // Load tournaments FIRST
       const { data: tournamentsData } = await supabase
         .from('tournaments')
         .select('*')
         .order('week');
+      
+      setTournaments(tournamentsData || []);
       
       // Load available golfers
       const { data: golfersData } = await supabase
         .from('available_golfers')
         .select('*')
         .eq('active', true);
+      
+      setAvailableGolfers(golfersData?.map(g => g.name) || []);
       
       // Load all users for standings
       const { data: usersData } = await supabase
@@ -86,9 +90,6 @@ const App = () => {
           email,
           picks:picks(golfer_name, points, tournament_id, backup_golfer_name)
         `);
-
-      setTournaments(tournamentsData || []);
-      setAvailableGolfers(golfersData?.map(g => g.name) || []);
       
       // Calculate standings
       const playersWithPoints = (usersData || []).map(user => ({
@@ -101,10 +102,55 @@ const App = () => {
       }));
       
       setPlayers(playersWithPoints);
-      loadUserData();
+      
+      // NOW load user data AFTER tournaments are set
+      await loadUserDataWithTournaments(tournamentsData);
     } catch (error) {
       console.error('Error loading data:', error);
     }
+  };
+
+  const loadUserDataWithTournaments = async (tournamentsData) => {
+    if (!currentUser) return;
+    
+    setPicksLoading(true);
+    
+    const { data: picksData } = await supabase
+      .from('picks')
+      .select('*')
+      .eq('user_id', currentUser.id);
+    
+    console.log('All picks data:', picksData);
+    
+    const allUserPicks = picksData?.map(p => p.golfer_name) || [];
+    setUserPicks(allUserPicks);
+    
+    const currentTournament = getCurrentTournament(tournamentsData);
+    console.log('Current tournament:', currentTournament);
+    
+    const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
+    console.log('Current week pick found:', currentPick);
+    
+    if (currentPick) {
+      const primary = currentPick.golfer_name || '';
+      const backup = currentPick.backup_golfer_name || '';
+      
+      console.log('Setting primary:', primary, 'backup:', backup);
+      
+      setSelectedPlayer(primary);
+      setBackupPlayer(backup);
+      setCurrentWeekPick({ 
+        golfer: primary, 
+        backup: backup 
+      });
+    } else {
+      console.log('No pick found for current week - resetting');
+      setSelectedPlayer('');
+      setBackupPlayer('');
+      setCurrentWeekPick({ golfer: '', backup: '' });
+    }
+    
+    setPicksLoading(false);
   };
 
 const loadUserData = async () => {
