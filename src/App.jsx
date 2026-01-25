@@ -14,7 +14,7 @@ const App = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showLogin, setShowLogin] = useState(true);
+  const [showLogin, setShowLogin] = useState(!localStorage.getItem('currentUserId'));
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
@@ -26,10 +26,33 @@ const App = () => {
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
 
+  // Restore session on page load
+  useEffect(() => {
+    const loadSession = async () => {
+      const userId = localStorage.getItem('currentUserId');
+      if (userId) {
+        const { data } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
+        
+        if (data) {
+          setCurrentUser(data);
+          setShowLogin(false);
+        }
+      }
+      setLoading(false);
+    };
+    loadSession();
+  }, []);
+
   // Load initial data
   useEffect(() => {
-    loadData();
-  }, []);
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser]);
 
   const loadData = async () => {
     try {
@@ -65,14 +88,42 @@ const App = () => {
         email: user.email,
         points: user.picks?.reduce((sum, pick) => sum + (pick.points || 0), 0) || 0,
         picks: user.picks?.map(p => p.golfer_name) || [],
-        currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer: '', backup: '' }
+        currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
       }));
       
       setPlayers(playersWithPoints);
-      setLoading(false);
+      loadUserData();
     } catch (error) {
       console.error('Error loading data:', error);
-      setLoading(false);
+    }
+  };
+
+  const loadUserData = async () => {
+    if (!currentUser) return;
+    
+    const { data: picksData } = await supabase
+      .from('picks')
+      .select('*')
+      .eq('user_id', currentUser.id);
+    
+    const allUserPicks = picksData?.map(p => p.golfer_name) || [];
+    setUserPicks(allUserPicks);
+    
+    const currentTournament = getCurrentTournament();
+    const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
+    
+    if (currentPick) {
+      setSelectedPlayer(currentPick.golfer_name || '');
+      setBackupPlayer(currentPick.backup_golfer_name || '');
+      setCurrentWeekPick({ 
+        golfer: currentPick.golfer_name || '', 
+        backup: currentPick.backup_golfer_name || '' 
+      });
+    } else {
+      // Reset selections if no pick for current week
+      setSelectedPlayer('');
+      setBackupPlayer('');
+      setCurrentWeekPick({ golfer: '', backup: '' });
     }
   };
 
@@ -86,7 +137,7 @@ const App = () => {
   const handleLogin = async () => {
     try {
       if (isSignup) {
-        // Simple signup (in production, use proper password hashing!)
+        // Simple signup
         const { data, error } = await supabase
           .from('users')
           .insert([{ email: loginEmail, name: signupName, password_hash: loginPassword }])
@@ -98,6 +149,7 @@ const App = () => {
           return;
         }
         setCurrentUser(data);
+        localStorage.setItem('currentUserId', data.id);
       } else {
         // Simple login
         const { data, error } = await supabase
@@ -112,39 +164,14 @@ const App = () => {
           return;
         }
         setCurrentUser(data);
+        localStorage.setItem('currentUserId', data.id);
       }
       
       setShowLogin(false);
-      loadUserData();
     } catch (error) {
       alert('Login error: ' + error.message);
     }
   };
-
-  const loadUserData = async () => {
-    if (!currentUser) return;
-    
-    const { data: picksData } = await supabase
-      .from('picks')
-      .select('*')
-      .eq('user_id', currentUser.id);
-    
-    setUserPicks(picksData?.map(p => p.golfer_name) || []);
-    
-    const currentTournament = getCurrentTournament();
-    const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
-    if (currentPick) {
-      setSelectedPlayer(currentPick.golfer_name);
-      setBackupPlayer(currentPick.backup_golfer_name || '');
-      setCurrentWeekPick({ golfer: currentPick.golfer_name, backup: currentPick.backup_golfer_name || '' });
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      loadUserData();
-    }
-  }, [currentUser]);
 
   const handleSubmitPick = async () => {
     if (!selectedPlayer) {
@@ -288,6 +315,7 @@ const App = () => {
               </button>
               <button
                 onClick={() => {
+                  localStorage.removeItem('currentUserId');
                   setCurrentUser(null);
                   setShowLogin(true);
                 }}
