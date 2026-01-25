@@ -797,7 +797,6 @@ const availableForPick = availableGolfers.filter(g =>
                               
                               if (player.currentPick?.golfer_name) {
                                 if (isLocked) {
-                                  // Show details after lock
                                   return (
                                     <div>
                                       <CheckCircle className="inline text-green-600 mr-2" size={20} />
@@ -809,7 +808,6 @@ const availableForPick = availableGolfers.filter(g =>
                                     </div>
                                   );
                                 } else {
-                                  // Hide details before lock
                                   return (
                                     <div>
                                       <CheckCircle className="inline text-green-600 mr-2" size={20} />
