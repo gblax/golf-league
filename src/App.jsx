@@ -106,7 +106,7 @@ const App = () => {
     }
   };
 
-  const loadUserData = async () => {
+const loadUserData = async () => {
     if (!currentUser) return;
     
     const { data: picksData } = await supabase
@@ -121,11 +121,15 @@ const App = () => {
     const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
     
     if (currentPick) {
-      setSelectedPlayer(currentPick.golfer_name || '');
-      setBackupPlayer(currentPick.backup_golfer_name || '');
+      const primary = currentPick.golfer_name || '';
+      const backup = currentPick.backup_golfer_name || '';
+      
+      // Set all three states together
+      setSelectedPlayer(primary);
+      setBackupPlayer(backup);
       setCurrentWeekPick({ 
-        golfer: currentPick.golfer_name || '', 
-        backup: currentPick.backup_golfer_name || '' 
+        golfer: primary, 
+        backup: backup 
       });
     } else {
       // Reset selections if no pick for current week
