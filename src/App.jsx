@@ -47,12 +47,20 @@ const App = () => {
     loadSession();
   }, []);
 
-  // Load initial data
+// Load initial data
   useEffect(() => {
     if (currentUser) {
       loadData();
     }
   }, [currentUser]);
+
+  // Update dropdowns when data loads
+  useEffect(() => {
+    if (currentWeekPick.golfer) {
+      setSelectedPlayer(currentWeekPick.golfer);
+      setBackupPlayer(currentWeekPick.backup || '');
+    }
+  }, [currentWeekPick]);
 
   const loadData = async () => {
     try {
