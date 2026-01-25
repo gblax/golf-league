@@ -244,7 +244,7 @@ const loadUserData = async () => {
     }
   };
 
-  const handleSubmitPick = async () => {
+const handleSubmitPick = async () => {
     if (!selectedPlayer) {
       alert('Please select a primary golfer');
       return;
@@ -256,6 +256,15 @@ const loadUserData = async () => {
     }
 
     const currentTournament = getCurrentTournament();
+    
+    // Check if picks are locked
+    const now = new Date();
+    const lockTime = new Date(currentTournament.picks_lock_time);
+    
+    if (now >= lockTime) {
+      alert('Picks are locked! The tournament has already started.');
+      return;
+    }
     
     try {
       const { data, error } = await supabase
@@ -558,13 +567,44 @@ const availableForPick = availableGolfers.filter(g =>
                   </p>
                 </div>
 
-                <button
-                  onClick={handleSubmitPick}
-                  disabled={!selectedPlayer}
-                  className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                >
-                  Submit Pick
-                </button>
+{(() => {
+                  const now = new Date();
+                  const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                  const isLocked = lockTime && now >= lockTime;
+                  
+                  return (
+                    <>
+                      {isLocked && (
+                        <div className="mb-4 p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+                          <p className="text-red-800 font-semibold text-center">
+                            🔒 Picks are locked! This tournament has already started.
+                          </p>
+                        </div>
+                      )}
+                      
+                      <button
+                        onClick={handleSubmitPick}
+                        disabled={!selectedPlayer || isLocked}
+                        className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isLocked ? 'Picks Locked' : 'Submit Pick'}
+                      </button>
+                      
+                      {lockTime && !isLocked && (
+                        <p className="mt-2 text-sm text-gray-600 text-center">
+                          Picks lock at {lockTime.toLocaleString('en-US', { 
+                            weekday: 'short', 
+                            month: 'short', 
+                            day: 'numeric', 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            timeZoneName: 'short'
+                          })}
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {selectedPlayer && (
                   <div className="mt-4 p-4 bg-gray-100 rounded-lg">
