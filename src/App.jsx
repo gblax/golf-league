@@ -88,15 +88,15 @@ const loadData = async () => {
           id,
           name,
           email,
-          picks:picks(golfer_name, Winnings, tournament_id, backup_golfer_name)
+          picks:picks(golfer_name, winnings, tournament_id, backup_golfer_name)
         `);
       
-      // Calculate standings
-      const playersWithWinnings = (usersData || []).map(user => ({
+// Calculate standings
+      const playersWithPoints = (usersData || []).map(user => ({
         id: user.id,
         name: user.name,
         email: user.email,
-        winnings: user.picks?.reduce((sum, pick) => sum + (pick.Winnings || 0), 0) || 0,
+        winnings: user.picks?.reduce((sum, pick) => sum + (pick.winnings || 0), 0) || 0,
         picks: user.picks?.map(p => p.golfer_name) || [],
         currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
       }));
@@ -296,7 +296,7 @@ const handleSubmitPick = async () => {
 const availableForPick = availableGolfers.filter(g => 
   !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
 );
-  const sortedStandings = [...players].sort((a, b) => b.Winnings - a.Winnings);
+const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
   const currentTournament = getCurrentTournament();
 
   if (loading) {
@@ -655,7 +655,7 @@ const availableForPick = availableGolfers.filter(g =>
                             {idx + 1}
                           </td>
                           <td className="py-3 px-4">{player.name}</td>
-                          <td className="py-3 px-4 text-center">{player.Winnings}</td>
+                          <td className="py-3 px-4 text-center">${player.winnings.toLocaleString()}</td>
                           <td className="py-3 px-4 text-center">{player.picks.length}</td>
 <td className="py-3 px-4 text-center">
                             {(() => {
