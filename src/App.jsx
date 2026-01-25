@@ -221,7 +221,9 @@ const App = () => {
     alert('Email reminder feature coming soon! This will send automated emails to players who haven\'t submitted picks.');
   };
 
-  const availableForPick = availableGolfers.filter(g => !userPicks.includes(g));
+const availableForPick = availableGolfers.filter(g => 
+  !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
+);
   const sortedStandings = [...players].sort((a, b) => b.points - a.points);
   const currentTournament = getCurrentTournament();
 
