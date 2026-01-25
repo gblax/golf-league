@@ -117,15 +117,22 @@ const loadUserData = async () => {
       .select('*')
       .eq('user_id', currentUser.id);
     
+    console.log('All picks data:', picksData);
+    
     const allUserPicks = picksData?.map(p => p.golfer_name) || [];
     setUserPicks(allUserPicks);
     
     const currentTournament = getCurrentTournament();
+    console.log('Current tournament:', currentTournament);
+    
     const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
+    console.log('Current week pick found:', currentPick);
     
     if (currentPick) {
       const primary = currentPick.golfer_name || '';
       const backup = currentPick.backup_golfer_name || '';
+      
+      console.log('Setting primary:', primary, 'backup:', backup);
       
       // Set all three states together
       setSelectedPlayer(primary);
@@ -135,6 +142,7 @@ const loadUserData = async () => {
         backup: backup 
       });
     } else {
+      console.log('No pick found for current week - resetting');
       // Reset selections if no pick for current week
       setSelectedPlayer('');
       setBackupPlayer('');
