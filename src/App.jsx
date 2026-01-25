@@ -92,7 +92,7 @@ const loadData = async () => {
         `);
       
 // Calculate standings
-      const playersWithPoints = (usersData || []).map(user => ({
+      const playersWithWinnings = (usersData || []).map(user => ({
         id: user.id,
         name: user.name,
         email: user.email,
