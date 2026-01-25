@@ -13,6 +13,7 @@ const App = () => {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [picksLoading, setPicksLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLogin, setShowLogin] = useState(!localStorage.getItem('currentUserId'));
   const [loginEmail, setLoginEmail] = useState('');
@@ -109,6 +110,8 @@ const App = () => {
 const loadUserData = async () => {
     if (!currentUser) return;
     
+    setPicksLoading(true);
+    
     const { data: picksData } = await supabase
       .from('picks')
       .select('*')
@@ -137,6 +140,8 @@ const loadUserData = async () => {
       setBackupPlayer('');
       setCurrentWeekPick({ golfer: '', backup: '' });
     }
+    
+    setPicksLoading(false);
   };
 
   const getCurrentTournament = (tournamentsList) => {
@@ -422,7 +427,12 @@ const availableForPick = availableGolfers.filter(g =>
 
           {/* Tab Content */}
           <div className="p-6">
-            {activeTab === 'picks' && (
+{activeTab === 'picks' && (
+              picksLoading ? (
+                <div className="text-center py-12">
+                  <div className="text-xl font-semibold text-gray-600">Loading your picks...</div>
+                </div>
+              ) : (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Submit Your Pick</h2>
                 
@@ -516,7 +526,9 @@ const availableForPick = availableGolfers.filter(g =>
                   </div>
                 )}
               </div>
+              )
             )}
+            
 
             {activeTab === 'standings' && (
               <div>
