@@ -93,7 +93,12 @@ const App = () => {
   // Countdown timer for picks lock
   useEffect(() => {
     const updateCountdown = () => {
-      const currentTournament = getCurrentTournament();
+      if (!tournaments || tournaments.length === 0) {
+        setTimeUntilLock('');
+        return;
+      }
+
+      const currentTournament = tournaments.find(t => !t.completed) || tournaments[tournaments.length - 1];
       if (!currentTournament?.picks_lock_time) {
         setTimeUntilLock('');
         return;
@@ -125,7 +130,7 @@ const App = () => {
     const interval = setInterval(updateCountdown, 60000); // Update every minute
 
     return () => clearInterval(interval);
-  }, [tournaments, currentWeek]);
+  }, [tournaments]);
 
 const loadData = async () => {
     try {
