@@ -57,7 +57,7 @@ def parse_with_gemini(raw_text: str) -> list[dict]:
     print("Parsing with Gemini...")
 
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-2.0-flash")
 
     prompt = f"""Parse this ESPN golf leaderboard text and extract player results as JSON.
 
