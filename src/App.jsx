@@ -255,6 +255,45 @@ const handleSubmitPick = async () => {
       return;
     }
 
+const handleSaveResults = async (playerId, playerCurrentPick, winnings, penaltyType) => {
+    try {
+      const tournamentId = currentTournament.id;
+      
+      // Update the pick with winnings
+      const { error: pickError } = await supabase
+        .from('picks')
+        .update({
+          winnings: parseInt(winnings) || 0,
+          penalty_amount: penaltyType ? 10 : 0,
+          penalty_reason: penaltyType || null
+        })
+        .eq('user_id', playerId)
+        .eq('tournament_id', tournamentId);
+      
+      if (pickError) {
+        alert('Error saving results: ' + pickError.message);
+        return;
+      }
+      
+      // If there's a penalty, add it to the penalties table
+      if (penaltyType) {
+        await supabase
+          .from('penalties')
+          .upsert({
+            user_id: playerId,
+            tournament_id: tournamentId,
+            penalty_type: penaltyType,
+            amount: 10
+          }, { onConflict: 'user_id,tournament_id' });
+      }
+      
+      alert('Results saved successfully!');
+      loadData(); // Reload to show updated standings
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+  
     const currentTournament = getCurrentTournament();
     
     // Check if picks are locked
@@ -668,50 +707,62 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                         </p>
                       </div>
                       
-                      {players.filter(p => p.currentPick?.golfer_name).map(player => (
-                        <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <p className="font-bold text-lg">{player.name}</p>
-                              <p className="text-sm text-gray-600">
-                                Golfer: {player.currentPick.golfer_name}
-                                {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                Winnings ($)
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                              />
+{players.filter(p => p.currentPick?.golfer_name).map(player => {
+                        const [winnings, setWinnings] = React.useState('');
+                        const [penalty, setPenalty] = React.useState('');
+                        
+                        return (
+                          <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="font-bold text-lg">{player.name}</p>
+                                <p className="text-sm text-gray-600">
+                                  Golfer: {player.currentPick.golfer_name}
+                                  {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                                </p>
+                              </div>
                             </div>
                             
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                Penalty
-                              </label>
-                              <select className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none">
-                                <option value="">No penalty</option>
-                                <option value="missed_cut">Missed Cut ($10)</option>
-                                <option value="withdrawal">Withdrawal ($10)</option>
-                                <option value="disqualification">Disqualification ($10)</option>
-                              </select>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                  Winnings ($)
+                                </label>
+                                <input
+                                  type="number"
+                                  placeholder="0"
+                                  value={winnings}
+                                  onChange={(e) => setWinnings(e.target.value)}
+                                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                                />
+                              </div>
+                              
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                  Penalty
+                                </label>
+                                <select 
+                                  value={penalty}
+                                  onChange={(e) => setPenalty(e.target.value)}
+                                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                                >
+                                  <option value="">No penalty</option>
+                                  <option value="missed_cut">Missed Cut ($10)</option>
+                                  <option value="withdrawal">Withdrawal ($10)</option>
+                                  <option value="disqualification">Disqualification ($10)</option>
+                                </select>
+                              </div>
                             </div>
+                            
+                            <button
+                              onClick={() => handleSaveResults(player.id, player.currentPick, winnings, penalty)}
+                              className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              Save Results
+                            </button>
                           </div>
-                          
-                          <button
-                            className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            Save Results
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })()}
