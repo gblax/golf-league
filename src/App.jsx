@@ -23,6 +23,7 @@ const App = () => {
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
+  const [resultsData, setResultsData] = useState({});
   const [availableGolfers, setAvailableGolfers] = useState([]);
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
@@ -255,9 +256,12 @@ const handleSubmitPick = async () => {
       return;
     }
 
-const handleSaveResults = async (playerId, playerCurrentPick, winnings, penaltyType) => {
+const handleSaveResults = async (playerId) => {
     try {
       const tournamentId = currentTournament.id;
+      const playerData = resultsData[playerId] || {};
+      const winnings = playerData.winnings || 0;
+      const penaltyType = playerData.penalty || '';
       
       // Update the pick with winnings
       const { error: pickError } = await supabase
@@ -707,62 +711,63 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                         </p>
                       </div>
                       
-{players.filter(p => p.currentPick?.golfer_name).map(player => {
-                        const [winnings, setWinnings] = React.useState('');
-                        const [penalty, setPenalty] = React.useState('');
-                        
-                        return (
-                          <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div>
-                                <p className="font-bold text-lg">{player.name}</p>
-                                <p className="text-sm text-gray-600">
-                                  Golfer: {player.currentPick.golfer_name}
-                                  {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                                </p>
-                              </div>
+{players.filter(p => p.currentPick?.golfer_name).map(player => (
+                        <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <p className="font-bold text-lg">{player.name}</p>
+                              <p className="text-sm text-gray-600">
+                                Golfer: {player.currentPick.golfer_name}
+                                {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                              </p>
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                  Winnings ($)
-                                </label>
-                                <input
-                                  type="number"
-                                  placeholder="0"
-                                  value={winnings}
-                                  onChange={(e) => setWinnings(e.target.value)}
-                                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                                />
-                              </div>
-                              
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                  Penalty
-                                </label>
-                                <select 
-                                  value={penalty}
-                                  onChange={(e) => setPenalty(e.target.value)}
-                                  className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                                >
-                                  <option value="">No penalty</option>
-                                  <option value="missed_cut">Missed Cut ($10)</option>
-                                  <option value="withdrawal">Withdrawal ($10)</option>
-                                  <option value="disqualification">Disqualification ($10)</option>
-                                </select>
-                              </div>
-                            </div>
-                            
-                            <button
-                              onClick={() => handleSaveResults(player.id, player.currentPick, winnings, penalty)}
-                              className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-                            >
-                              Save Results
-                            </button>
                           </div>
-                        );
-                      })}
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                Winnings ($)
+                              </label>
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={resultsData[player.id]?.winnings || ''}
+                                onChange={(e) => setResultsData({
+                                  ...resultsData,
+                                  [player.id]: { ...resultsData[player.id], winnings: e.target.value }
+                                })}
+                                className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                Penalty
+                              </label>
+                              <select 
+                                value={resultsData[player.id]?.penalty || ''}
+                                onChange={(e) => setResultsData({
+                                  ...resultsData,
+                                  [player.id]: { ...resultsData[player.id], penalty: e.target.value }
+                                })}
+                                className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                              >
+                                <option value="">No penalty</option>
+                                <option value="missed_cut">Missed Cut ($10)</option>
+                                <option value="withdrawal">Withdrawal ($10)</option>
+                                <option value="disqualification">Disqualification ($10)</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <button
+                            onClick={() => handleSaveResults(player.id)}
+                            className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            Save Results
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   );
                 })()}
