@@ -32,6 +32,7 @@ const App = () => {
   const [backupSearchTerm, setBackupSearchTerm] = useState('');
   const [showPrimaryDropdown, setShowPrimaryDropdown] = useState(false);
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
+  const [timeUntilLock, setTimeUntilLock] = useState('');
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -88,6 +89,43 @@ const App = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Countdown timer for picks lock
+  useEffect(() => {
+    const updateCountdown = () => {
+      const currentTournament = getCurrentTournament();
+      if (!currentTournament?.picks_lock_time) {
+        setTimeUntilLock('');
+        return;
+      }
+
+      const now = new Date();
+      const lockTime = new Date(currentTournament.picks_lock_time);
+      const diff = lockTime - now;
+
+      if (diff <= 0) {
+        setTimeUntilLock('Locked');
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (days > 0) {
+        setTimeUntilLock(`${days}d ${hours}h ${minutes}m`);
+      } else if (hours > 0) {
+        setTimeUntilLock(`${hours}h ${minutes}m`);
+      } else {
+        setTimeUntilLock(`${minutes}m`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [tournaments, currentWeek]);
 
 const loadData = async () => {
     try {
@@ -641,7 +679,14 @@ const handleSubmitPick = async () => {
                 <Trophy className="text-yellow-500" size={40} />
                 Golf One and Done League
               </h1>
-              <p className="text-gray-600 mt-2">Week {currentWeek} - {currentTournament?.name}</p>
+              <div className="flex items-center gap-4 mt-2">
+                <p className="text-gray-600">Week {currentWeek} - {currentTournament?.name}</p>
+                {timeUntilLock && timeUntilLock !== 'Locked' && (
+                  <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-semibold">
+                    ⏰ {timeUntilLock} until lock
+                  </span>
+                )}
+              </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Playing as</p>
@@ -873,7 +918,23 @@ const handleSubmitPick = async () => {
                 </div>
               ) : (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Submit Your Pick</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-bold text-gray-800">Submit Your Pick</h2>
+                  {timeUntilLock && timeUntilLock !== 'Locked' && (
+                    <div className="bg-yellow-100 border-2 border-yellow-400 px-4 py-2 rounded-lg">
+                      <p className="text-sm font-semibold text-yellow-800">
+                        ⏰ Picks lock in: <span className="text-yellow-900 font-bold">{timeUntilLock}</span>
+                      </p>
+                    </div>
+                  )}
+                  {timeUntilLock === 'Locked' && (
+                    <div className="bg-red-100 border-2 border-red-400 px-4 py-2 rounded-lg">
+                      <p className="text-sm font-semibold text-red-800">
+                        🔒 Picks are locked
+                      </p>
+                    </div>
+                  )}
+                </div>
                 {/* Backup Pick Explanation */}
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                   <div className="flex items-start gap-3">
