@@ -28,6 +28,10 @@ const App = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showAddGolfer, setShowAddGolfer] = useState(false);
   const [newGolferName, setNewGolferName] = useState('');
+  const [primarySearchTerm, setPrimarySearchTerm] = useState('');
+  const [backupSearchTerm, setBackupSearchTerm] = useState('');
+  const [showPrimaryDropdown, setShowPrimaryDropdown] = useState(false);
+  const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -71,6 +75,19 @@ const App = () => {
       setBackupPlayer(currentWeekPick.backup || '');
     }
   }, [currentWeekPick]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.searchable-dropdown')) {
+        setShowPrimaryDropdown(false);
+        setShowBackupDropdown(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
 const loadData = async () => {
     try {
@@ -522,10 +539,22 @@ const handleSubmitPick = async () => {
     }));
   };
 
-const availableForPick = availableGolfers.filter(g => 
-  !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
-);
-const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
+  const availableForPick = availableGolfers.filter(g => 
+    !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
+  );
+
+  // Filter golfers based on search term
+  const filterGolfers = (searchTerm, excludePlayer = null) => {
+    return availableForPick
+      .filter(g => excludePlayer ? g !== excludePlayer : true)
+      .filter(g => g.toLowerCase().includes(searchTerm.toLowerCase()))
+      .slice(0, 50); // Limit to 50 results for performance
+  };
+
+  const filteredPrimaryGolfers = filterGolfers(primarySearchTerm);
+  const filteredBackupGolfers = filterGolfers(backupSearchTerm, selectedPlayer);
+
+  const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
   const currentTournament = getCurrentTournament();
 
   if (loading) {
@@ -875,42 +904,120 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                 </div>
 
                 {/* Primary Pick */}
-                <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200">
+                <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200 relative searchable-dropdown">
                   <label className="block font-semibold text-gray-800 mb-2 flex items-center gap-2">
                     <CheckCircle className="text-green-600" size={20} />
                     Primary Pick for Week {currentWeek}:
                   </label>
-                  <select
-                    value={selectedPlayer}
-                    onChange={(e) => setSelectedPlayer(e.target.value)}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                  >
-                    <option value="">-- Choose your primary golfer --</option>
-                    {availableForPick.map((golfer, idx) => (
-                      <option key={idx} value={golfer}>{golfer}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={selectedPlayer || primarySearchTerm}
+                      onChange={(e) => {
+                        setPrimarySearchTerm(e.target.value);
+                        setSelectedPlayer('');
+                        setShowPrimaryDropdown(true);
+                      }}
+                      onFocus={() => setShowPrimaryDropdown(true)}
+                      placeholder="Start typing to search golfers..."
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    />
+                    {showPrimaryDropdown && primarySearchTerm && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {filteredPrimaryGolfers.length > 0 ? (
+                          filteredPrimaryGolfers.map((golfer, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setSelectedPlayer(golfer);
+                                setPrimarySearchTerm('');
+                                setShowPrimaryDropdown(false);
+                              }}
+                              className="p-3 hover:bg-green-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                            >
+                              {golfer}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-gray-500 italic">No golfers found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {selectedPlayer && (
+                    <div className="mt-2 p-2 bg-green-100 rounded flex items-center justify-between">
+                      <span className="font-semibold text-green-800">✓ Selected: {selectedPlayer}</span>
+                      <button
+                        onClick={() => {
+                          setSelectedPlayer('');
+                          setPrimarySearchTerm('');
+                        }}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-600 mt-2">
                     <strong>Note:</strong> You can only make picks for the current tournament. Future week picks will open on Monday after the current tournament ends.
                   </p>
                 </div>
 
                 {/* Backup Pick */}
-                <div className="mb-6 p-4 bg-amber-50 rounded-lg border-2 border-amber-200">
+                <div className="mb-6 p-4 bg-amber-50 rounded-lg border-2 border-amber-200 relative searchable-dropdown">
                   <label className="block font-semibold text-gray-800 mb-2 flex items-center gap-2">
                     <Shield className="text-amber-600" size={20} />
                     Backup Pick (Optional but Recommended):
                   </label>
-                  <select
-                    value={backupPlayer}
-                    onChange={(e) => setBackupPlayer(e.target.value)}
-                    className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none"
-                  >
-                    <option value="">-- Choose a backup golfer --</option>
-                    {availableForPick.filter(g => g !== selectedPlayer).map((golfer, idx) => (
-                      <option key={idx} value={golfer}>{golfer}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={backupPlayer || backupSearchTerm}
+                      onChange={(e) => {
+                        setBackupSearchTerm(e.target.value);
+                        setBackupPlayer('');
+                        setShowBackupDropdown(true);
+                      }}
+                      onFocus={() => setShowBackupDropdown(true)}
+                      placeholder="Start typing to search golfers..."
+                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none"
+                    />
+                    {showBackupDropdown && backupSearchTerm && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                        {filteredBackupGolfers.length > 0 ? (
+                          filteredBackupGolfers.map((golfer, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => {
+                                setBackupPlayer(golfer);
+                                setBackupSearchTerm('');
+                                setShowBackupDropdown(false);
+                              }}
+                              className="p-3 hover:bg-amber-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                            >
+                              {golfer}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-gray-500 italic">No golfers found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {backupPlayer && (
+                    <div className="mt-2 p-2 bg-amber-100 rounded flex items-center justify-between">
+                      <span className="font-semibold text-amber-800">✓ Selected: {backupPlayer}</span>
+                      <button
+                        onClick={() => {
+                          setBackupPlayer('');
+                          setBackupSearchTerm('');
+                        }}
+                        className="text-red-600 hover:text-red-800 text-sm"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                   <p className="text-sm text-gray-600 mt-2">
                     Your backup will only be used if {selectedPlayer || 'your primary pick'} withdraws before the tournament
                   </p>
