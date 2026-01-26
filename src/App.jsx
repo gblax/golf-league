@@ -21,6 +21,12 @@ const App = () => {
   const [signupName, setSignupName] = useState('');
   const [isSignup, setIsSignup] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -263,6 +269,91 @@ const loadUserData = async () => {
     }
   };
 
+  const handleUpdateProfile = async () => {
+    if (!editName || !editEmail) {
+      alert('Name and email are required');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({
+          name: editName,
+          email: editEmail
+        })
+        .eq('id', currentUser.id);
+      
+      if (error) {
+        alert('Error updating profile: ' + error.message);
+        return;
+      }
+      
+      // Update local state
+      setCurrentUser({ ...currentUser, name: editName, email: editEmail });
+      alert('Profile updated successfully!');
+      setShowAccountSettings(false);
+      loadData(); // Reload to update standings
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      alert('All password fields are required');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      // Verify current password
+      const { data: verifyData } = await supabase
+        .from('users')
+        .select('password_hash')
+        .eq('id', currentUser.id)
+        .single();
+      
+      if (verifyData.password_hash !== currentPassword) {
+        alert('Current password is incorrect');
+        return;
+      }
+
+      // Update password
+      const { error } = await supabase
+        .from('users')
+        .update({ password_hash: newPassword })
+        .eq('id', currentUser.id);
+      
+      if (error) {
+        alert('Error updating password: ' + error.message);
+        return;
+      }
+      
+      alert('Password updated successfully!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  const openAccountSettings = () => {
+    setEditName(currentUser.name);
+    setEditEmail(currentUser.email);
+    setShowAccountSettings(true);
+  };
+
 const handleSaveResults = async (playerId) => {
     try {
       const tournamentId = currentTournament.id;
@@ -458,11 +549,18 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
               <p className="text-sm text-gray-600">Playing as</p>
               <p className="text-xl font-bold text-green-700">{currentUser?.name}</p>
               <button
-                onClick={() => setShowSettings(!showSettings)}
+                onClick={openAccountSettings}
                 className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
               >
+                <Users size={16} />
+                Account Settings
+              </button>
+              <button
+                onClick={() => setShowSettings(!showSettings)}
+                className="mt-1 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
                 <Bell size={16} />
-                Settings
+                Notification Settings
               </button>
               <button
                 onClick={() => {
@@ -502,6 +600,120 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                 </p>
                 <div className="ml-8 mt-2">
                   <p className="text-sm font-semibold text-gray-700">Your email: {currentUser?.email}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Account Settings Modal */}
+          {showAccountSettings && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
+              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                      <Users className="text-green-600" size={28} />
+                      Account Settings
+                    </h2>
+                    <button
+                      onClick={() => setShowAccountSettings(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <XCircle size={28} />
+                    </button>
+                  </div>
+
+                  {/* Profile Information Section */}
+                  <div className="mb-8 pb-6 border-b border-gray-200">
+                    <h3 className="font-bold text-lg mb-4 text-gray-800">Profile Information</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          placeholder="Your name"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                        <input
+                          type="email"
+                          value={editEmail}
+                          onChange={(e) => setEditEmail(e.target.value)}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          placeholder="your@email.com"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleUpdateProfile}
+                        className="bg-green-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                      >
+                        Save Profile Changes
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Change Password Section */}
+                  <div>
+                    <h3 className="font-bold text-lg mb-4 text-gray-800">Change Password</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                        <input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          placeholder="Enter current password"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          placeholder="Enter new password (min 6 characters)"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          placeholder="Confirm new password"
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleChangePassword}
+                        className="bg-blue-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Update Password
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={() => setShowAccountSettings(false)}
+                      className="w-full bg-gray-300 text-gray-700 py-2 px-6 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
