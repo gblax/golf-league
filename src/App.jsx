@@ -10,7 +10,6 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('picks');
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [backupPlayer, setBackupPlayer] = useState('');
-  const [emailNotifications, setEmailNotifications] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [picksLoading, setPicksLoading] = useState(true);
@@ -442,9 +441,6 @@ const handleSubmitPick = async () => {
     }
   };
 
-  const sendEmailReminder = () => {
-    alert('Email reminder feature coming soon! This will send automated emails to players who haven\'t submitted picks.');
-  };
 
   const toggleRowExpansion = (playerId) => {
     setExpandedRows(prev => ({
@@ -576,31 +572,17 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
             </div>
           </div>
 
-          {/* Settings Panel */}
+          {/* Settings Panel - Future Features */}
           {showSettings && (
             <div className="mt-4 bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Mail className="text-blue-600" />
-                Email Notification Settings
+                <Bell className="text-blue-600" />
+                Notification Settings
               </h3>
               <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={emailNotifications}
-                    onChange={(e) => setEmailNotifications(e.target.checked)}
-                    className="w-5 h-5 text-green-600"
-                  />
-                  <span className="text-gray-700">
-                    Send me email reminders the night before picks are due
-                  </span>
-                </label>
-                <p className="text-sm text-gray-500 ml-8">
-                  Reminder emails will be sent at 8:00 PM the day before the deadline
+                <p className="text-gray-600">
+                  Notification preferences coming soon! In the future, you'll be able to customize how you receive updates about the league.
                 </p>
-                <div className="ml-8 mt-2">
-                  <p className="text-sm font-semibold text-gray-700">Your email: {currentUser?.email}</p>
-                </div>
               </div>
             </div>
           )}
@@ -1232,31 +1214,6 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h2>
                 
                 <div className="space-y-6">
-                  {/* Email Reminders Section */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Mail className="text-blue-600" />
-                      Email Notifications
-                    </h3>
-                    
-                    <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-gray-700 mb-2">
-                        <strong>Automatic Reminders:</strong> Emails are automatically sent at 8:00 PM the night before picks are due
-                      </p>
-                      <p className="text-sm text-gray-700">
-                        Only players who haven't submitted their picks will receive reminders
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={sendEmailReminder}
-                      className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    >
-                      <Bell size={18} />
-                      Send Manual Reminder Now
-                    </button>
-                  </div>
-
                   {/* Pick Status Overview */}
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4">Week {currentWeek} Pick Status</h3>
