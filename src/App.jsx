@@ -37,6 +37,10 @@ const App = () => {
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [resultsData, setResultsData] = useState({});
+  const [editTournamentId, setEditTournamentId] = useState(null);
+  const [editTournamentPicks, setEditTournamentPicks] = useState([]);
+  const [editResultsData, setEditResultsData] = useState({});
+  const [loadingEditPicks, setLoadingEditPicks] = useState(false);
   const [availableGolfers, setAvailableGolfers] = useState([]);
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
@@ -561,7 +565,131 @@ const handleSaveResults = async (playerId) => {
     }
   };
 
-  
+  const loadTournamentPicks = async (tournamentId) => {
+    if (!tournamentId) {
+      setEditTournamentPicks([]);
+      setEditResultsData({});
+      return;
+    }
+
+    setLoadingEditPicks(true);
+    try {
+      // Get all picks for this tournament with user info
+      const { data: picks, error } = await supabase
+        .from('picks')
+        .select('*, users(id, name)')
+        .eq('tournament_id', tournamentId);
+
+      if (error) throw error;
+
+      // Get all users to show those without picks too
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('id, name')
+        .order('name');
+
+      // Create a map of existing picks
+      const picksMap = {};
+      picks?.forEach(pick => {
+        picksMap[pick.user_id] = pick;
+      });
+
+      // Build combined list - all users with their pick data (if any)
+      const combinedData = allUsers?.map(user => ({
+        ...user,
+        pick: picksMap[user.id] || null
+      })) || [];
+
+      setEditTournamentPicks(combinedData);
+
+      // Pre-populate edit form with existing values
+      const initialEditData = {};
+      combinedData.forEach(user => {
+        if (user.pick) {
+          initialEditData[user.id] = {
+            pickId: user.pick.id,
+            golferName: user.pick.golfer_name || '',
+            winnings: user.pick.winnings || 0,
+            penalty: user.pick.penalty_reason || ''
+          };
+        } else {
+          initialEditData[user.id] = {
+            pickId: null,
+            golferName: '',
+            winnings: 0,
+            penalty: ''
+          };
+        }
+      });
+      setEditResultsData(initialEditData);
+    } catch (error) {
+      console.error('Error loading tournament picks:', error);
+    } finally {
+      setLoadingEditPicks(false);
+    }
+  };
+
+  const handleSaveEditResults = async (userId) => {
+    const tournament = tournaments.find(t => t.id === editTournamentId);
+    const userData = editResultsData[userId];
+    if (!userData) return;
+
+    try {
+      const updateData = {
+        winnings: parseInt(userData.winnings) || 0,
+        penalty_amount: userData.penalty ? 10 : 0,
+        penalty_reason: userData.penalty || null
+      };
+
+      if (userData.pickId) {
+        // Update existing pick
+        const { error } = await supabase
+          .from('picks')
+          .update(updateData)
+          .eq('id', userData.pickId);
+
+        if (error) throw error;
+      } else {
+        // Create new pick record for user who didn't submit
+        const { error } = await supabase
+          .from('picks')
+          .insert({
+            user_id: userId,
+            tournament_id: editTournamentId,
+            golfer_name: null,
+            ...updateData
+          });
+
+        if (error) throw error;
+      }
+
+      // Update penalties table
+      if (userData.penalty) {
+        await supabase
+          .from('penalties')
+          .upsert({
+            user_id: userId,
+            tournament_id: editTournamentId,
+            penalty_type: userData.penalty,
+            amount: 10
+          }, { onConflict: 'user_id,tournament_id' });
+      } else {
+        // Remove penalty if cleared
+        await supabase
+          .from('penalties')
+          .delete()
+          .eq('user_id', userId)
+          .eq('tournament_id', editTournamentId);
+      }
+
+      alert('Results updated successfully!');
+      loadTournamentPicks(editTournamentId); // Reload picks
+      loadData(); // Reload standings
+    } catch (error) {
+      alert('Error saving: ' + error.message);
+    }
+  };
+
 const handleSubmitPick = async () => {
     if (!selectedPlayer) {
       alert('Please select a primary golfer');
@@ -1188,118 +1316,158 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'results' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Enter Tournament Results</h2>
-                
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Manage Tournament Results</h2>
+
                 {!currentUser?.is_admin ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-300">
                     <Shield className="text-gray-400 mx-auto mb-4" size={64} />
                     <h3 className="text-xl font-bold text-gray-700 mb-2">Commissioner Only</h3>
                     <p className="text-gray-600">
-                      Only the league commissioner can enter tournament results.
+                      Only the league commissioner can manage tournament results.
                     </p>
                   </div>
                 ) : (
-                  <>
-                {(() => {
-                  const now = new Date();
-                  const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                  const isLocked = lockTime && now >= lockTime;
-                  
-                  if (!isLocked) {
-                    return (
-                      <div className="text-center py-12">
-                        <p className="text-gray-600">Results can only be entered after the tournament starts (picks are locked).</p>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                        <p className="text-blue-800">
-                          <strong>Current Tournament:</strong> {currentTournament?.name} (Week {currentWeek})
-                        </p>
-                        <p className="text-blue-700 text-sm mt-1">
-                          Enter winnings and penalties for each player below.
-                        </p>
-                      </div>
-                      
-{players.map(player => {
-  const hasSubmittedPick = player.currentPick?.golfer_name;
-  
-  return (
-    <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="font-bold text-lg">{player.name}</p>
-          {hasSubmittedPick ? (
-            <p className="text-sm text-gray-600">
-              Golfer: {player.currentPick.golfer_name}
-              {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-            </p>
-          ) : (
-            <p className="text-sm text-red-600 font-semibold">
-              ⚠️ No pick submitted
-            </p>
-          )}
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Winnings ($)
-          </label>
-          <input
-            type="number"
-            placeholder="0"
-            value={resultsData[player.id]?.winnings || ''}
-            onChange={(e) => setResultsData({
-              ...resultsData,
-              [player.id]: { ...resultsData[player.id], winnings: e.target.value }
-            })}
-            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-            disabled={!hasSubmittedPick}
-          />
-          {!hasSubmittedPick && (
-            <p className="text-xs text-gray-500 mt-1">No winnings without a pick</p>
-          )}
-        </div>
-        
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Penalty
-          </label>
-          <select 
-            value={resultsData[player.id]?.penalty || ''}
-            onChange={(e) => setResultsData({
-              ...resultsData,
-              [player.id]: { ...resultsData[player.id], penalty: e.target.value }
-            })}
-            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-          >
-            <option value="">No penalty</option>
-            <option value="no_pick">No Pick Submitted ($10)</option>
-            <option value="missed_cut">Missed Cut ($10)</option>
-            <option value="withdrawal">Withdrawal ($10)</option>
-            <option value="disqualification">Disqualification ($10)</option>
-          </select>
-        </div>
-      </div>
-      
-      <button
-        onClick={() => handleSaveResults(player.id)}
-        className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-      >
-        Save Results
-      </button>
-    </div>
-  );
-})}
+                  <div className="space-y-6">
+                    {/* Tournament Selector */}
+                    <div className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Select Tournament to Edit
+                      </label>
+                      <select
+                        value={editTournamentId || ''}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          setEditTournamentId(newId);
+                          if (newId) {
+                            loadTournamentPicks(newId);
+                          } else {
+                            setEditTournamentPicks([]);
+                            setEditResultsData({});
+                          }
+                        }}
+                        className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg"
+                      >
+                        <option value="">-- Select a tournament --</option>
+                        {tournaments.map(t => (
+                          <option key={t.id} value={t.id}>
+                            Week {t.week}: {t.name} {t.completed ? '✓' : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  );
-                })()}
-                </>
+
+                    {/* Edit Results Form */}
+                    {editTournamentId && (
+                      <div>
+                        {(() => {
+                          const selectedTournament = tournaments.find(t => t.id === editTournamentId);
+                          return (
+                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                              <p className="text-blue-800">
+                                <strong>Editing:</strong> {selectedTournament?.name} (Week {selectedTournament?.week})
+                              </p>
+                              <p className="text-blue-700 text-sm mt-1">
+                                {selectedTournament?.completed
+                                  ? 'This tournament is marked as completed. You can still edit results.'
+                                  : 'This tournament is not yet completed.'}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {loadingEditPicks ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-600">Loading picks...</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {editTournamentPicks.map(user => {
+                              const userData = editResultsData[user.id] || {};
+                              const hasGolfer = userData.golferName;
+
+                              return (
+                                <div key={user.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                      <p className="font-bold text-lg">{user.name}</p>
+                                      {hasGolfer ? (
+                                        <p className="text-sm text-gray-600">
+                                          Golfer: <span className="font-semibold">{userData.golferName}</span>
+                                        </p>
+                                      ) : (
+                                        <p className="text-sm text-red-600 font-semibold">
+                                          ⚠️ No pick submitted
+                                        </p>
+                                      )}
+                                    </div>
+                                    {userData.winnings > 0 && (
+                                      <div className="text-right">
+                                        <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-semibold">
+                                          ${parseInt(userData.winnings).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                        Winnings ($)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={userData.winnings || ''}
+                                        onChange={(e) => setEditResultsData({
+                                          ...editResultsData,
+                                          [user.id]: { ...userData, winnings: e.target.value }
+                                        })}
+                                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                                        Penalty
+                                      </label>
+                                      <select
+                                        value={userData.penalty || ''}
+                                        onChange={(e) => setEditResultsData({
+                                          ...editResultsData,
+                                          [user.id]: { ...userData, penalty: e.target.value }
+                                        })}
+                                        className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                                      >
+                                        <option value="">No penalty</option>
+                                        <option value="no_pick">No Pick Submitted ($10)</option>
+                                        <option value="missed_cut">Missed Cut ($10)</option>
+                                        <option value="withdrawal">Withdrawal ($10)</option>
+                                        <option value="disqualification">Disqualification ($10)</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleSaveEditResults(user.id)}
+                                    className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!editTournamentId && (
+                      <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <Trophy className="text-gray-400 mx-auto mb-4" size={48} />
+                        <p className="text-gray-600">Select a tournament above to view and edit results.</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
