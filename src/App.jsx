@@ -900,8 +900,8 @@ const handleSubmitPick = async () => {
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Bell size={20} />
-              <span className="text-xs sm:text-base">Admin</span>
+              <Users size={20} />
+              <span className="text-xs sm:text-base">League Info</span>
             </button>
             <button
               onClick={() => setActiveTab('results')}
@@ -912,7 +912,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <Trophy size={20} />
-              <span className="text-xs sm:text-base">Results</span>
+              <span className="text-xs sm:text-base">Enter Results</span>
             </button>
           </div>
 
@@ -1155,8 +1155,18 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'results' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Enter Tournament Results</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Enter Tournament Results</h2>
                 
+                {!currentUser?.is_admin ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-300">
+                    <Shield className="text-gray-400 mx-auto mb-4" size={64} />
+                    <h3 className="text-xl font-bold text-gray-700 mb-2">Commissioner Only</h3>
+                    <p className="text-gray-600">
+                      Only the league commissioner can enter tournament results.
+                    </p>
+                  </div>
+                ) : (
+                  <>
                 {(() => {
                   const now = new Date();
                   const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
@@ -1256,6 +1266,8 @@ const handleSubmitPick = async () => {
                     </div>
                   );
                 })()}
+                </>
+                )}
               </div>
             )}
 
@@ -1269,7 +1281,7 @@ const handleSubmitPick = async () => {
                         <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Rank</th>
                         <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Player</th>
                         <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">Winnings</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">Penalties</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm hidden sm:table-cell">Penalties</th>
                         <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">This Week</th>
                         <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm"></th>
                       </tr>
@@ -1286,7 +1298,7 @@ const handleSubmitPick = async () => {
                             </td>
                             <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm">{player.name}</td>
                             <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">${player.winnings.toLocaleString()}</td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 font-semibold text-sm">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 font-semibold text-sm hidden sm:table-cell">
                               {player.penalties > 0 ? `$${player.penalties}` : '-'}
                             </td>
                             <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">
@@ -1430,6 +1442,9 @@ const handleSubmitPick = async () => {
                     </tbody>
                   </table>
                 </div>
+                <div className="text-center mt-2 sm:hidden">
+                  <p className="text-xs text-gray-500">← Swipe to see more →</p>
+                </div>
               </div>
             )}
 
@@ -1476,7 +1491,7 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'admin' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">League Info</h2>
                 
                 <div className="space-y-6">
                   {/* Golfer Management */}
