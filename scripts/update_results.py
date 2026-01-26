@@ -102,16 +102,47 @@ def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def get_current_tournament(supabase: Client) -> dict:
-    """Get the current active tournament."""
-    response = supabase.table("tournaments").select("*").eq("completed", False).order("week").limit(1).execute()
+def get_tournament_to_update(supabase: Client) -> dict:
+    """
+    Get the tournament that needs results updated.
 
-    if response.data:
-        return response.data[0]
+    Logic: Find the most recent tournament that:
+    1. Has ended (tournament_date + 3 days has passed)
+    2. Is not yet marked as completed
 
-    # Fallback to most recent tournament
-    response = supabase.table("tournaments").select("*").order("week", desc=True).limit(1).execute()
-    return response.data[0] if response.data else None
+    This handles the Monday morning scenario where we want to update
+    results for the tournament that just finished over the weekend.
+    """
+    from datetime import datetime, timedelta
+
+    # Get all incomplete tournaments
+    response = supabase.table("tournaments").select("*").eq("completed", False).order("week", desc=True).execute()
+
+    if not response.data:
+        # Fallback: get the most recent tournament overall
+        response = supabase.table("tournaments").select("*").order("week", desc=True).limit(1).execute()
+        return response.data[0] if response.data else None
+
+    now = datetime.now()
+
+    # Find the most recent tournament that has ended
+    for tournament in response.data:
+        if tournament.get("tournament_date"):
+            # Tournament ends Sunday night (start date + 3 days)
+            tournament_date = datetime.fromisoformat(tournament["tournament_date"].replace("Z", "+00:00"))
+            tournament_end = tournament_date + timedelta(days=3, hours=23, minutes=59)
+
+            # Remove timezone info for comparison if needed
+            if tournament_end.tzinfo:
+                tournament_end = tournament_end.replace(tzinfo=None)
+
+            # If tournament has ended, this is the one we want to update
+            if now > tournament_end:
+                return tournament
+
+    # If no ended tournament found, return the earliest incomplete one
+    # (this handles the case where script runs mid-tournament)
+    return response.data[-1] if response.data else None
 
 
 def get_picks_for_tournament(supabase: Client, tournament_id: str) -> list[dict]:
@@ -128,6 +159,11 @@ def update_pick_winnings(supabase: Client, pick_id: str, winnings: int, penalty_
         update_data["penalty_reason"] = penalty_reason
 
     supabase.table("picks").update(update_data).eq("id", pick_id).execute()
+
+
+def mark_tournament_completed(supabase: Client, tournament_id: str):
+    """Mark a tournament as completed."""
+    supabase.table("tournaments").update({"completed": True}).eq("id", tournament_id).execute()
 
 
 def match_golfer_name(pick_name: str, leaderboard_results: list[dict]) -> dict | None:
@@ -164,7 +200,7 @@ def calculate_penalty(status: str, position: str) -> tuple[int, str]:
     return 0, None
 
 
-def update_results(dry_run: bool = True):
+def update_results(dry_run: bool = True, mark_complete: bool = False):
     """Main function to update tournament results."""
     print("=" * 50)
     print("Golf League Results Updater")
@@ -173,8 +209,8 @@ def update_results(dry_run: bool = True):
     # Initialize
     supabase = get_supabase_client()
 
-    # Get current tournament
-    tournament = get_current_tournament(supabase)
+    # Get tournament to update (most recent ended but not completed)
+    tournament = get_tournament_to_update(supabase)
     if not tournament:
         print("No active tournament found!")
         return
@@ -260,6 +296,7 @@ def update_results(dry_run: bool = True):
     if dry_run:
         print("\n[DRY RUN] No changes made to database.")
         print("Run with --apply to update the database.")
+        print("Run with --apply --complete to also mark tournament as completed.")
     else:
         print("\nApplying updates to database...")
         for update in updates:
@@ -271,6 +308,13 @@ def update_results(dry_run: bool = True):
                     update.get("penalty", 0),
                     update.get("penalty_reason")
                 )
+        print("Results updated!")
+
+        if mark_complete:
+            print(f"Marking tournament '{tournament['name']}' as completed...")
+            mark_tournament_completed(supabase, tournament["id"])
+            print("Tournament marked as completed!")
+
         print("Done!")
 
 
@@ -278,9 +322,11 @@ if __name__ == "__main__":
     import sys
 
     dry_run = "--apply" not in sys.argv
+    mark_complete = "--complete" in sys.argv
 
     if dry_run:
         print("Running in DRY RUN mode (no database changes)")
-        print("Use --apply flag to actually update the database\n")
+        print("Use --apply flag to actually update the database")
+        print("Use --apply --complete to also mark tournament as completed\n")
 
-    update_results(dry_run=dry_run)
+    update_results(dry_run=dry_run, mark_complete=mark_complete)
