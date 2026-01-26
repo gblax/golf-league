@@ -1203,15 +1203,17 @@ const handleSubmitPick = async () => {
                 )}
 
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Previous Picks:</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Golfers Already Used:</h3>
                   <div className="flex flex-wrap gap-2">
-                    {userPicks.map((pick, idx) => (
-                      <span key={idx} className="bg-gray-200 dark:bg-slate-700 px-4 py-2 rounded-full text-sm text-gray-700 dark:text-gray-300">
-                        {pick}
-                      </span>
-                    ))}
-                    {userPicks.length === 0 && (
-                      <span className="text-gray-500 dark:text-gray-400 italic">No picks yet</span>
+                    {userPicks
+                      .filter(pick => pick !== selectedPlayer && pick !== currentWeekPick.golfer)
+                      .map((pick, idx) => (
+                        <span key={idx} className="bg-gray-200 dark:bg-slate-700 px-4 py-2 rounded-full text-sm text-gray-700 dark:text-gray-300">
+                          {pick}
+                        </span>
+                      ))}
+                    {userPicks.filter(pick => pick !== selectedPlayer && pick !== currentWeekPick.golfer).length === 0 && (
+                      <span className="text-gray-500 dark:text-gray-400 italic">None yet - this is your first pick!</span>
                     )}
                   </div>
                 </div>
