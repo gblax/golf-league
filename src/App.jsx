@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -20,6 +20,7 @@ const App = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [isSignup, setIsSignup] = useState(false);
+  const [expandedRows, setExpandedRows] = useState({});
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -89,19 +90,35 @@ const loadData = async () => {
           id,
           name,
           email,
-          picks:picks(golfer_name, winnings, penalty_amount, tournament_id, backup_golfer_name)
+          picks:picks(golfer_name, winnings, penalty_amount, penalty_reason, tournament_id, backup_golfer_name)
         `);
       
-// Calculate standings
-const playersWithWinnings = (usersData || []).map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        winnings: user.picks?.reduce((sum, pick) => sum + (pick.winnings || 0), 0) || 0,
-        penalties: user.picks?.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0) || 0,
-        picks: user.picks?.map(p => p.golfer_name) || [],
-        currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
-      }));
+// Calculate standings with detailed pick history
+const playersWithWinnings = (usersData || []).map(user => {
+  const picksByWeek = (tournamentsData || []).map(tournament => {
+    const pick = user.picks?.find(p => p.tournament_id === tournament.id);
+    return {
+      week: tournament.week,
+      tournamentName: tournament.name,
+      golfer: pick?.golfer_name || null,
+      backup: pick?.backup_golfer_name || null,
+      winnings: pick?.winnings || 0,
+      penalty: pick?.penalty_amount || 0,
+      penaltyReason: pick?.penalty_reason || null
+    };
+  });
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    winnings: user.picks?.reduce((sum, pick) => sum + (pick.winnings || 0), 0) || 0,
+    penalties: user.picks?.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0) || 0,
+    picks: user.picks?.map(p => p.golfer_name) || [],
+    picksByWeek: picksByWeek,
+    currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
+  };
+});
       
       setPlayers(playersWithWinnings);
       
@@ -336,6 +353,13 @@ const handleSubmitPick = async () => {
 
   const sendEmailReminder = () => {
     alert('Email reminder feature coming soon! This will send automated emails to players who haven\'t submitted picks.');
+  };
+
+  const toggleRowExpansion = (playerId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [playerId]: !prev[playerId]
+    }));
   };
 
 const availableForPick = availableGolfers.filter(g => 
@@ -785,45 +809,58 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                       <tr className="bg-gray-100">
                         <th className="py-3 px-4 text-left font-semibold text-gray-700">Rank</th>
                         <th className="py-3 px-4 text-left font-semibold text-gray-700">Player</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Winnings</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Penalties</th>
-                        <th className="py-3 px-4 text-left font-semibold text-gray-700">Used Golfers</th>
+                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Total Winnings</th>
+                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Total Penalties</th>
                         <th className="py-3 px-4 text-center font-semibold text-gray-700">This Week</th>
+                        <th className="py-3 px-4 text-center font-semibold text-gray-700"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedStandings.map((player, idx) => (
-                        <tr 
-                          key={player.id} 
-                          className={`border-b hover:bg-gray-50 ${player.id === currentUser?.id ? 'bg-green-50 font-semibold' : ''}`}
-                        >
-                          <td className="py-3 px-4">
-                            {idx === 0 && <Trophy className="inline text-yellow-500 mr-2" size={20} />}
-                            {idx + 1}
-                          </td>
-                         <td className="py-3 px-4">{player.name}</td>
-                          <td className="py-3 px-4 text-center">${player.winnings.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-center text-red-600 font-semibold">
-                            {player.penalties > 0 ? `$${player.penalties}` : '-'}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex flex-wrap gap-1">
-                              {player.picks.map((pick, i) => (
-                                <span key={i} className="text-xs bg-gray-200 px-2 py-1 rounded">
-                                  {pick}
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-<td className="py-3 px-4 text-center">
-                            {(() => {
-                              const now = new Date();
-                              const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                              const isLocked = lockTime && now >= lockTime;
-                              const isCurrentUser = player.id === currentUser?.id;
-                              
-                              // Current user can always see their own pick
-                              if (isCurrentUser) {
+                        <React.Fragment key={player.id}>
+                          <tr 
+                            className={`border-b hover:bg-gray-50 ${player.id === currentUser?.id ? 'bg-green-50 font-semibold' : ''}`}
+                          >
+                            <td className="py-3 px-4">
+                              {idx === 0 && <Trophy className="inline text-yellow-500 mr-2" size={20} />}
+                              {idx + 1}
+                            </td>
+                            <td className="py-3 px-4">{player.name}</td>
+                            <td className="py-3 px-4 text-center">${player.winnings.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-center text-red-600 font-semibold">
+                              {player.penalties > 0 ? `$${player.penalties}` : '-'}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {(() => {
+                                const now = new Date();
+                                const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                                const isLocked = lockTime && now >= lockTime;
+                                const isCurrentUser = player.id === currentUser?.id;
+                                
+                                // Current user can always see their own pick
+                                if (isCurrentUser) {
+                                  return player.currentPick?.golfer_name ? (
+                                    <div>
+                                      <div className="text-green-700">{player.currentPick.golfer_name}</div>
+                                      {player.currentPick.backup_golfer_name && (
+                                        <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-red-500">Not submitted</span>
+                                  );
+                                }
+                                
+                                // Other users - hide if NOT locked yet
+                                if (!isLocked) {
+                                  return player.currentPick?.golfer_name ? (
+                                    <span className="text-gray-500">🔒 Hidden</span>
+                                  ) : (
+                                    <span className="text-red-500">Not submitted</span>
+                                  );
+                                }
+                                
+                                // Locked - show everyone's picks
                                 return player.currentPick?.golfer_name ? (
                                   <div>
                                     <div className="text-green-700">{player.currentPick.golfer_name}</div>
@@ -834,31 +871,102 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                                 ) : (
                                   <span className="text-red-500">Not submitted</span>
                                 );
-                              }
-                              
-                              // Other users - hide if NOT locked yet
-                              if (!isLocked) {
-                                return player.currentPick?.golfer_name ? (
-                                  <span className="text-gray-500">🔒 Hidden</span>
+                              })()}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <button
+                                onClick={() => toggleRowExpansion(player.id)}
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
+                              >
+                                {expandedRows[player.id] ? (
+                                  <>
+                                    <ChevronDown size={20} />
+                                    <span className="text-sm">Hide</span>
+                                  </>
                                 ) : (
-                                  <span className="text-red-500">Not submitted</span>
-                                );
-                              }
-                              
-                              // Locked - show everyone's picks
-                              return player.currentPick?.golfer_name ? (
-                                <div>
-                                  <div className="text-green-700">{player.currentPick.golfer_name}</div>
-                                  {player.currentPick.backup_golfer_name && (
-                                    <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
-                                  )}
+                                  <>
+                                    <ChevronRight size={20} />
+                                    <span className="text-sm">Details</span>
+                                  </>
+                                )}
+                              </button>
+                            </td>
+                          </tr>
+                          
+                          {/* Expanded weekly results row */}
+                          {expandedRows[player.id] && (
+                            <tr className="bg-gray-50">
+                              <td colSpan="6" className="py-4 px-4">
+                                <div className="max-w-5xl mx-auto">
+                                  <h4 className="font-bold text-gray-800 mb-3">Week-by-Week Results for {player.name}</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-200">
+                                          <th className="py-2 px-3 text-left">Week</th>
+                                          <th className="py-2 px-3 text-left">Tournament</th>
+                                          <th className="py-2 px-3 text-left">Golfer</th>
+                                          <th className="py-2 px-3 text-left">Backup</th>
+                                          <th className="py-2 px-3 text-right">Winnings</th>
+                                          <th className="py-2 px-3 text-center">Penalty</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {player.picksByWeek.map((weekData, weekIdx) => (
+                                          <tr key={weekIdx} className="border-b border-gray-300">
+                                            <td className="py-2 px-3 font-semibold">{weekData.week}</td>
+                                            <td className="py-2 px-3 text-gray-700">{weekData.tournamentName}</td>
+                                            <td className="py-2 px-3">
+                                              {weekData.golfer ? (
+                                                <span className="text-green-700 font-medium">{weekData.golfer}</span>
+                                              ) : (
+                                                <span className="text-gray-400 italic">No pick</span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                              {weekData.backup ? (
+                                                <span className="text-amber-600 text-xs">{weekData.backup}</span>
+                                              ) : (
+                                                <span className="text-gray-300">-</span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-right">
+                                              {weekData.winnings > 0 ? (
+                                                <span className="text-green-600 font-semibold">${weekData.winnings.toLocaleString()}</span>
+                                              ) : (
+                                                <span className="text-gray-400">$0</span>
+                                              )}
+                                            </td>
+                                            <td className="py-2 px-3 text-center">
+                                              {weekData.penalty > 0 ? (
+                                                <span className="text-red-600 font-semibold">
+                                                  ${weekData.penalty} ({weekData.penaltyReason?.replace('_', ' ')})
+                                                </span>
+                                              ) : (
+                                                <span className="text-gray-400">-</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                      <tfoot>
+                                        <tr className="bg-gray-200 font-bold">
+                                          <td colSpan="4" className="py-2 px-3 text-right">TOTALS:</td>
+                                          <td className="py-2 px-3 text-right text-green-700">
+                                            ${player.winnings.toLocaleString()}
+                                          </td>
+                                          <td className="py-2 px-3 text-center text-red-600">
+                                            {player.penalties > 0 ? `$${player.penalties}` : '-'}
+                                          </td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </div>
                                 </div>
-                              ) : (
-                                <span className="text-red-500">Not submitted</span>
-                              );
-                            })()}
-                          </td>
-                        </tr>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
