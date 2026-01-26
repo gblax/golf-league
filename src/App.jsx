@@ -245,17 +245,6 @@ const loadUserData = async () => {
     }
   };
 
-const handleSubmitPick = async () => {
-    if (!selectedPlayer) {
-      alert('Please select a primary golfer');
-      return;
-    }
-    
-    if (backupPlayer && backupPlayer === selectedPlayer) {
-      alert('Backup golfer must be different from primary pick');
-      return;
-    }
-
 const handleSaveResults = async (playerId) => {
     try {
       const tournamentId = currentTournament.id;
@@ -297,6 +286,18 @@ const handleSaveResults = async (playerId) => {
       alert('Error: ' + error.message);
     }
   };
+
+  
+const handleSubmitPick = async () => {
+    if (!selectedPlayer) {
+      alert('Please select a primary golfer');
+      return;
+    }
+    
+    if (backupPlayer && backupPlayer === selectedPlayer) {
+      alert('Backup golfer must be different from primary pick');
+      return;
+    }
   
     const currentTournament = getCurrentTournament();
     
