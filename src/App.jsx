@@ -89,15 +89,16 @@ const loadData = async () => {
           id,
           name,
           email,
-          picks:picks(golfer_name, winnings, tournament_id, backup_golfer_name)
+          picks:picks(golfer_name, winnings, penalty_amount, tournament_id, backup_golfer_name)
         `);
       
 // Calculate standings
-      const playersWithWinnings = (usersData || []).map(user => ({
+const playersWithWinnings = (usersData || []).map(user => ({
         id: user.id,
         name: user.name,
         email: user.email,
         winnings: user.picks?.reduce((sum, pick) => sum + (pick.winnings || 0), 0) || 0,
+        penalties: user.picks?.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0) || 0,
         picks: user.picks?.map(p => p.golfer_name) || [],
         currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
       }));
@@ -785,7 +786,8 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                         <th className="py-3 px-4 text-left font-semibold text-gray-700">Rank</th>
                         <th className="py-3 px-4 text-left font-semibold text-gray-700">Player</th>
                         <th className="py-3 px-4 text-center font-semibold text-gray-700">Winnings</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Picks Used</th>
+                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Penalties</th>
+                        <th className="py-3 px-4 text-left font-semibold text-gray-700">Used Golfers</th>
                         <th className="py-3 px-4 text-center font-semibold text-gray-700">This Week</th>
                       </tr>
                     </thead>
@@ -799,9 +801,20 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                             {idx === 0 && <Trophy className="inline text-yellow-500 mr-2" size={20} />}
                             {idx + 1}
                           </td>
-                          <td className="py-3 px-4">{player.name}</td>
+                         <td className="py-3 px-4">{player.name}</td>
                           <td className="py-3 px-4 text-center">${player.winnings.toLocaleString()}</td>
-                          <td className="py-3 px-4 text-center">{player.picks.length}</td>
+                          <td className="py-3 px-4 text-center text-red-600 font-semibold">
+                            {player.penalties > 0 ? `$${player.penalties}` : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {player.picks.map((pick, i) => (
+                                <span key={i} className="text-xs bg-gray-200 px-2 py-1 rounded">
+                                  {pick}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
 <td className="py-3 px-4 text-center">
                             {(() => {
                               const now = new Date();
