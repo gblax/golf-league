@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -37,9 +37,33 @@ const App = () => {
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [resultsData, setResultsData] = useState({});
+  const [editTournamentId, setEditTournamentId] = useState(null);
+  const [editTournamentPicks, setEditTournamentPicks] = useState([]);
+  const [editResultsData, setEditResultsData] = useState({});
+  const [loadingEditPicks, setLoadingEditPicks] = useState(false);
   const [availableGolfers, setAvailableGolfers] = useState([]);
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
+
+  // Dark mode state - initialize from localStorage or system preference
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('darkMode');
+      if (stored !== null) return stored === 'true';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  // Apply dark mode class to document
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('darkMode', darkMode);
+  }, [darkMode]);
 
   // Restore session on page load
   useEffect(() => {
@@ -561,7 +585,131 @@ const handleSaveResults = async (playerId) => {
     }
   };
 
-  
+  const loadTournamentPicks = async (tournamentId) => {
+    if (!tournamentId) {
+      setEditTournamentPicks([]);
+      setEditResultsData({});
+      return;
+    }
+
+    setLoadingEditPicks(true);
+    try {
+      // Get all picks for this tournament with user info
+      const { data: picks, error } = await supabase
+        .from('picks')
+        .select('*, users(id, name)')
+        .eq('tournament_id', tournamentId);
+
+      if (error) throw error;
+
+      // Get all users to show those without picks too
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('id, name')
+        .order('name');
+
+      // Create a map of existing picks
+      const picksMap = {};
+      picks?.forEach(pick => {
+        picksMap[pick.user_id] = pick;
+      });
+
+      // Build combined list - all users with their pick data (if any)
+      const combinedData = allUsers?.map(user => ({
+        ...user,
+        pick: picksMap[user.id] || null
+      })) || [];
+
+      setEditTournamentPicks(combinedData);
+
+      // Pre-populate edit form with existing values
+      const initialEditData = {};
+      combinedData.forEach(user => {
+        if (user.pick) {
+          initialEditData[user.id] = {
+            pickId: user.pick.id,
+            golferName: user.pick.golfer_name || '',
+            winnings: user.pick.winnings || 0,
+            penalty: user.pick.penalty_reason || ''
+          };
+        } else {
+          initialEditData[user.id] = {
+            pickId: null,
+            golferName: '',
+            winnings: 0,
+            penalty: ''
+          };
+        }
+      });
+      setEditResultsData(initialEditData);
+    } catch (error) {
+      console.error('Error loading tournament picks:', error);
+    } finally {
+      setLoadingEditPicks(false);
+    }
+  };
+
+  const handleSaveEditResults = async (userId) => {
+    const tournament = tournaments.find(t => t.id === editTournamentId);
+    const userData = editResultsData[userId];
+    if (!userData) return;
+
+    try {
+      const updateData = {
+        winnings: parseInt(userData.winnings) || 0,
+        penalty_amount: userData.penalty ? 10 : 0,
+        penalty_reason: userData.penalty || null
+      };
+
+      if (userData.pickId) {
+        // Update existing pick
+        const { error } = await supabase
+          .from('picks')
+          .update(updateData)
+          .eq('id', userData.pickId);
+
+        if (error) throw error;
+      } else {
+        // Create new pick record for user who didn't submit
+        const { error } = await supabase
+          .from('picks')
+          .insert({
+            user_id: userId,
+            tournament_id: editTournamentId,
+            golfer_name: null,
+            ...updateData
+          });
+
+        if (error) throw error;
+      }
+
+      // Update penalties table
+      if (userData.penalty) {
+        await supabase
+          .from('penalties')
+          .upsert({
+            user_id: userId,
+            tournament_id: editTournamentId,
+            penalty_type: userData.penalty,
+            amount: 10
+          }, { onConflict: 'user_id,tournament_id' });
+      } else {
+        // Remove penalty if cleared
+        await supabase
+          .from('penalties')
+          .delete()
+          .eq('user_id', userId)
+          .eq('tournament_id', editTournamentId);
+      }
+
+      alert('Results updated successfully!');
+      loadTournamentPicks(editTournamentId); // Reload picks
+      loadData(); // Reload standings
+    } catch (error) {
+      alert('Error saving: ' + error.message);
+    }
+  };
+
 const handleSubmitPick = async () => {
     if (!selectedPlayer) {
       alert('Please select a primary golfer');
@@ -635,68 +783,82 @@ const handleSubmitPick = async () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
-        <div className="text-2xl font-bold text-green-700">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center transition-colors duration-300">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-2xl font-bold text-green-700 dark:text-green-400">Loading...</div>
+        </div>
       </div>
     );
   }
 
   if (showLogin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-          <div className="text-center mb-6">
-            <Trophy className="text-yellow-500 mx-auto mb-4" size={60} />
-            <h1 className="text-3xl font-bold text-green-800">Golf One and Done</h1>
-            <p className="text-gray-600 mt-2">{isSignup ? 'Create Account' : 'Sign In'}</p>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+        {/* Dark mode toggle for login page */}
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="fixed top-4 right-4 p-3 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:shadow-xl transition-all duration-200 text-gray-600 dark:text-yellow-400"
+          aria-label="Toggle dark mode"
+        >
+          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+              <Trophy className="text-white" size={40} />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">{isSignup ? 'Create Account' : 'Welcome Back'}</p>
           </div>
-          
-          <div className="space-y-4">
+
+          <div className="space-y-5">
             {isSignup && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Name</label>
                 <input
                   type="text"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
-                  className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                   placeholder="Your name"
                 />
               </div>
             )}
-            
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email</label>
               <input
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                 placeholder="your@email.com"
               />
             </div>
-            
+
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
               <input
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                 placeholder="Password"
               />
             </div>
-            
+
             <button
               onClick={handleLogin}
-              className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
             >
               {isSignup ? 'Create Account' : 'Sign In'}
             </button>
-            
+
             <button
               onClick={() => setIsSignup(!isSignup)}
-              className="w-full text-blue-600 hover:text-blue-800 text-sm"
+              className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
             >
               {isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
             </button>
@@ -707,67 +869,79 @@ const handleSubmitPick = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
       <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-4 sm:mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-slate-900/50 p-4 sm:p-8 mb-4 sm:mb-6 border border-gray-100 dark:border-slate-700 transition-colors duration-300">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="w-full sm:w-auto">
-              <h1 className="text-2xl sm:text-4xl font-bold text-green-800 flex items-center gap-2 sm:gap-3">
-                <Trophy className="text-yellow-500" size={32} />
-                <span className="leading-tight">Golf One and Done</span>
+              <h1 className="text-2xl sm:text-4xl font-bold flex items-center gap-2 sm:gap-3">
+                <div className="p-2 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl shadow-lg">
+                  <Trophy className="text-white" size={28} />
+                </div>
+                <span className="leading-tight bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</span>
               </h1>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
-                <p className="text-sm sm:text-base text-gray-600">Week {currentWeek} - {currentTournament?.name}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">Week {currentWeek} - {currentTournament?.name}</p>
                 {timeUntilLock && timeUntilLock !== 'Locked' && (
-                  <span className="text-xs sm:text-sm bg-yellow-100 text-yellow-800 px-2 sm:px-3 py-1 rounded-full font-semibold w-fit">
+                  <span className="text-xs sm:text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full font-semibold w-fit border border-amber-200 dark:border-amber-800">
                     ⏰ {timeUntilLock} until lock
                   </span>
                 )}
               </div>
             </div>
-            <div className="w-full sm:w-auto text-left sm:text-right">
-              <p className="text-xs sm:text-sm text-gray-600">Playing as</p>
-              <p className="text-lg sm:text-xl font-bold text-green-700">{currentUser?.name}</p>
-              <div className="flex flex-col items-start sm:items-end gap-1 mt-2">
-                <button
-                  onClick={openAccountSettings}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Users size={14} />
-                  Account
-                </button>
-                <button
-                  onClick={() => setShowSettings(!showSettings)}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                >
-                  <Bell size={14} />
-                  Notifications
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('currentUserId');
-                    setCurrentUser(null);
-                    setShowLogin(true);
-                  }}
-                  className="text-xs sm:text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
-                >
-                  <LogOut size={14} />
-                  Sign Out
-                </button>
+            <div className="w-full sm:w-auto flex items-start justify-between sm:block">
+              <div className="text-left sm:text-right">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Playing as</p>
+                <p className="text-lg sm:text-xl font-bold text-green-700 dark:text-green-400">{currentUser?.name}</p>
+                <div className="flex flex-col items-start sm:items-end gap-1.5 mt-2">
+                  <button
+                    onClick={openAccountSettings}
+                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Users size={14} />
+                    Account
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
+                  >
+                    <Bell size={14} />
+                    Notifications
+                  </button>
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('currentUserId');
+                      setCurrentUser(null);
+                      setShowLogin(true);
+                    }}
+                    className="text-xs sm:text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-1.5 transition-colors"
+                  >
+                    <LogOut size={14} />
+                    Sign Out
+                  </button>
+                </div>
               </div>
+              {/* Dark mode toggle */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="sm:absolute sm:top-4 sm:right-4 p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-yellow-400 transition-all duration-200 ml-auto sm:ml-0"
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
             </div>
           </div>
 
           {/* Settings Panel - Future Features */}
           {showSettings && (
-            <div className="mt-4 bg-gray-50 rounded-lg p-6 border-2 border-gray-200">
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Bell className="text-blue-600" />
+            <div className="mt-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-6 border border-gray-200 dark:border-slate-600 transition-colors">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-200">
+                <Bell className="text-green-600 dark:text-green-400" />
                 Notification Settings
               </h3>
               <div className="space-y-3">
-                <p className="text-gray-600">
+                <p className="text-gray-600 dark:text-gray-400">
                   Notification preferences coming soon! In the future, you'll be able to customize how you receive updates about the league.
                 </p>
               </div>
@@ -776,52 +950,52 @@ const handleSubmitPick = async () => {
 
           {/* Account Settings Modal */}
           {showAccountSettings && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-6">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-700 transition-colors">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                      <Users className="text-green-600" size={28} />
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                      <Users className="text-green-600 dark:text-green-400" size={28} />
                       Account Settings
                     </h2>
                     <button
                       onClick={() => setShowAccountSettings(false)}
-                      className="text-gray-500 hover:text-gray-700"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     >
                       <XCircle size={28} />
                     </button>
                   </div>
 
                   {/* Profile Information Section */}
-                  <div className="mb-8 pb-6 border-b border-gray-200">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800">Profile Information</h3>
-                    
+                  <div className="mb-8 pb-6 border-b border-gray-200 dark:border-slate-700">
+                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Profile Information</h3>
+
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Name</label>
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
                           placeholder="Your name"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
                         <input
                           type="email"
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
                           placeholder="your@email.com"
                         />
                       </div>
 
                       <button
                         onClick={handleUpdateProfile}
-                        className="bg-green-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                       >
                         Save Profile Changes
                       </button>
@@ -830,55 +1004,55 @@ const handleSubmitPick = async () => {
 
                   {/* Change Password Section */}
                   <div>
-                    <h3 className="font-bold text-lg mb-4 text-gray-800">Change Password</h3>
-                    
+                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Change Password</h3>
+
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
                         <input
                           type="password"
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
                           placeholder="Enter current password"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
                         <input
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
                           placeholder="Enter new password (min 6 characters)"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
                         <input
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
                           placeholder="Confirm new password"
                         />
                       </div>
 
                       <button
                         onClick={handleChangePassword}
-                        className="bg-blue-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
                       >
                         Update Password
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
                     <button
                       onClick={() => setShowAccountSettings(false)}
-                      className="w-full bg-gray-300 text-gray-700 py-2 px-6 rounded-lg font-semibold hover:bg-gray-400 transition-colors"
+                      className="w-full bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 px-6 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
                     >
                       Close
                     </button>
@@ -890,14 +1064,14 @@ const handleSubmitPick = async () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="flex border-b">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-slate-900/50 mb-6 border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors duration-300">
+          <div className="flex border-b border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('picks')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                 activeTab === 'picks'
-                  ? 'border-b-4 border-green-600 text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
               <CheckCircle size={20} />
@@ -905,10 +1079,10 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('standings')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                 activeTab === 'standings'
-                  ? 'border-b-4 border-green-600 text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
               <TrendingUp size={20} />
@@ -916,10 +1090,10 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                 activeTab === 'schedule'
-                  ? 'border-b-4 border-green-600 text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
               <Calendar size={20} />
@@ -927,10 +1101,10 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                 activeTab === 'admin'
-                  ? 'border-b-4 border-green-600 text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
               <Users size={20} />
@@ -938,10 +1112,10 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('results')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
                 activeTab === 'results'
-                  ? 'border-b-4 border-green-600 text-green-700'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
               <Trophy size={20} />
@@ -954,36 +1128,37 @@ const handleSubmitPick = async () => {
 {activeTab === 'picks' && (
               picksLoading ? (
                 <div className="text-center py-12">
-                  <div className="text-xl font-semibold text-gray-600">Loading your picks...</div>
+                  <div className="w-12 h-12 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <div className="text-xl font-semibold text-gray-600 dark:text-gray-400">Loading your picks...</div>
                 </div>
               ) : (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-800">Submit Your Pick</h2>
+                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Submit Your Pick</h2>
                   {timeUntilLock && timeUntilLock !== 'Locked' && (
-                    <div className="bg-yellow-100 border-2 border-yellow-400 px-4 py-2 rounded-lg">
-                      <p className="text-sm font-semibold text-yellow-800">
-                        ⏰ Picks lock in: <span className="text-yellow-900 font-bold">{timeUntilLock}</span>
+                    <div className="bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 px-4 py-2 rounded-xl">
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                        ⏰ Picks lock in: <span className="font-bold">{timeUntilLock}</span>
                       </p>
                     </div>
                   )}
                   {timeUntilLock === 'Locked' && (
-                    <div className="bg-red-100 border-2 border-red-400 px-4 py-2 rounded-lg">
-                      <p className="text-sm font-semibold text-red-800">
+                    <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-4 py-2 rounded-xl">
+                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">
                         🔒 Picks are locked
                       </p>
                     </div>
                   )}
                 </div>
                 {/* Backup Pick Explanation */}
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-6 rounded-r-xl">
                   <div className="flex items-start gap-3">
-                    <Shield className="text-blue-600 mt-1" size={24} />
+                    <Shield className="text-blue-600 dark:text-blue-400 mt-1" size={24} />
                     <div>
-                      <p className="font-semibold text-blue-800 mb-1">Backup Pick Feature</p>
-                      <p className="text-blue-700 text-sm">
-                        Select a backup golfer in case your primary pick withdraws before the tournament starts. 
-                        Your backup will automatically be used only if your primary pick withdraws. 
+                      <p className="font-semibold text-blue-800 dark:text-blue-300 mb-1">Backup Pick Feature</p>
+                      <p className="text-blue-700 dark:text-blue-400 text-sm">
+                        Select a backup golfer in case your primary pick withdraws before the tournament starts.
+                        Your backup will automatically be used only if your primary pick withdraws.
                         Remember: You can only use each golfer once per season!
                       </p>
                     </div>
@@ -991,23 +1166,23 @@ const handleSubmitPick = async () => {
                 </div>
 
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-700 mb-3">Your Previous Picks:</h3>
+                  <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Previous Picks:</h3>
                   <div className="flex flex-wrap gap-2">
                     {userPicks.map((pick, idx) => (
-                      <span key={idx} className="bg-gray-200 px-4 py-2 rounded-full text-sm text-gray-700">
+                      <span key={idx} className="bg-gray-200 dark:bg-slate-700 px-4 py-2 rounded-full text-sm text-gray-700 dark:text-gray-300">
                         {pick}
                       </span>
                     ))}
                     {userPicks.length === 0 && (
-                      <span className="text-gray-500 italic">No picks yet</span>
+                      <span className="text-gray-500 dark:text-gray-400 italic">No picks yet</span>
                     )}
                   </div>
                 </div>
 
                 {/* Primary Pick */}
-                <div className="mb-6 p-4 bg-green-50 rounded-lg border-2 border-green-200 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <CheckCircle className="text-green-600" size={20} />
+                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 relative searchable-dropdown">
+                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+                    <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
                     Primary Pick for Week {currentWeek}:
                   </label>
                   <div className="relative">
@@ -1021,10 +1196,10 @@ const handleSubmitPick = async () => {
                       }}
                       onFocus={() => setShowPrimaryDropdown(true)}
                       placeholder="Start typing to search golfers..."
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                      className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                     />
                     {showPrimaryDropdown && primarySearchTerm && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                         {filteredPrimaryGolfers.length > 0 ? (
                           filteredPrimaryGolfers.map((golfer, idx) => (
                             <div
@@ -1034,40 +1209,40 @@ const handleSubmitPick = async () => {
                                 setPrimarySearchTerm('');
                                 setShowPrimaryDropdown(false);
                               }}
-                              className="p-3 hover:bg-green-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                              className="p-3 hover:bg-green-100 dark:hover:bg-green-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
                             >
                               {golfer}
                             </div>
                           ))
                         ) : (
-                          <div className="p-3 text-gray-500 italic">No golfers found</div>
+                          <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
                         )}
                       </div>
                     )}
                   </div>
                   {selectedPlayer && (
-                    <div className="mt-2 p-2 bg-green-100 rounded flex items-center justify-between">
-                      <span className="font-semibold text-green-800">✓ Selected: {selectedPlayer}</span>
+                    <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-between">
+                      <span className="font-semibold text-green-800 dark:text-green-300">✓ Selected: {selectedPlayer}</span>
                       <button
                         onClick={() => {
                           setSelectedPlayer('');
                           setPrimarySearchTerm('');
                         }}
-                        className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
                       >
                         Clear
                       </button>
                     </div>
                   )}
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     <strong>Note:</strong> You can only make picks for the current tournament. Future week picks will open on Monday after the current tournament ends.
                   </p>
                 </div>
 
                 {/* Backup Pick */}
-                <div className="mb-6 p-4 bg-amber-50 rounded-lg border-2 border-amber-200 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                    <Shield className="text-amber-600" size={20} />
+                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
+                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+                    <Shield className="text-amber-600 dark:text-amber-400" size={20} />
                     Backup Pick (Optional but Recommended):
                   </label>
                   <div className="relative">
@@ -1081,10 +1256,10 @@ const handleSubmitPick = async () => {
                       }}
                       onFocus={() => setShowBackupDropdown(true)}
                       placeholder="Start typing to search golfers..."
-                      className="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none"
+                      className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                     />
                     {showBackupDropdown && backupSearchTerm && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border-2 border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
                         {filteredBackupGolfers.length > 0 ? (
                           filteredBackupGolfers.map((golfer, idx) => (
                             <div
@@ -1094,32 +1269,32 @@ const handleSubmitPick = async () => {
                                 setBackupSearchTerm('');
                                 setShowBackupDropdown(false);
                               }}
-                              className="p-3 hover:bg-amber-100 cursor-pointer border-b border-gray-200 last:border-b-0"
+                              className="p-3 hover:bg-amber-100 dark:hover:bg-amber-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
                             >
                               {golfer}
                             </div>
                           ))
                         ) : (
-                          <div className="p-3 text-gray-500 italic">No golfers found</div>
+                          <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
                         )}
                       </div>
                     )}
                   </div>
                   {backupPlayer && (
-                    <div className="mt-2 p-2 bg-amber-100 rounded flex items-center justify-between">
-                      <span className="font-semibold text-amber-800">✓ Selected: {backupPlayer}</span>
+                    <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
+                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
                       <button
                         onClick={() => {
                           setBackupPlayer('');
                           setBackupSearchTerm('');
                         }}
-                        className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
                       >
                         Clear
                       </button>
                     </div>
                   )}
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                     Your backup will only be used if {selectedPlayer || 'your primary pick'} withdraws before the tournament
                   </p>
                 </div>
@@ -1130,12 +1305,12 @@ const handleSubmitPick = async () => {
                   const tournamentStartTime = currentTournament?.tournament_date ? new Date(currentTournament.tournament_date) : null;
                   const isLocked = lockTime && now >= lockTime;
                   const tournamentStarted = tournamentStartTime && now >= tournamentStartTime;
-                  
+
                   return (
                     <>
                       {isLocked && (
-                        <div className="mb-4 p-4 bg-red-50 border-2 border-red-400 rounded-lg">
-                          <p className="text-red-800 font-semibold text-center">
+                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-xl">
+                          <p className="text-red-800 dark:text-red-300 font-semibold text-center">
                             {tournamentStarted ? (
                               <>🔒 Picks are locked! This tournament has already started.</>
                             ) : (
@@ -1144,22 +1319,22 @@ const handleSubmitPick = async () => {
                           </p>
                         </div>
                       )}
-                      
+
                       <button
                         onClick={handleSubmitPick}
                         disabled={!selectedPlayer || isLocked}
-                        className="w-full bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 dark:disabled:from-slate-600 dark:disabled:to-slate-700 disabled:cursor-not-allowed transform hover:-translate-y-0.5 disabled:transform-none transition-all"
                       >
                         {isLocked ? 'Picks Locked' : 'Submit Pick'}
                       </button>
-                      
+
                       {lockTime && !isLocked && (
-                        <p className="mt-2 text-sm text-gray-600 text-center">
-                          Picks lock at {lockTime.toLocaleString('en-US', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric', 
-                            hour: 'numeric', 
+                        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+                          Picks lock at {lockTime.toLocaleString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
                             minute: '2-digit',
                             timeZoneName: 'short'
                           })}
@@ -1170,13 +1345,13 @@ const handleSubmitPick = async () => {
                 })()}
 
                 {selectedPlayer && (
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-                    <h4 className="font-semibold mb-2">Your Current Selection:</h4>
-                    <p className="text-gray-700">
+                  <div className="mt-4 p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+                    <h4 className="font-semibold mb-2 text-gray-800 dark:text-gray-200">Your Current Selection:</h4>
+                    <p className="text-gray-700 dark:text-gray-300">
                       <strong>Primary:</strong> {selectedPlayer}
                     </p>
                     {backupPlayer && (
-                      <p className="text-gray-700">
+                      <p className="text-gray-700 dark:text-gray-300">
                         <strong>Backup:</strong> {backupPlayer}
                       </p>
                     )}
@@ -1188,150 +1363,191 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'results' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Enter Tournament Results</h2>
-                
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Manage Tournament Results</h2>
+
                 {!currentUser?.is_admin ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-gray-300">
-                    <Shield className="text-gray-400 mx-auto mb-4" size={64} />
-                    <h3 className="text-xl font-bold text-gray-700 mb-2">Commissioner Only</h3>
-                    <p className="text-gray-600">
-                      Only the league commissioner can enter tournament results.
+                  <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+                    <Shield className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={64} />
+                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Commissioner Only</h3>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Only the league commissioner can manage tournament results.
                     </p>
                   </div>
                 ) : (
-                  <>
-                {(() => {
-                  const now = new Date();
-                  const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                  const isLocked = lockTime && now >= lockTime;
-                  
-                  if (!isLocked) {
-                    return (
-                      <div className="text-center py-12">
-                        <p className="text-gray-600">Results can only be entered after the tournament starts (picks are locked).</p>
-                      </div>
-                    );
-                  }
-                  
-                  return (
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                        <p className="text-blue-800">
-                          <strong>Current Tournament:</strong> {currentTournament?.name} (Week {currentWeek})
-                        </p>
-                        <p className="text-blue-700 text-sm mt-1">
-                          Enter winnings and penalties for each player below.
-                        </p>
-                      </div>
-                      
-{players.map(player => {
-  const hasSubmittedPick = player.currentPick?.golfer_name;
-  
-  return (
-    <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <p className="font-bold text-lg">{player.name}</p>
-          {hasSubmittedPick ? (
-            <p className="text-sm text-gray-600">
-              Golfer: {player.currentPick.golfer_name}
-              {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-            </p>
-          ) : (
-            <p className="text-sm text-red-600 font-semibold">
-              ⚠️ No pick submitted
-            </p>
-          )}
-        </div>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Winnings ($)
-          </label>
-          <input
-            type="number"
-            placeholder="0"
-            value={resultsData[player.id]?.winnings || ''}
-            onChange={(e) => setResultsData({
-              ...resultsData,
-              [player.id]: { ...resultsData[player.id], winnings: e.target.value }
-            })}
-            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-            disabled={!hasSubmittedPick}
-          />
-          {!hasSubmittedPick && (
-            <p className="text-xs text-gray-500 mt-1">No winnings without a pick</p>
-          )}
-        </div>
-        
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">
-            Penalty
-          </label>
-          <select 
-            value={resultsData[player.id]?.penalty || ''}
-            onChange={(e) => setResultsData({
-              ...resultsData,
-              [player.id]: { ...resultsData[player.id], penalty: e.target.value }
-            })}
-            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-          >
-            <option value="">No penalty</option>
-            <option value="no_pick">No Pick Submitted ($10)</option>
-            <option value="missed_cut">Missed Cut ($10)</option>
-            <option value="withdrawal">Withdrawal ($10)</option>
-            <option value="disqualification">Disqualification ($10)</option>
-          </select>
-        </div>
-      </div>
-      
-      <button
-        onClick={() => handleSaveResults(player.id)}
-        className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-      >
-        Save Results
-      </button>
-    </div>
-  );
-})}
+                  <div className="space-y-6">
+                    {/* Tournament Selector */}
+                    <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-4">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Select Tournament to Edit
+                      </label>
+                      <select
+                        value={editTournamentId || ''}
+                        onChange={(e) => {
+                          const newId = e.target.value;
+                          setEditTournamentId(newId);
+                          if (newId) {
+                            loadTournamentPicks(newId);
+                          } else {
+                            setEditTournamentPicks([]);
+                            setEditResultsData({});
+                          }
+                        }}
+                        className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none text-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                      >
+                        <option value="">-- Select a tournament --</option>
+                        {tournaments.map(t => (
+                          <option key={t.id} value={t.id}>
+                            Week {t.week}: {t.name} {t.completed ? '✓' : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  );
-                })()}
-                </>
+
+                    {/* Edit Results Form */}
+                    {editTournamentId && (
+                      <div>
+                        {(() => {
+                          const selectedTournament = tournaments.find(t => t.id === editTournamentId);
+                          return (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-4 rounded-r-xl">
+                              <p className="text-blue-800 dark:text-blue-300">
+                                <strong>Editing:</strong> {selectedTournament?.name} (Week {selectedTournament?.week})
+                              </p>
+                              <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
+                                {selectedTournament?.completed
+                                  ? 'This tournament is marked as completed. You can still edit results.'
+                                  : 'This tournament is not yet completed.'}
+                              </p>
+                            </div>
+                          );
+                        })()}
+
+                        {loadingEditPicks ? (
+                          <div className="text-center py-8">
+                            <div className="w-10 h-10 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-600 dark:text-gray-400">Loading picks...</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {editTournamentPicks.map(user => {
+                              const userData = editResultsData[user.id] || {};
+                              const hasGolfer = userData.golferName;
+
+                              return (
+                                <div key={user.id} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-4">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <div>
+                                      <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{user.name}</p>
+                                      {hasGolfer ? (
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                                          Golfer: <span className="font-semibold text-gray-800 dark:text-gray-200">{userData.golferName}</span>
+                                        </p>
+                                      ) : (
+                                        <p className="text-sm text-red-600 dark:text-red-400 font-semibold">
+                                          ⚠️ No pick submitted
+                                        </p>
+                                      )}
+                                    </div>
+                                    {userData.winnings > 0 && (
+                                      <div className="text-right">
+                                        <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-3 py-1 rounded-full text-sm font-semibold">
+                                          ${parseInt(userData.winnings).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        Winnings ($)
+                                      </label>
+                                      <input
+                                        type="number"
+                                        placeholder="0"
+                                        value={userData.winnings || ''}
+                                        onChange={(e) => setEditResultsData({
+                                          ...editResultsData,
+                                          [user.id]: { ...userData, winnings: e.target.value }
+                                        })}
+                                        className="w-full p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                      />
+                                    </div>
+
+                                    <div>
+                                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                                        Penalty
+                                      </label>
+                                      <select
+                                        value={userData.penalty || ''}
+                                        onChange={(e) => setEditResultsData({
+                                          ...editResultsData,
+                                          [user.id]: { ...userData, penalty: e.target.value }
+                                        })}
+                                        className="w-full p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
+                                      >
+                                        <option value="">No penalty</option>
+                                        <option value="no_pick">No Pick Submitted ($10)</option>
+                                        <option value="missed_cut">Missed Cut ($10)</option>
+                                        <option value="withdrawal">Withdrawal ($10)</option>
+                                        <option value="disqualification">Disqualification ($10)</option>
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <button
+                                    onClick={() => handleSaveEditResults(user.id)}
+                                    className="mt-3 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-4 rounded-xl font-semibold shadow hover:shadow-lg transition-all"
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!editTournamentId && (
+                      <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+                        <Trophy className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={48} />
+                        <p className="text-gray-600 dark:text-gray-400">Select a tournament above to view and edit results.</p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
 
             {activeTab === 'standings' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">League Standings</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Standings</h2>
                 <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
                   <table className="w-full min-w-[600px]">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Rank</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Player</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">Winnings</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm hidden sm:table-cell">Penalties</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">This Week</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm"></th>
+                      <tr className="bg-gray-100 dark:bg-slate-700">
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tl-lg">Rank</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm">Player</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">Winnings</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm hidden sm:table-cell">Penalties</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">This Week</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tr-lg"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedStandings.map((player, idx) => (
                         <React.Fragment key={player.id}>
-                          <tr 
-                            className={`border-b hover:bg-gray-50 ${player.id === currentUser?.id ? 'bg-green-50 font-semibold' : ''}`}
+                          <tr
+                            className={`border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/20 font-semibold' : ''}`}
                           >
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm text-gray-800 dark:text-gray-200">
                               {idx === 0 && <Trophy className="inline text-yellow-500 mr-1 sm:mr-2" size={16} />}
                               {idx + 1}
                             </td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm">{player.name}</td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">${player.winnings.toLocaleString()}</td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 font-semibold text-sm hidden sm:table-cell">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-sm hidden sm:table-cell">
                               {player.penalties > 0 ? `$${player.penalties}` : '-'}
                             </td>
                             <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">
@@ -1340,47 +1556,47 @@ const handleSubmitPick = async () => {
                                 const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
                                 const isLocked = lockTime && now >= lockTime;
                                 const isCurrentUser = player.id === currentUser?.id;
-                                
+
                                 // Current user can always see their own pick
                                 if (isCurrentUser) {
                                   return player.currentPick?.golfer_name ? (
                                     <div>
-                                      <div className="text-green-700">{player.currentPick.golfer_name}</div>
+                                      <div className="text-green-700 dark:text-green-400">{player.currentPick.golfer_name}</div>
                                       {player.currentPick.backup_golfer_name && (
-                                        <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
                                       )}
                                     </div>
                                   ) : (
-                                    <span className="text-red-500">Not submitted</span>
+                                    <span className="text-red-500 dark:text-red-400">Not submitted</span>
                                   );
                                 }
-                                
+
                                 // Other users - hide if NOT locked yet
                                 if (!isLocked) {
                                   return player.currentPick?.golfer_name ? (
-                                    <span className="text-gray-500">🔒 Hidden</span>
+                                    <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
                                   ) : (
-                                    <span className="text-red-500">Not submitted</span>
+                                    <span className="text-red-500 dark:text-red-400">Not submitted</span>
                                   );
                                 }
-                                
+
                                 // Locked - show everyone's picks
                                 return player.currentPick?.golfer_name ? (
                                   <div>
-                                    <div className="text-green-700">{player.currentPick.golfer_name}</div>
+                                    <div className="text-green-700 dark:text-green-400">{player.currentPick.golfer_name}</div>
                                     {player.currentPick.backup_golfer_name && (
-                                      <div className="text-xs text-gray-500">Backup: {player.currentPick.backup_golfer_name}</div>
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-red-500">Not submitted</span>
+                                  <span className="text-red-500 dark:text-red-400">Not submitted</span>
                                 );
                               })()}
                             </td>
                             <td className="py-2 sm:py-3 px-2 sm:px-4 text-center">
                               <button
                                 onClick={() => toggleRowExpansion(player.id)}
-                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto text-xs sm:text-sm"
+                                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-1 mx-auto text-xs sm:text-sm transition-colors"
                               >
                                 {expandedRows[player.id] ? (
                                   <>
@@ -1396,70 +1612,70 @@ const handleSubmitPick = async () => {
                               </button>
                             </td>
                           </tr>
-                          
+
                           {/* Expanded weekly results row */}
                           {expandedRows[player.id] && (
-                            <tr className="bg-gray-50">
+                            <tr className="bg-gray-50 dark:bg-slate-700/50">
                               <td colSpan="6" className="py-4 px-4">
                                 <div className="max-w-5xl mx-auto">
-                                  <h4 className="font-bold text-gray-800 mb-3">Week-by-Week Results for {player.name}</h4>
+                                  <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Week-by-Week Results for {player.name}</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                       <thead>
-                                        <tr className="bg-gray-200">
-                                          <th className="py-2 px-3 text-left">Week</th>
-                                          <th className="py-2 px-3 text-left">Tournament</th>
-                                          <th className="py-2 px-3 text-left">Golfer</th>
-                                          <th className="py-2 px-3 text-left">Backup</th>
-                                          <th className="py-2 px-3 text-right">Winnings</th>
-                                          <th className="py-2 px-3 text-center">Penalty</th>
+                                        <tr className="bg-gray-200 dark:bg-slate-600">
+                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Week</th>
+                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Tournament</th>
+                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Golfer</th>
+                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Backup</th>
+                                          <th className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">Winnings</th>
+                                          <th className="py-2 px-3 text-center text-gray-800 dark:text-gray-200">Penalty</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {player.picksByWeek.map((weekData, weekIdx) => (
-                                          <tr key={weekIdx} className="border-b border-gray-300">
-                                            <td className="py-2 px-3 font-semibold">{weekData.week}</td>
-                                            <td className="py-2 px-3 text-gray-700">{weekData.tournamentName}</td>
+                                          <tr key={weekIdx} className="border-b border-gray-300 dark:border-slate-600">
+                                            <td className="py-2 px-3 font-semibold text-gray-800 dark:text-gray-200">{weekData.week}</td>
+                                            <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{weekData.tournamentName}</td>
                                             <td className="py-2 px-3">
                                               {weekData.golfer ? (
-                                                <span className="text-green-700 font-medium">{weekData.golfer}</span>
+                                                <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
                                               ) : (
-                                                <span className="text-gray-400 italic">No pick</span>
+                                                <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
                                               )}
                                             </td>
                                             <td className="py-2 px-3">
                                               {weekData.backup ? (
-                                                <span className="text-amber-600 text-xs">{weekData.backup}</span>
+                                                <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
                                               ) : (
-                                                <span className="text-gray-300">-</span>
+                                                <span className="text-gray-300 dark:text-gray-600">-</span>
                                               )}
                                             </td>
                                             <td className="py-2 px-3 text-right">
                                               {weekData.winnings > 0 ? (
-                                                <span className="text-green-600 font-semibold">${weekData.winnings.toLocaleString()}</span>
+                                                <span className="text-green-600 dark:text-green-400 font-semibold">${weekData.winnings.toLocaleString()}</span>
                                               ) : (
-                                                <span className="text-gray-400">$0</span>
+                                                <span className="text-gray-400 dark:text-gray-500">$0</span>
                                               )}
                                             </td>
                                             <td className="py-2 px-3 text-center">
                                               {weekData.penalty > 0 ? (
-                                                <span className="text-red-600 font-semibold">
+                                                <span className="text-red-600 dark:text-red-400 font-semibold">
                                                   ${weekData.penalty} ({weekData.penaltyReason?.replace('_', ' ')})
                                                 </span>
                                               ) : (
-                                                <span className="text-gray-400">-</span>
+                                                <span className="text-gray-400 dark:text-gray-500">-</span>
                                               )}
                                             </td>
                                           </tr>
                                         ))}
                                       </tbody>
                                       <tfoot>
-                                        <tr className="bg-gray-200 font-bold">
-                                          <td colSpan="4" className="py-2 px-3 text-right">TOTALS:</td>
-                                          <td className="py-2 px-3 text-right text-green-700">
+                                        <tr className="bg-gray-200 dark:bg-slate-600 font-bold">
+                                          <td colSpan="4" className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">TOTALS:</td>
+                                          <td className="py-2 px-3 text-right text-green-700 dark:text-green-400">
                                             ${player.winnings.toLocaleString()}
                                           </td>
-                                          <td className="py-2 px-3 text-center text-red-600">
+                                          <td className="py-2 px-3 text-center text-red-600 dark:text-red-400">
                                             {player.penalties > 0 ? `$${player.penalties}` : '-'}
                                           </td>
                                         </tr>
@@ -1476,43 +1692,43 @@ const handleSubmitPick = async () => {
                   </table>
                 </div>
                 <div className="text-center mt-2 sm:hidden">
-                  <p className="text-xs text-gray-500">← Swipe to see more →</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">← Swipe to see more →</p>
                 </div>
               </div>
             )}
 
             {activeTab === 'schedule' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Tournament Schedule</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Tournament Schedule</h2>
                 <div className="space-y-3">
                   {tournaments.map((tournament) => (
-                    <div 
+                    <div
                       key={tournament.id}
-                      className={`p-3 sm:p-4 rounded-lg border-2 ${
-                        tournament.week === currentWeek 
-                          ? 'border-green-500 bg-green-50' 
-                          : tournament.completed 
-                          ? 'border-gray-300 bg-gray-50' 
-                          : 'border-blue-300 bg-blue-50'
+                      className={`p-3 sm:p-4 rounded-xl border transition-colors ${
+                        tournament.week === currentWeek
+                          ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                          : tournament.completed
+                          ? 'border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50'
+                          : 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                         <div className="flex-1">
-                          <h3 className="font-bold text-base sm:text-lg">{tournament.name}</h3>
-                          <p className="text-xs sm:text-sm text-gray-600">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
+                          <h3 className="font-bold text-base sm:text-lg text-gray-800 dark:text-gray-100">{tournament.name}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
                         </div>
                         <div className="flex-shrink-0">
                           {tournament.completed ? (
-                            <span className="flex items-center gap-2 text-gray-600 text-sm">
-                              <CheckCircle size={18} className="text-green-600" />
+                            <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
+                              <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
                               <span className="text-xs sm:text-sm">Completed</span>
                             </span>
                           ) : tournament.week === currentWeek ? (
-                            <span className="bg-green-600 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block">
+                            <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg">
                               Current Week
                             </span>
                           ) : (
-                            <span className="text-blue-600 font-semibold text-xs sm:text-sm">Upcoming</span>
+                            <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs sm:text-sm">Upcoming</span>
                           )}
                         </div>
                       </div>
@@ -1524,21 +1740,80 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'admin' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">League Info</h2>
-                
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Info</h2>
+
                 <div className="space-y-6">
+                  {/* Prize Pool Calculator */}
+                  <div className="bg-white dark:bg-slate-700 border border-green-500 dark:border-green-400 rounded-xl p-6 shadow-lg">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Trophy className="text-yellow-500" />
+                      Prize Pool & Payouts
+                    </h3>
+
+                    {(() => {
+                      const buyIn = 50;
+                      const numPlayers = players.length;
+                      const totalPenalties = players.reduce((sum, p) => sum + (p.penalties || 0), 0);
+                      const totalPot = (numPlayers * buyIn) + totalPenalties;
+                      const firstPlace = Math.round(totalPot * 0.65);
+                      const secondPlace = Math.round(totalPot * 0.25);
+                      const thirdPlace = Math.round(totalPot * 0.10);
+
+                      return (
+                        <div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-gray-50 dark:bg-slate-600 p-4 rounded-xl text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Players</p>
+                              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{numPlayers}</p>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-slate-600 p-4 rounded-xl text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Buy-ins</p>
+                              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">${numPlayers * buyIn}</p>
+                            </div>
+                            <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl text-center">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Penalties</p>
+                              <p className="text-2xl font-bold text-red-600 dark:text-red-400">${totalPenalties}</p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-xl text-center border border-green-500 dark:border-green-400">
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Total Pot</p>
+                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">${totalPot}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 p-4 rounded-xl text-center">
+                              <div className="text-3xl mb-1">🥇</div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">1st Place (65%)</p>
+                              <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">${firstPlace}</p>
+                            </div>
+                            <div className="bg-gray-100 dark:bg-slate-600 border border-gray-400 dark:border-slate-500 p-4 rounded-xl text-center">
+                              <div className="text-3xl mb-1">🥈</div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">2nd Place (25%)</p>
+                              <p className="text-xl font-bold text-gray-600 dark:text-gray-300">${secondPlace}</p>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-600 p-4 rounded-xl text-center">
+                              <div className="text-3xl mb-1">🥉</div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">3rd Place (10%)</p>
+                              <p className="text-xl font-bold text-orange-600 dark:text-orange-400">${thirdPlace}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   {/* Golfer Management */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Users className="text-green-600" />
+                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Users className="text-green-600 dark:text-green-400" />
                       Golfer Management
                     </h3>
-                    
-                    <div className="mb-4 p-4 bg-green-50 rounded-lg">
-                      <p className="text-sm text-gray-700 mb-2">
+
+                    <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
                         <strong>Current Golfers:</strong> {availableGolfers.length} players available
                       </p>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         Add new golfers who aren't in the master list (rookies, sponsor exemptions, etc.)
                       </p>
                     </div>
@@ -1546,14 +1821,14 @@ const handleSubmitPick = async () => {
                     {!showAddGolfer ? (
                       <button
                         onClick={() => setShowAddGolfer(true)}
-                        className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
                       >
                         <Users size={18} />
                         Add New Golfer
                       </button>
                     ) : (
-                      <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
-                        <h4 className="font-semibold mb-3">Add New Golfer</h4>
+                      <div className="border border-green-200 dark:border-green-800 rounded-xl p-4 bg-green-50 dark:bg-green-900/20">
+                        <h4 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">Add New Golfer</h4>
                         <div className="flex gap-3">
                           <input
                             type="text"
@@ -1561,11 +1836,11 @@ const handleSubmitPick = async () => {
                             onChange={(e) => setNewGolferName(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleAddGolfer()}
                             placeholder="Enter golfer name (e.g., Tiger Woods)"
-                            className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                            className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                           />
                           <button
                             onClick={handleAddGolfer}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
                           >
                             Add
                           </button>
@@ -1574,53 +1849,158 @@ const handleSubmitPick = async () => {
                               setShowAddGolfer(false);
                               setNewGolferName('');
                             }}
-                            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                            className="bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
                           >
                             Cancel
                           </button>
                         </div>
-                        <p className="text-xs text-gray-600 mt-2">
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                           Tip: Use proper capitalization (e.g., "Jon Rahm" not "jon rahm")
                         </p>
                       </div>
                     )}
                   </div>
 
+                  {/* Season Progress */}
+                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Calendar className="text-blue-600 dark:text-blue-400" />
+                      Season Progress
+                    </h3>
+                    {(() => {
+                      const completedWeeks = tournaments.filter(t => t.completed).length;
+                      const totalWeeks = tournaments.length;
+                      const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
+
+                      return (
+                        <div>
+                          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                            <span>{completedWeeks} of {totalWeeks} weeks completed</span>
+                            <span>{progressPercent}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-4 overflow-hidden">
+                            <div
+                              className="bg-gradient-to-r from-green-500 to-emerald-500 h-4 rounded-full transition-all duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                            {totalWeeks - completedWeeks} weeks remaining
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* League Rules */}
+                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Shield className="text-blue-600 dark:text-blue-400" />
+                      League Rules
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                        <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Buy-In & Fees</h4>
+                        <ul className="text-sm text-blue-900 dark:text-blue-300 space-y-1">
+                          <li>• Season buy-in: <strong>$50</strong></li>
+                          <li>• Penalties added to prize pool</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
+                        <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-2">Pick Deadlines</h4>
+                        <ul className="text-sm text-amber-900 dark:text-amber-300 space-y-1">
+                          <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
+                          <li>• Each golfer can only be used <strong>once per season</strong></li>
+                          <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
+                          <li>• New week picks open Monday after current tournament ends</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                        <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Penalties ($10 each)</h4>
+                        <ul className="text-sm text-red-900 dark:text-red-300 space-y-1">
+                          <li>• <strong>No Pick Submitted:</strong> $10 penalty</li>
+                          <li>• <strong>Missed Cut:</strong> $10 penalty</li>
+                          <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
+                          <li>• <strong>Disqualification:</strong> $10 penalty</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
+                        <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Payout Structure</h4>
+                        <ul className="text-sm text-green-900 dark:text-green-300 space-y-1">
+                          <li>• <strong>1st Place:</strong> 65% of total pot</li>
+                          <li>• <strong>2nd Place:</strong> 25% of total pot</li>
+                          <li>• <strong>3rd Place:</strong> 10% of total pot</li>
+                          <li>• Final standings based on total season winnings</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
+                        <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">How Winnings Work</h4>
+                        <ul className="text-sm text-purple-900 dark:text-purple-300 space-y-1">
+                          <li>• Your golfer's official PGA Tour prize money counts as your weekly earnings</li>
+                          <li>• Season winner = highest total prize money accumulated</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* League Members */}
+                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                      <Users className="text-green-600 dark:text-green-400" />
+                      League Members ({players.length})
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {players.map(player => (
+                        <div key={player.id} className="bg-gray-50 dark:bg-slate-600 p-3 rounded-xl text-center">
+                          <p className="font-semibold text-gray-800 dark:text-gray-100">{player.name}</p>
+                          {player.penalties > 0 && (
+                            <p className="text-xs text-red-600 dark:text-red-400">Penalties: ${player.penalties}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Pick Status Overview */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4">Week {currentWeek} Pick Status</h3>
+                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
+                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">Week {currentWeek} Pick Status</h3>
                     <div className="space-y-2">
                       {players.map(player => {
                         const now = new Date();
                         const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
                         const isLocked = lockTime && now >= lockTime;
-                        
+
                         return (
-                          <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                          <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-600 rounded-xl">
                             <div>
-                              <p className="font-semibold">{player.name}</p>
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">{player.name}</p>
                             </div>
                             <div className="text-right">
                               {player.currentPick?.golfer_name ? (
                                 isLocked ? (
                                   <div>
-                                    <CheckCircle className="inline text-green-600 mr-2" size={20} />
-                                    <span className="text-green-700 font-semibold">Submitted</span>
-                                    <p className="text-xs text-gray-600 mt-1">
+                                    <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
+                                    <span className="text-green-700 dark:text-green-400 font-semibold">Submitted</span>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                       {player.currentPick.golfer_name}
                                       {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
                                     </p>
                                   </div>
                                 ) : (
                                   <div>
-                                    <CheckCircle className="inline text-green-600 mr-2" size={20} />
-                                    <span className="text-green-700 font-semibold">Submitted (Hidden)</span>
+                                    <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
+                                    <span className="text-green-700 dark:text-green-400 font-semibold">Submitted (Hidden)</span>
                                   </div>
                                 )
                               ) : (
                                 <div>
-                                  <XCircle className="inline text-red-600 mr-2" size={20} />
-                                  <span className="text-red-700 font-semibold">Pending</span>
+                                  <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
+                                  <span className="text-red-700 dark:text-red-400 font-semibold">Pending</span>
                                 </div>
                               )}
                             </div>
