@@ -360,7 +360,49 @@ const handleSaveResults = async (playerId) => {
       const winnings = playerData.winnings || 0;
       const penaltyType = playerData.penalty || '';
       
-      // Update the pick with winnings
+      const player = players.find(p => p.id === playerId);
+      const hasSubmittedPick = player?.currentPick?.golfer_name;
+      
+      // If player didn't submit a pick, create a record with just penalties
+      if (!hasSubmittedPick) {
+        if (!penaltyType) {
+          alert('Please select a penalty for players who did not submit a pick');
+          return;
+        }
+        
+        const { error: pickError } = await supabase
+          .from('picks')
+          .insert({
+            user_id: playerId,
+            tournament_id: tournamentId,
+            golfer_name: null,
+            backup_golfer_name: null,
+            winnings: 0,
+            penalty_amount: 10,
+            penalty_reason: penaltyType
+          });
+        
+        if (pickError) {
+          alert('Error saving penalty: ' + pickError.message);
+          return;
+        }
+        
+        // Add to penalties table
+        await supabase
+          .from('penalties')
+          .upsert({
+            user_id: playerId,
+            tournament_id: tournamentId,
+            penalty_type: penaltyType,
+            amount: 10
+          }, { onConflict: 'user_id,tournament_id' });
+        
+        alert('Penalty saved successfully!');
+        loadData();
+        return;
+      }
+      
+      // Update existing pick with winnings/penalties
       const { error: pickError } = await supabase
         .from('picks')
         .update({
@@ -931,63 +973,78 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                         </p>
                       </div>
                       
-{players.filter(p => p.currentPick?.golfer_name).map(player => (
-                        <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <div>
-                              <p className="font-bold text-lg">{player.name}</p>
-                              <p className="text-sm text-gray-600">
-                                Golfer: {player.currentPick.golfer_name}
-                                {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                Winnings ($)
-                              </label>
-                              <input
-                                type="number"
-                                placeholder="0"
-                                value={resultsData[player.id]?.winnings || ''}
-                                onChange={(e) => setResultsData({
-                                  ...resultsData,
-                                  [player.id]: { ...resultsData[player.id], winnings: e.target.value }
-                                })}
-                                className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                              />
-                            </div>
-                            
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-1">
-                                Penalty
-                              </label>
-                              <select 
-                                value={resultsData[player.id]?.penalty || ''}
-                                onChange={(e) => setResultsData({
-                                  ...resultsData,
-                                  [player.id]: { ...resultsData[player.id], penalty: e.target.value }
-                                })}
-                                className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
-                              >
-                                <option value="">No penalty</option>
-                                <option value="missed_cut">Missed Cut ($10)</option>
-                                <option value="withdrawal">Withdrawal ($10)</option>
-                                <option value="disqualification">Disqualification ($10)</option>
-                              </select>
-                            </div>
-                          </div>
-                          
-                          <button
-                            onClick={() => handleSaveResults(player.id)}
-                            className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            Save Results
-                          </button>
-                        </div>
-                      ))}
+{players.map(player => {
+  const hasSubmittedPick = player.currentPick?.golfer_name;
+  
+  return (
+    <div key={player.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="font-bold text-lg">{player.name}</p>
+          {hasSubmittedPick ? (
+            <p className="text-sm text-gray-600">
+              Golfer: {player.currentPick.golfer_name}
+              {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+            </p>
+          ) : (
+            <p className="text-sm text-red-600 font-semibold">
+              ⚠️ No pick submitted
+            </p>
+          )}
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Winnings ($)
+          </label>
+          <input
+            type="number"
+            placeholder="0"
+            value={resultsData[player.id]?.winnings || ''}
+            onChange={(e) => setResultsData({
+              ...resultsData,
+              [player.id]: { ...resultsData[player.id], winnings: e.target.value }
+            })}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+            disabled={!hasSubmittedPick}
+          />
+          {!hasSubmittedPick && (
+            <p className="text-xs text-gray-500 mt-1">No winnings without a pick</p>
+          )}
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            Penalty
+          </label>
+          <select 
+            value={resultsData[player.id]?.penalty || ''}
+            onChange={(e) => setResultsData({
+              ...resultsData,
+              [player.id]: { ...resultsData[player.id], penalty: e.target.value }
+            })}
+            className="w-full p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+          >
+            <option value="">No penalty</option>
+            <option value="no_pick">No Pick Submitted ($10)</option>
+            <option value="missed_cut">Missed Cut ($10)</option>
+            <option value="withdrawal">Withdrawal ($10)</option>
+            <option value="disqualification">Disqualification ($10)</option>
+          </select>
+        </div>
+      </div>
+      
+      <button
+        onClick={() => handleSaveResults(player.id)}
+        className="mt-3 w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors"
+      >
+        Save Results
+      </button>
+    </div>
+  );
+})}
                     </div>
                   );
                 })()}
@@ -1227,7 +1284,6 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                           <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                             <div>
                               <p className="font-semibold">{player.name}</p>
-                              <p className="text-sm text-gray-600">{player.email}</p>
                             </div>
                             <div className="text-right">
                               {player.currentPick?.golfer_name ? (
