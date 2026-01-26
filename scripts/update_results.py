@@ -79,20 +79,51 @@ Leaderboard text:
 
     # Retry with exponential backoff for rate limits
     max_retries = 3
+    response_text = None
+
     for attempt in range(max_retries):
         try:
             response = model.generate_content(prompt)
-            response_text = response.text.strip()
-            break
+
+            # Check if response has valid content
+            if not response.candidates:
+                print(f"No candidates in response. Retrying...")
+                time.sleep(10)
+                continue
+
+            candidate = response.candidates[0]
+            if candidate.finish_reason != 1:  # 1 = STOP (normal)
+                print(f"Response blocked or incomplete. Finish reason: {candidate.finish_reason}")
+                if hasattr(candidate, 'safety_ratings'):
+                    print(f"Safety ratings: {candidate.safety_ratings}")
+                time.sleep(10)
+                continue
+
+            # Try to get text from parts
+            if candidate.content and candidate.content.parts:
+                response_text = candidate.content.parts[0].text.strip()
+                break
+            else:
+                print("No content parts in response. Retrying...")
+                time.sleep(10)
+                continue
+
         except Exception as e:
             if "429" in str(e) or "ResourceExhausted" in str(e):
                 wait_time = 30 * (attempt + 1)  # 30s, 60s, 90s
                 print(f"Rate limited. Waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
                 time.sleep(wait_time)
-                if attempt == max_retries - 1:
-                    raise
+            elif "response.text" in str(e) or "Invalid operation" in str(e):
+                print(f"Empty response from Gemini. Retrying in 10s...")
+                time.sleep(10)
             else:
                 raise
+
+            if attempt == max_retries - 1:
+                raise
+
+    if not response_text:
+        raise ValueError("Failed to get valid response from Gemini after retries")
 
     # Clean up response if it has markdown code blocks
     if response_text.startswith("```"):
