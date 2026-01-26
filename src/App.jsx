@@ -6,6 +6,15 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Helper function to format prize pool
+const formatPrizePool = (amount) => {
+  if (!amount) return 'TBA';
+  if (amount >= 1000000) {
+    return `$${(amount / 1000000).toFixed(1)}M`;
+  }
+  return `$${amount.toLocaleString()}`;
+};
+
 const App = () => {
   const [activeTab, setActiveTab] = useState('picks');
   const [selectedPlayer, setSelectedPlayer] = useState('');
@@ -882,7 +891,12 @@ const handleSubmitPick = async () => {
                 <span className="leading-tight bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</span>
               </h1>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
-                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">Week {currentWeek} - {currentTournament?.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">Week {currentWeek} - {currentTournament?.name}</p>
+                  <span className="text-xs sm:text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full font-bold border border-green-200 dark:border-green-800">
+                    {formatPrizePool(currentTournament?.prize_pool)}
+                  </span>
+                </div>
                 {timeUntilLock && timeUntilLock !== 'Locked' && (
                   <span className="text-xs sm:text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full font-semibold w-fit border border-amber-200 dark:border-amber-800">
                     ⏰ {timeUntilLock} until lock
@@ -1156,7 +1170,12 @@ const handleSubmitPick = async () => {
                   <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-blue-100 text-sm font-medium mb-1">Week {currentWeek} Selection</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-blue-100 text-sm font-medium">Week {currentWeek} Selection</p>
+                          <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">
+                            {formatPrizePool(currentTournament?.prize_pool)} purse
+                          </span>
+                        </div>
                         <p className="text-white text-xl font-bold">{selectedPlayer || currentWeekPick.golfer}</p>
                         {(backupPlayer || currentWeekPick.backup) && (
                           <p className="text-blue-200 text-sm mt-1">
@@ -1171,10 +1190,15 @@ const handleSubmitPick = async () => {
 
                 {/* No selection prompt */}
                 {!selectedPlayer && !currentWeekPick.golfer && (
-                  <div className="mb-6 p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600">
-                    <p className="text-center text-gray-500 dark:text-gray-400">
-                      No pick selected yet for Week {currentWeek}. Choose your golfer below.
-                    </p>
+                  <div className="mb-6 p-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600">
+                    <div className="text-center">
+                      <p className="text-gray-500 dark:text-gray-400 mb-2">
+                        No pick selected yet for Week {currentWeek}
+                      </p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {formatPrizePool(currentTournament?.prize_pool)} purse this week
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -1713,7 +1737,16 @@ const handleSubmitPick = async () => {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
                         <div className="flex-1">
-                          <h3 className="font-bold text-base sm:text-lg text-gray-800 dark:text-gray-100">{tournament.name}</h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-base sm:text-lg text-gray-800 dark:text-gray-100">{tournament.name}</h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                              tournament.prize_pool
+                                ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
+                                : 'bg-gray-200 dark:bg-slate-600 text-gray-500 dark:text-gray-400'
+                            }`}>
+                              {formatPrizePool(tournament.prize_pool)}
+                            </span>
+                          </div>
                           <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
                         </div>
                         <div className="flex-shrink-0">
