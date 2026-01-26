@@ -26,6 +26,8 @@ const App = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showAddGolfer, setShowAddGolfer] = useState(false);
+  const [newGolferName, setNewGolferName] = useState('');
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -351,6 +353,35 @@ const loadUserData = async () => {
     setEditName(currentUser.name);
     setEditEmail(currentUser.email);
     setShowAccountSettings(true);
+  };
+
+  const handleAddGolfer = async () => {
+    if (!newGolferName.trim()) {
+      alert('Please enter a golfer name');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('available_golfers')
+        .insert([{ name: newGolferName.trim(), active: true }]);
+      
+      if (error) {
+        if (error.code === '23505') { // Unique constraint violation
+          alert('This golfer already exists in the list');
+        } else {
+          alert('Error adding golfer: ' + error.message);
+        }
+        return;
+      }
+      
+      alert(`Successfully added ${newGolferName}!`);
+      setNewGolferName('');
+      setShowAddGolfer(false);
+      loadData(); // Reload to update available golfers
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
   };
 
 const handleSaveResults = async (playerId) => {
@@ -1273,6 +1304,65 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Admin Panel</h2>
                 
                 <div className="space-y-6">
+                  {/* Golfer Management */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Users className="text-green-600" />
+                      Golfer Management
+                    </h3>
+                    
+                    <div className="mb-4 p-4 bg-green-50 rounded-lg">
+                      <p className="text-sm text-gray-700 mb-2">
+                        <strong>Current Golfers:</strong> {availableGolfers.length} players available
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        Add new golfers who aren't in the master list (rookies, sponsor exemptions, etc.)
+                      </p>
+                    </div>
+
+                    {!showAddGolfer ? (
+                      <button
+                        onClick={() => setShowAddGolfer(true)}
+                        className="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      >
+                        <Users size={18} />
+                        Add New Golfer
+                      </button>
+                    ) : (
+                      <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50">
+                        <h4 className="font-semibold mb-3">Add New Golfer</h4>
+                        <div className="flex gap-3">
+                          <input
+                            type="text"
+                            value={newGolferName}
+                            onChange={(e) => setNewGolferName(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleAddGolfer()}
+                            placeholder="Enter golfer name (e.g., Tiger Woods)"
+                            className="flex-1 p-2 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                          />
+                          <button
+                            onClick={handleAddGolfer}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                          >
+                            Add
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddGolfer(false);
+                              setNewGolferName('');
+                            }}
+                            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-2">
+                          Tip: Use proper capitalization (e.g., "Jon Rahm" not "jon rahm")
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Pick Status Overview */}
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4">Week {currentWeek} Pick Status</h3>
