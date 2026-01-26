@@ -675,52 +675,54 @@ const handleSubmitPick = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-green-800 flex items-center gap-3">
-                <Trophy className="text-yellow-500" size={40} />
-                Golf One and Done League
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-8 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-4xl font-bold text-green-800 flex items-center gap-2 sm:gap-3">
+                <Trophy className="text-yellow-500" size={32} />
+                <span className="leading-tight">Golf One and Done</span>
               </h1>
-              <div className="flex items-center gap-4 mt-2">
-                <p className="text-gray-600">Week {currentWeek} - {currentTournament?.name}</p>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-2">
+                <p className="text-sm sm:text-base text-gray-600">Week {currentWeek} - {currentTournament?.name}</p>
                 {timeUntilLock && timeUntilLock !== 'Locked' && (
-                  <span className="text-sm bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-semibold">
+                  <span className="text-xs sm:text-sm bg-yellow-100 text-yellow-800 px-2 sm:px-3 py-1 rounded-full font-semibold w-fit">
                     ⏰ {timeUntilLock} until lock
                   </span>
                 )}
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Playing as</p>
-              <p className="text-xl font-bold text-green-700">{currentUser?.name}</p>
-              <button
-                onClick={openAccountSettings}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-              >
-                <Users size={16} />
-                Account Settings
-              </button>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="mt-1 text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-              >
-                <Bell size={16} />
-                Notification Settings
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.removeItem('currentUserId');
-                  setCurrentUser(null);
-                  setShowLogin(true);
-                }}
-                className="mt-1 text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
-              >
-                <LogOut size={16} />
-                Sign Out
-              </button>
+            <div className="w-full sm:w-auto text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-gray-600">Playing as</p>
+              <p className="text-lg sm:text-xl font-bold text-green-700">{currentUser?.name}</p>
+              <div className="flex flex-col items-start sm:items-end gap-1 mt-2">
+                <button
+                  onClick={openAccountSettings}
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <Users size={14} />
+                  Account
+                </button>
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <Bell size={14} />
+                  Notifications
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('currentUserId');
+                    setCurrentUser(null);
+                    setShowLogin(true);
+                  }}
+                  className="text-xs sm:text-sm text-red-600 hover:text-red-800 flex items-center gap-1"
+                >
+                  <LogOut size={14} />
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
 
@@ -856,66 +858,66 @@ const handleSubmitPick = async () => {
 
         {/* Navigation Tabs */}
         <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="flex border-b">
+          <div className="flex border-b overflow-x-auto">
             <button
               onClick={() => setActiveTab('picks')}
-              className={`flex-1 py-4 px-6 font-semibold flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                 activeTab === 'picks' 
                   ? 'border-b-4 border-green-600 text-green-700' 
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <CheckCircle size={20} />
-              Make Pick
+              <span className="text-xs sm:text-base">Pick</span>
             </button>
             <button
               onClick={() => setActiveTab('standings')}
-              className={`flex-1 py-4 px-6 font-semibold flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                 activeTab === 'standings' 
                   ? 'border-b-4 border-green-600 text-green-700' 
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <TrendingUp size={20} />
-              Standings
+              <span className="text-xs sm:text-base">Standings</span>
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`flex-1 py-4 px-6 font-semibold flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                 activeTab === 'schedule' 
                   ? 'border-b-4 border-green-600 text-green-700' 
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Calendar size={20} />
-              Schedule
+              <span className="text-xs sm:text-base">Schedule</span>
             </button>
             <button
               onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-4 px-6 font-semibold flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                 activeTab === 'admin' 
                   ? 'border-b-4 border-green-600 text-green-700' 
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Bell size={20} />
-              Admin
+              <span className="text-xs sm:text-base">Admin</span>
             </button>
             <button
               onClick={() => setActiveTab('results')}
-              className={`flex-1 py-4 px-6 font-semibold flex items-center justify-center gap-2 ${
+              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                 activeTab === 'results' 
                   ? 'border-b-4 border-green-600 text-green-700' 
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Trophy size={20} />
-              Results
+              <span className="text-xs sm:text-base">Results</span>
             </button>
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
 {activeTab === 'picks' && (
               picksLoading ? (
                 <div className="text-center py-12">
@@ -1259,17 +1261,17 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'standings' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">League Standings</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">League Standings</h2>
+                <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="bg-gray-100">
-                        <th className="py-3 px-4 text-left font-semibold text-gray-700">Rank</th>
-                        <th className="py-3 px-4 text-left font-semibold text-gray-700">Player</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Total Winnings</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">Total Penalties</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700">This Week</th>
-                        <th className="py-3 px-4 text-center font-semibold text-gray-700"></th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Rank</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-sm">Player</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">Winnings</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">Penalties</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm">This Week</th>
+                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-sm"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1278,16 +1280,16 @@ const handleSubmitPick = async () => {
                           <tr 
                             className={`border-b hover:bg-gray-50 ${player.id === currentUser?.id ? 'bg-green-50 font-semibold' : ''}`}
                           >
-                            <td className="py-3 px-4">
-                              {idx === 0 && <Trophy className="inline text-yellow-500 mr-2" size={20} />}
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm">
+                              {idx === 0 && <Trophy className="inline text-yellow-500 mr-1 sm:mr-2" size={16} />}
                               {idx + 1}
                             </td>
-                            <td className="py-3 px-4">{player.name}</td>
-                            <td className="py-3 px-4 text-center">${player.winnings.toLocaleString()}</td>
-                            <td className="py-3 px-4 text-center text-red-600 font-semibold">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm">{player.name}</td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">${player.winnings.toLocaleString()}</td>
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 font-semibold text-sm">
                               {player.penalties > 0 ? `$${player.penalties}` : '-'}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">
                               {(() => {
                                 const now = new Date();
                                 const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
@@ -1330,20 +1332,20 @@ const handleSubmitPick = async () => {
                                 );
                               })()}
                             </td>
-                            <td className="py-3 px-4 text-center">
+                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center">
                               <button
                                 onClick={() => toggleRowExpansion(player.id)}
-                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto"
+                                className="text-blue-600 hover:text-blue-800 flex items-center gap-1 mx-auto text-xs sm:text-sm"
                               >
                                 {expandedRows[player.id] ? (
                                   <>
-                                    <ChevronDown size={20} />
-                                    <span className="text-sm">Hide</span>
+                                    <ChevronDown size={16} />
+                                    <span className="hidden sm:inline">Hide</span>
                                   </>
                                 ) : (
                                   <>
-                                    <ChevronRight size={20} />
-                                    <span className="text-sm">Details</span>
+                                    <ChevronRight size={16} />
+                                    <span className="hidden sm:inline">Details</span>
                                   </>
                                 )}
                               </button>
