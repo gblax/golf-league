@@ -54,6 +54,8 @@ def scrape_espn_leaderboard() -> str:
 
 def parse_with_gemini(raw_text: str) -> list[dict]:
     """Use Gemini to parse the raw leaderboard text into structured JSON."""
+    import time
+
     print("Parsing with Gemini...")
 
     genai.configure(api_key=GEMINI_API_KEY)
@@ -75,8 +77,22 @@ Leaderboard text:
 {raw_text[:15000]}
 """
 
-    response = model.generate_content(prompt)
-    response_text = response.text.strip()
+    # Retry with exponential backoff for rate limits
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = model.generate_content(prompt)
+            response_text = response.text.strip()
+            break
+        except Exception as e:
+            if "429" in str(e) or "ResourceExhausted" in str(e):
+                wait_time = 30 * (attempt + 1)  # 30s, 60s, 90s
+                print(f"Rate limited. Waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
+                time.sleep(wait_time)
+                if attempt == max_retries - 1:
+                    raise
+            else:
+                raise
 
     # Clean up response if it has markdown code blocks
     if response_text.startswith("```"):
