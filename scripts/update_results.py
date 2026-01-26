@@ -52,7 +52,7 @@ def scrape_espn_leaderboard() -> str:
     return cleaned_text
 
 
-def parse_with_gemini(raw_text: str) -> list[dict]:
+def parse_with_gemini(raw_text: str) -> dict:
     """Use Gemini to parse the raw leaderboard text into structured JSON."""
     import time
 
@@ -61,17 +61,19 @@ def parse_with_gemini(raw_text: str) -> list[dict]:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel("gemini-3-flash-preview")
 
-    prompt = f"""Parse this ESPN golf leaderboard text and extract player results as JSON.
+    prompt = f"""Parse this ESPN golf leaderboard text and extract tournament info and player results as JSON.
 
-Return a JSON array of objects with these fields:
-- player_name: string (golfer's full name)
-- position: string (e.g., "1", "T2", "CUT", "WD")
-- score: string (e.g., "-12", "E", "+3")
-- winnings: number (prize money in dollars, 0 if not listed or if they missed cut)
-- status: string ("active", "cut", "withdrawn", "disqualified")
+Return a JSON object with these fields:
+- tournament_name: string (the name of the tournament, e.g., "The American Express", "Farmers Insurance Open")
+- players: array of objects with:
+  - player_name: string (golfer's full name)
+  - position: string (e.g., "1", "T2", "CUT", "WD")
+  - score: string (e.g., "-12", "E", "+3")
+  - winnings: number (prize money in dollars, 0 if not listed or if they missed cut)
+  - status: string ("active", "cut", "withdrawn", "disqualified")
 
 Only include players who have results (position/score).
-Return ONLY the JSON array, no markdown or explanation.
+Return ONLY the JSON object, no markdown or explanation.
 
 Leaderboard text:
 {raw_text[:15000]}
@@ -133,9 +135,12 @@ Leaderboard text:
         response_text = response_text.strip()
 
     try:
-        results = json.loads(response_text)
-        print(f"Parsed {len(results)} players from leaderboard")
-        return results
+        result = json.loads(response_text)
+        tournament_name = result.get("tournament_name", "Unknown")
+        players = result.get("players", [])
+        print(f"Tournament: {tournament_name}")
+        print(f"Parsed {len(players)} players from leaderboard")
+        return {"tournament_name": tournament_name, "players": players}
     except json.JSONDecodeError as e:
         print(f"Error parsing Gemini response: {e}")
         print(f"Response was: {response_text[:500]}")
@@ -147,6 +152,46 @@ def get_supabase_client() -> Client:
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise ValueError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict:
+    """
+    Find a tournament in the database by matching the ESPN tournament name.
+    Uses fuzzy matching to handle slight name differences.
+    """
+    # Get all tournaments
+    response = supabase.table("tournaments").select("*").order("week", desc=True).execute()
+
+    if not response.data:
+        return None
+
+    espn_name_lower = espn_tournament_name.lower().strip()
+
+    # Try exact match first
+    for tournament in response.data:
+        db_name_lower = tournament.get("name", "").lower().strip()
+        if espn_name_lower == db_name_lower:
+            return tournament
+
+    # Try partial match (ESPN name contains DB name or vice versa)
+    for tournament in response.data:
+        db_name_lower = tournament.get("name", "").lower().strip()
+        if espn_name_lower in db_name_lower or db_name_lower in espn_name_lower:
+            return tournament
+
+    # Try matching key words
+    espn_words = set(espn_name_lower.split())
+    for tournament in response.data:
+        db_name_lower = tournament.get("name", "").lower().strip()
+        db_words = set(db_name_lower.split())
+        # If they share at least 2 significant words, consider it a match
+        common_words = espn_words & db_words
+        # Filter out common words like "the", "open", etc.
+        significant_common = [w for w in common_words if len(w) > 3]
+        if len(significant_common) >= 1:
+            return tournament
+
+    return None
 
 
 def get_tournament_to_update(supabase: Client) -> dict:
@@ -256,17 +301,24 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
     # Initialize
     supabase = get_supabase_client()
 
-    # Get tournament to update (most recent ended but not completed)
-    tournament = get_tournament_to_update(supabase)
+    # Scrape and parse leaderboard FIRST to get tournament name
+    raw_text = scrape_espn_leaderboard()
+    parsed_data = parse_with_gemini(raw_text)
+
+    espn_tournament_name = parsed_data["tournament_name"]
+    leaderboard_results = parsed_data["players"]
+
+    print(f"\nESPN Tournament: {espn_tournament_name}")
+
+    # Find matching tournament in database by name
+    tournament = find_tournament_by_name(supabase, espn_tournament_name)
+
     if not tournament:
-        print("No active tournament found!")
+        print(f"Could not find tournament '{espn_tournament_name}' in database!")
+        print("Please make sure the tournament name in your database matches ESPN.")
         return
 
-    print(f"\nTournament: {tournament['name']} (Week {tournament['week']})")
-
-    # Scrape and parse leaderboard
-    raw_text = scrape_espn_leaderboard()
-    leaderboard_results = parse_with_gemini(raw_text)
+    print(f"Matched to: {tournament['name']} (Week {tournament['week']})")
 
     # Get picks for this tournament
     picks = get_picks_for_tournament(supabase, tournament["id"])
