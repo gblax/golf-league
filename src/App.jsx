@@ -1280,13 +1280,10 @@ const handleSubmitPick = async () => {
 
                 {/* Backup Pick */}
                 <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
+                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
                     <Shield className="text-amber-600 dark:text-amber-400" size={20} />
                     Backup Pick (Optional but Recommended)
                   </label>
-                  <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
-                    Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
-                  </p>
                   <div className="relative">
                     <input
                       type="text"
@@ -1336,6 +1333,9 @@ const handleSubmitPick = async () => {
                       </button>
                     </div>
                   )}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                    <strong>Note:</strong> Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
+                  </p>
                 </div>
 
 {(() => {
