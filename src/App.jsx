@@ -1586,113 +1586,6 @@ const handleSubmitPick = async () => {
                     })()}
                   </div>
 
-                  {/* Season Progress */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Calendar className="text-blue-600" />
-                      Season Progress
-                    </h3>
-                    {(() => {
-                      const completedWeeks = tournaments.filter(t => t.completed).length;
-                      const totalWeeks = tournaments.length;
-                      const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
-
-                      return (
-                        <div>
-                          <div className="flex justify-between text-sm text-gray-600 mb-2">
-                            <span>{completedWeeks} of {totalWeeks} weeks completed</span>
-                            <span>{progressPercent}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-4">
-                            <div
-                              className="bg-green-600 h-4 rounded-full transition-all duration-500"
-                              style={{ width: `${progressPercent}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-sm text-gray-500 mt-2">
-                            {totalWeeks - completedWeeks} weeks remaining
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* League Rules */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Shield className="text-blue-600" />
-                      League Rules
-                    </h3>
-
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-blue-800 mb-2">Buy-In & Fees</h4>
-                        <ul className="text-sm text-blue-900 space-y-1">
-                          <li>• Season buy-in: <strong>$50</strong></li>
-                          <li>• All buy-ins due before Week 1</li>
-                          <li>• Penalties added to prize pool</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-amber-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-amber-800 mb-2">Pick Deadlines</h4>
-                        <ul className="text-sm text-amber-900 space-y-1">
-                          <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
-                          <li>• Each golfer can only be used <strong>once per season</strong></li>
-                          <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
-                          <li>• New week picks open Monday after current tournament ends</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-red-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-red-800 mb-2">Penalties ($10 each)</h4>
-                        <ul className="text-sm text-red-900 space-y-1">
-                          <li>• <strong>No Pick Submitted:</strong> $10 penalty</li>
-                          <li>• <strong>Missed Cut:</strong> $10 penalty</li>
-                          <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
-                          <li>• <strong>Disqualification:</strong> $10 penalty</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-green-800 mb-2">Payout Structure</h4>
-                        <ul className="text-sm text-green-900 space-y-1">
-                          <li>• <strong>1st Place:</strong> 65% of total pot</li>
-                          <li>• <strong>2nd Place:</strong> 25% of total pot</li>
-                          <li>• <strong>3rd Place:</strong> 10% of total pot</li>
-                          <li>• Final standings based on total season winnings</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-purple-800 mb-2">How Winnings Work</h4>
-                        <ul className="text-sm text-purple-900 space-y-1">
-                          <li>• Your golfer's official PGA Tour prize money counts as your weekly earnings</li>
-                          <li>• Season winner = highest total prize money accumulated</li>
-                          <li>• Tiebreaker: Most weeks with a top-10 golfer finish</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* League Members */}
-                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                      <Users className="text-green-600" />
-                      League Members ({players.length})
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {players.map(player => (
-                        <div key={player.id} className="bg-gray-50 p-3 rounded-lg text-center">
-                          <p className="font-semibold text-gray-800">{player.name}</p>
-                          {player.penalties > 0 && (
-                            <p className="text-xs text-red-600">Penalties: ${player.penalties}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Golfer Management */}
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
@@ -1750,6 +1643,111 @@ const handleSubmitPick = async () => {
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Season Progress */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Calendar className="text-blue-600" />
+                      Season Progress
+                    </h3>
+                    {(() => {
+                      const completedWeeks = tournaments.filter(t => t.completed).length;
+                      const totalWeeks = tournaments.length;
+                      const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
+
+                      return (
+                        <div>
+                          <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>{completedWeeks} of {totalWeeks} weeks completed</span>
+                            <span>{progressPercent}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div
+                              className="bg-green-600 h-4 rounded-full transition-all duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-2">
+                            {totalWeeks - completedWeeks} weeks remaining
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* League Rules */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Shield className="text-blue-600" />
+                      League Rules
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-blue-800 mb-2">Buy-In & Fees</h4>
+                        <ul className="text-sm text-blue-900 space-y-1">
+                          <li>• Season buy-in: <strong>$50</strong></li>
+                          <li>• Penalties added to prize pool</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-amber-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-amber-800 mb-2">Pick Deadlines</h4>
+                        <ul className="text-sm text-amber-900 space-y-1">
+                          <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
+                          <li>• Each golfer can only be used <strong>once per season</strong></li>
+                          <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
+                          <li>• New week picks open Monday after current tournament ends</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-red-800 mb-2">Penalties ($10 each)</h4>
+                        <ul className="text-sm text-red-900 space-y-1">
+                          <li>• <strong>No Pick Submitted:</strong> $10 penalty</li>
+                          <li>• <strong>Missed Cut:</strong> $10 penalty</li>
+                          <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
+                          <li>• <strong>Disqualification:</strong> $10 penalty</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-green-800 mb-2">Payout Structure</h4>
+                        <ul className="text-sm text-green-900 space-y-1">
+                          <li>• <strong>1st Place:</strong> 65% of total pot</li>
+                          <li>• <strong>2nd Place:</strong> 25% of total pot</li>
+                          <li>• <strong>3rd Place:</strong> 10% of total pot</li>
+                          <li>• Final standings based on total season winnings</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-purple-800 mb-2">How Winnings Work</h4>
+                        <ul className="text-sm text-purple-900 space-y-1">
+                          <li>• Your golfer's official PGA Tour prize money counts as your weekly earnings</li>
+                          <li>• Season winner = highest total prize money accumulated</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* League Members */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Users className="text-green-600" />
+                      League Members ({players.length})
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {players.map(player => (
+                        <div key={player.id} className="bg-gray-50 p-3 rounded-lg text-center">
+                          <p className="font-semibold text-gray-800">{player.name}</p>
+                          {player.penalties > 0 && (
+                            <p className="text-xs text-red-600">Penalties: ${player.penalties}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Pick Status Overview */}
