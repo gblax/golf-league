@@ -1150,20 +1150,33 @@ const handleSubmitPick = async () => {
                     </div>
                   )}
                 </div>
-                {/* Backup Pick Explanation */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-6 rounded-r-xl">
-                  <div className="flex items-start gap-3">
-                    <Shield className="text-blue-600 dark:text-blue-400 mt-1" size={24} />
-                    <div>
-                      <p className="font-semibold text-blue-800 dark:text-blue-300 mb-1">Backup Pick Feature</p>
-                      <p className="text-blue-700 dark:text-blue-400 text-sm">
-                        Select a backup golfer in case your primary pick withdraws before the tournament starts.
-                        Your backup will automatically be used only if your primary pick withdraws.
-                        Remember: You can only use each golfer once per season!
-                      </p>
+
+                {/* Current Selection - Prominent at top */}
+                {(selectedPlayer || currentWeekPick.golfer) && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100 text-sm font-medium mb-1">Week {currentWeek} Selection</p>
+                        <p className="text-white text-xl font-bold">{selectedPlayer || currentWeekPick.golfer}</p>
+                        {(backupPlayer || currentWeekPick.backup) && (
+                          <p className="text-blue-200 text-sm mt-1">
+                            Backup: <span className="font-semibold text-white">{backupPlayer || currentWeekPick.backup}</span>
+                          </p>
+                        )}
+                      </div>
+                      <CheckCircle className="text-white/80" size={40} />
                     </div>
                   </div>
-                </div>
+                )}
+
+                {/* No selection prompt */}
+                {!selectedPlayer && !currentWeekPick.golfer && (
+                  <div className="mb-6 p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600">
+                    <p className="text-center text-gray-500 dark:text-gray-400">
+                      No pick selected yet for Week {currentWeek}. Choose your golfer below.
+                    </p>
+                  </div>
+                )}
 
                 <div className="mb-6">
                   <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Your Previous Picks:</h3>
@@ -1241,10 +1254,13 @@ const handleSubmitPick = async () => {
 
                 {/* Backup Pick */}
                 <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-1 flex items-center gap-2">
                     <Shield className="text-amber-600 dark:text-amber-400" size={20} />
-                    Backup Pick (Optional but Recommended):
+                    Backup Pick (Optional but Recommended)
                   </label>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mb-3">
+                    Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
+                  </p>
                   <div className="relative">
                     <input
                       type="text"
@@ -1282,7 +1298,7 @@ const handleSubmitPick = async () => {
                   </div>
                   {backupPlayer && (
                     <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
-                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
+                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ {backupPlayer}</span>
                       <button
                         onClick={() => {
                           setBackupPlayer('');
@@ -1294,9 +1310,6 @@ const handleSubmitPick = async () => {
                       </button>
                     </div>
                   )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Your backup will only be used if {selectedPlayer || 'your primary pick'} withdraws before the tournament
-                  </p>
                 </div>
 
 {(() => {
@@ -1343,20 +1356,6 @@ const handleSubmitPick = async () => {
                     </>
                   );
                 })()}
-
-                {selectedPlayer && (
-                  <div className="mt-4 p-4 bg-gray-100 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
-                    <h4 className="font-semibold mb-2 text-gray-800 dark:text-gray-200">Your Current Selection:</h4>
-                    <p className="text-gray-700 dark:text-gray-300">
-                      <strong>Primary:</strong> {selectedPlayer}
-                    </p>
-                    {backupPlayer && (
-                      <p className="text-gray-700 dark:text-gray-300">
-                        <strong>Backup:</strong> {backupPlayer}
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
               )
             )}
