@@ -1525,15 +1525,181 @@ const handleSubmitPick = async () => {
             {activeTab === 'admin' && (
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">League Info</h2>
-                
+
                 <div className="space-y-6">
+                  {/* Prize Pool Calculator */}
+                  <div className="bg-white border-2 border-green-500 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Trophy className="text-yellow-500" />
+                      Prize Pool & Payouts
+                    </h3>
+
+                    {(() => {
+                      const buyIn = 50;
+                      const numPlayers = players.length;
+                      const totalPenalties = players.reduce((sum, p) => sum + (p.penalties || 0), 0);
+                      const totalPot = (numPlayers * buyIn) + totalPenalties;
+                      const firstPlace = Math.round(totalPot * 0.65);
+                      const secondPlace = Math.round(totalPot * 0.25);
+                      const thirdPlace = Math.round(totalPot * 0.10);
+
+                      return (
+                        <div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                            <div className="bg-gray-50 p-4 rounded-lg text-center">
+                              <p className="text-sm text-gray-600">Players</p>
+                              <p className="text-2xl font-bold text-gray-800">{numPlayers}</p>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-lg text-center">
+                              <p className="text-sm text-gray-600">Buy-ins</p>
+                              <p className="text-2xl font-bold text-gray-800">${numPlayers * buyIn}</p>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-lg text-center">
+                              <p className="text-sm text-gray-600">Penalties</p>
+                              <p className="text-2xl font-bold text-red-600">${totalPenalties}</p>
+                            </div>
+                            <div className="bg-green-50 p-4 rounded-lg text-center border-2 border-green-500">
+                              <p className="text-sm text-gray-600">Total Pot</p>
+                              <p className="text-2xl font-bold text-green-600">${totalPot}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="bg-yellow-50 border-2 border-yellow-400 p-4 rounded-lg text-center">
+                              <div className="text-3xl mb-1">🥇</div>
+                              <p className="text-sm text-gray-600">1st Place (65%)</p>
+                              <p className="text-xl font-bold text-yellow-600">${firstPlace}</p>
+                            </div>
+                            <div className="bg-gray-100 border-2 border-gray-400 p-4 rounded-lg text-center">
+                              <div className="text-3xl mb-1">🥈</div>
+                              <p className="text-sm text-gray-600">2nd Place (25%)</p>
+                              <p className="text-xl font-bold text-gray-600">${secondPlace}</p>
+                            </div>
+                            <div className="bg-orange-50 border-2 border-orange-400 p-4 rounded-lg text-center">
+                              <div className="text-3xl mb-1">🥉</div>
+                              <p className="text-sm text-gray-600">3rd Place (10%)</p>
+                              <p className="text-xl font-bold text-orange-600">${thirdPlace}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Season Progress */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Calendar className="text-blue-600" />
+                      Season Progress
+                    </h3>
+                    {(() => {
+                      const completedWeeks = tournaments.filter(t => t.completed).length;
+                      const totalWeeks = tournaments.length;
+                      const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
+
+                      return (
+                        <div>
+                          <div className="flex justify-between text-sm text-gray-600 mb-2">
+                            <span>{completedWeeks} of {totalWeeks} weeks completed</span>
+                            <span>{progressPercent}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-4">
+                            <div
+                              className="bg-green-600 h-4 rounded-full transition-all duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-2">
+                            {totalWeeks - completedWeeks} weeks remaining
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* League Rules */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Shield className="text-blue-600" />
+                      League Rules
+                    </h3>
+
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-blue-800 mb-2">Buy-In & Fees</h4>
+                        <ul className="text-sm text-blue-900 space-y-1">
+                          <li>• Season buy-in: <strong>$50</strong></li>
+                          <li>• All buy-ins due before Week 1</li>
+                          <li>• Penalties added to prize pool</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-amber-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-amber-800 mb-2">Pick Deadlines</h4>
+                        <ul className="text-sm text-amber-900 space-y-1">
+                          <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
+                          <li>• Each golfer can only be used <strong>once per season</strong></li>
+                          <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
+                          <li>• New week picks open Monday after current tournament ends</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-red-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-red-800 mb-2">Penalties ($10 each)</h4>
+                        <ul className="text-sm text-red-900 space-y-1">
+                          <li>• <strong>No Pick Submitted:</strong> $10 penalty</li>
+                          <li>• <strong>Missed Cut:</strong> $10 penalty</li>
+                          <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
+                          <li>• <strong>Disqualification:</strong> $10 penalty</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-green-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-green-800 mb-2">Payout Structure</h4>
+                        <ul className="text-sm text-green-900 space-y-1">
+                          <li>• <strong>1st Place:</strong> 65% of total pot</li>
+                          <li>• <strong>2nd Place:</strong> 25% of total pot</li>
+                          <li>• <strong>3rd Place:</strong> 10% of total pot</li>
+                          <li>• Final standings based on total season winnings</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-purple-50 p-4 rounded-lg">
+                        <h4 className="font-semibold text-purple-800 mb-2">How Winnings Work</h4>
+                        <ul className="text-sm text-purple-900 space-y-1">
+                          <li>• Your golfer's official PGA Tour prize money counts as your weekly earnings</li>
+                          <li>• Season winner = highest total prize money accumulated</li>
+                          <li>• Tiebreaker: Most weeks with a top-10 golfer finish</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* League Members */}
+                  <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                      <Users className="text-green-600" />
+                      League Members ({players.length})
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {players.map(player => (
+                        <div key={player.id} className="bg-gray-50 p-3 rounded-lg text-center">
+                          <p className="font-semibold text-gray-800">{player.name}</p>
+                          {player.penalties > 0 && (
+                            <p className="text-xs text-red-600">Penalties: ${player.penalties}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Golfer Management */}
                   <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                       <Users className="text-green-600" />
                       Golfer Management
                     </h3>
-                    
+
                     <div className="mb-4 p-4 bg-green-50 rounded-lg">
                       <p className="text-sm text-gray-700 mb-2">
                         <strong>Current Golfers:</strong> {availableGolfers.length} players available
@@ -1594,7 +1760,7 @@ const handleSubmitPick = async () => {
                         const now = new Date();
                         const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
                         const isLocked = lockTime && now >= lockTime;
-                        
+
                         return (
                           <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                             <div>
