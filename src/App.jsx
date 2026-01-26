@@ -98,14 +98,25 @@ const App = () => {
         return;
       }
 
-      const currentTournament = tournaments.find(t => !t.completed) || tournaments[tournaments.length - 1];
-      if (!currentTournament?.picks_lock_time) {
+      // Use same logic as getCurrentTournament to find the active tournament
+      const now = new Date();
+      const activeTournament = tournaments.find(t => {
+        if (t.completed) return false;
+        if (t.tournament_date) {
+          const tournamentEnd = new Date(t.tournament_date);
+          tournamentEnd.setDate(tournamentEnd.getDate() + 3);
+          tournamentEnd.setHours(23, 59, 59, 999);
+          if (now > tournamentEnd) return false;
+        }
+        return true;
+      }) || tournaments[tournaments.length - 1];
+
+      if (!activeTournament?.picks_lock_time) {
         setTimeUntilLock('');
         return;
       }
 
-      const now = new Date();
-      const lockTime = new Date(currentTournament.picks_lock_time);
+      const lockTime = new Date(activeTournament.picks_lock_time);
       const diff = lockTime - now;
 
       if (diff <= 0) {
@@ -286,7 +297,29 @@ const loadUserData = async () => {
 
   const getCurrentTournament = (tournamentsList) => {
     const list = tournamentsList || tournaments;
-    return list.find(t => !t.completed) || list[list.length - 1];
+    const now = new Date();
+
+    // Find the first tournament that:
+    // 1. Is not marked completed AND
+    // 2. Has not ended yet (tournament_date + 4 days covers the full weekend)
+    // This ensures picks unlock on Monday after a tournament ends
+    const activeTournament = list.find(t => {
+      if (t.completed) return false;
+
+      // If tournament_date exists, check if we're past the tournament weekend
+      if (t.tournament_date) {
+        const tournamentEnd = new Date(t.tournament_date);
+        tournamentEnd.setDate(tournamentEnd.getDate() + 3); // Tournament ends Sunday (start + 3 days)
+        tournamentEnd.setHours(23, 59, 59, 999); // End of Sunday
+
+        // If we're past the tournament weekend, skip to next
+        if (now > tournamentEnd) return false;
+      }
+
+      return true;
+    });
+
+    return activeTournament || list[list.length - 1];
   };
 
   const currentWeek = getCurrentTournament()?.week || 1;
@@ -858,61 +891,61 @@ const handleSubmitPick = async () => {
 
         {/* Navigation Tabs */}
         <div className="bg-white rounded-lg shadow-lg mb-6">
-          <div className="flex border-b overflow-x-auto">
+          <div className="flex border-b">
             <button
               onClick={() => setActiveTab('picks')}
-              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                activeTab === 'picks' 
-                  ? 'border-b-4 border-green-600 text-green-700' 
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+                activeTab === 'picks'
+                  ? 'border-b-4 border-green-600 text-green-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <CheckCircle size={20} />
-              <span className="text-xs sm:text-base">Pick</span>
+              <span className="hidden sm:inline text-base">Pick</span>
             </button>
             <button
               onClick={() => setActiveTab('standings')}
-              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                activeTab === 'standings' 
-                  ? 'border-b-4 border-green-600 text-green-700' 
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+                activeTab === 'standings'
+                  ? 'border-b-4 border-green-600 text-green-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <TrendingUp size={20} />
-              <span className="text-xs sm:text-base">Standings</span>
+              <span className="hidden sm:inline text-base">Standings</span>
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                activeTab === 'schedule' 
-                  ? 'border-b-4 border-green-600 text-green-700' 
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+                activeTab === 'schedule'
+                  ? 'border-b-4 border-green-600 text-green-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Calendar size={20} />
-              <span className="text-xs sm:text-base">Schedule</span>
+              <span className="hidden sm:inline text-base">Schedule</span>
             </button>
             <button
               onClick={() => setActiveTab('admin')}
-              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                activeTab === 'admin' 
-                  ? 'border-b-4 border-green-600 text-green-700' 
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+                activeTab === 'admin'
+                  ? 'border-b-4 border-green-600 text-green-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Users size={20} />
-              <span className="text-xs sm:text-base">League Info</span>
+              <span className="hidden sm:inline text-base">League Info</span>
             </button>
             <button
               onClick={() => setActiveTab('results')}
-              className={`flex-1 min-w-fit py-4 px-3 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                activeTab === 'results' 
-                  ? 'border-b-4 border-green-600 text-green-700' 
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
+                activeTab === 'results'
+                  ? 'border-b-4 border-green-600 text-green-700'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Trophy size={20} />
-              <span className="text-xs sm:text-base">Enter Results</span>
+              <span className="hidden sm:inline text-base">Results</span>
             </button>
           </div>
 
