@@ -814,13 +814,6 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
               ) : (
               <div>
                 <h2 className="text-2xl font-bold text-gray-800 mb-4">Submit Your Pick</h2>
-                {/* Current Week Only Warning */}
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                  <p className="text-yellow-800">
-                    <strong>Note:</strong> You can only make picks for the current tournament. 
-                    Future week picks will open on Monday after the current tournament ends.
-                  </p>
-                </div>
                 {/* Backup Pick Explanation */}
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
                   <div className="flex items-start gap-3">
@@ -866,6 +859,9 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
                       <option key={idx} value={golfer}>{golfer}</option>
                     ))}
                   </select>
+                  <p className="text-sm text-gray-600 mt-2">
+                    <strong>Note:</strong> You can only make picks for the current tournament. Future week picks will open on Monday after the current tournament ends.
+                  </p>
                 </div>
 
                 {/* Backup Pick */}
@@ -892,14 +888,20 @@ const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
 {(() => {
                   const now = new Date();
                   const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                  const tournamentStartTime = currentTournament?.tournament_date ? new Date(currentTournament.tournament_date) : null;
                   const isLocked = lockTime && now >= lockTime;
+                  const tournamentStarted = tournamentStartTime && now >= tournamentStartTime;
                   
                   return (
                     <>
                       {isLocked && (
                         <div className="mb-4 p-4 bg-red-50 border-2 border-red-400 rounded-lg">
                           <p className="text-red-800 font-semibold text-center">
-                            🔒 Picks are locked! This tournament has already started.
+                            {tournamentStarted ? (
+                              <>🔒 Picks are locked! This tournament has already started.</>
+                            ) : (
+                              <>🔒 Picks are locked! The next week will open on Monday after this tournament ends.</>
+                            )}
                           </p>
                         </div>
                       )}
