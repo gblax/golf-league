@@ -1450,12 +1450,12 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'schedule' && (
               <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Tournament Schedule</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4">Tournament Schedule</h2>
                 <div className="space-y-3">
                   {tournaments.map((tournament) => (
                     <div 
                       key={tournament.id}
-                      className={`p-4 rounded-lg border-2 ${
+                      className={`p-3 sm:p-4 rounded-lg border-2 ${
                         tournament.week === currentWeek 
                           ? 'border-green-500 bg-green-50' 
                           : tournament.completed 
@@ -1463,23 +1463,23 @@ const handleSubmitPick = async () => {
                           : 'border-blue-300 bg-blue-50'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-bold text-lg">{tournament.name}</h3>
-                          <p className="text-sm text-gray-600">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-base sm:text-lg">{tournament.name}</h3>
+                          <p className="text-xs sm:text-sm text-gray-600">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
                         </div>
-                        <div>
+                        <div className="flex-shrink-0">
                           {tournament.completed ? (
-                            <span className="flex items-center gap-2 text-gray-600">
-                              <CheckCircle size={20} className="text-green-600" />
-                              Completed
+                            <span className="flex items-center gap-2 text-gray-600 text-sm">
+                              <CheckCircle size={18} className="text-green-600" />
+                              <span className="text-xs sm:text-sm">Completed</span>
                             </span>
                           ) : tournament.week === currentWeek ? (
-                            <span className="bg-green-600 text-white px-4 py-2 rounded-full font-semibold">
+                            <span className="bg-green-600 text-white px-3 sm:px-4 py-1 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block">
                               Current Week
                             </span>
                           ) : (
-                            <span className="text-blue-600 font-semibold">Upcoming</span>
+                            <span className="text-blue-600 font-semibold text-xs sm:text-sm">Upcoming</span>
                           )}
                         </div>
                       </div>
