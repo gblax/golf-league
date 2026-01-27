@@ -1673,19 +1673,36 @@ const handleSubmitPick = async () => {
                                         </tr>
                                       </thead>
                                       <tbody>
-                                        {player.picksByWeek.map((weekData, weekIdx) => (
+                                        {player.picksByWeek.map((weekData, weekIdx) => {
+                                          // Check if this is the current week and if picks should be hidden
+                                          const isCurrentWeekRow = weekData.week === currentWeek;
+                                          const isViewingOwnPicks = player.id === currentUser?.id;
+                                          const now = new Date();
+                                          const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
+                                          const isLocked = lockTime && now >= lockTime;
+                                          const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
+
+                                          return (
                                           <tr key={weekIdx} className="border-b border-gray-300 dark:border-slate-600">
                                             <td className="py-2 px-3 font-semibold text-gray-800 dark:text-gray-200">{weekData.week}</td>
                                             <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{weekData.tournamentName}</td>
                                             <td className="py-2 px-3">
-                                              {weekData.golfer ? (
+                                              {shouldHidePick ? (
+                                                weekData.golfer ? (
+                                                  <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
+                                                ) : (
+                                                  <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
+                                                )
+                                              ) : weekData.golfer ? (
                                                 <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
                                               ) : (
                                                 <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
                                               )}
                                             </td>
                                             <td className="py-2 px-3">
-                                              {weekData.backup ? (
+                                              {shouldHidePick ? (
+                                                <span className="text-gray-300 dark:text-gray-600">-</span>
+                                              ) : weekData.backup ? (
                                                 <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
                                               ) : (
                                                 <span className="text-gray-300 dark:text-gray-600">-</span>
@@ -1708,7 +1725,8 @@ const handleSubmitPick = async () => {
                                               )}
                                             </td>
                                           </tr>
-                                        ))}
+                                          );
+                                        })}
                                       </tbody>
                                       <tfoot>
                                         <tr className="bg-gray-200 dark:bg-slate-600 font-bold">
