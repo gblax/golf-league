@@ -850,7 +850,7 @@ const handleSubmitPick = async () => {
   const filteredPrimaryGolfers = filterGolfers(primarySearchTerm);
   const filteredBackupGolfers = filterGolfers(backupSearchTerm, selectedPlayer);
 
-  const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
+  const sortedStandings = [...players].sort((a, b) => (b.winnings - b.penalties) - (a.winnings - a.penalties));
   const currentTournament = getCurrentTournament();
 
   if (loading) {
@@ -1468,6 +1468,25 @@ const handleSubmitPick = async () => {
                     </>
                   );
                 })()}
+
+                {/* Used Golfers Section */}
+                {userPicks.length > 0 && (
+                  <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      Golfers Used This Season ({userPicks.filter(p => p).length})
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {userPicks.filter(p => p).map((golfer, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-block px-2 py-1 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 text-xs rounded-full"
+                        >
+                          {golfer}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               )
             )}
@@ -1813,8 +1832,9 @@ const handleSubmitPick = async () => {
                       <tr className="bg-gray-100 dark:bg-slate-700">
                         <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tl-lg">#</th>
                         <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Player</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Won</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pen.</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Net</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm hidden sm:table-cell">Won</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm hidden sm:table-cell">Pen.</th>
                         <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pick</th>
                         <th className="py-2 sm:py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tr-lg"></th>
                       </tr>
@@ -1846,8 +1866,9 @@ const handleSubmitPick = async () => {
                               )}
                             </td>
                             <td className="py-2 sm:py-3 px-1 sm:px-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-xs sm:text-sm">
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm font-bold text-green-700 dark:text-green-400">${(player.winnings - player.penalties).toLocaleString()}</td>
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm text-gray-800 dark:text-gray-200 hidden sm:table-cell">${player.winnings.toLocaleString()}</td>
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-xs sm:text-sm hidden sm:table-cell">
                               {player.penalties > 0 ? `$${player.penalties}` : '-'}
                             </td>
                             <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm">
