@@ -58,7 +58,9 @@ const App = () => {
   const [leagueSettings, setLeagueSettings] = useState({
     backup_picks_enabled: true,
     no_pick_penalty: 500,
-    duplicate_pick_penalty: 500
+    missed_cut_penalty: 10,
+    withdrawal_penalty: 10,
+    dq_penalty: 10
   });
   const [showLeagueSettings, setShowLeagueSettings] = useState(false);
 
@@ -1888,15 +1890,15 @@ const handleSubmitPick = async () => {
                             onClick={() => handleUpdateLeagueSettings({
                               backup_picks_enabled: !leagueSettings.backup_picks_enabled
                             })}
-                            className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
+                            className={`relative w-14 h-8 rounded-full transition-colors duration-200 flex-shrink-0 ${
                               leagueSettings.backup_picks_enabled
                                 ? 'bg-green-500'
                                 : 'bg-gray-300 dark:bg-slate-500'
                             }`}
                           >
                             <span
-                              className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
-                                leagueSettings.backup_picks_enabled ? 'translate-x-7' : 'translate-x-1'
+                              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-all duration-200 ${
+                                leagueSettings.backup_picks_enabled ? 'translate-x-6' : 'translate-x-0'
                               }`}
                             />
                           </button>
@@ -1926,16 +1928,50 @@ const handleSubmitPick = async () => {
                             </div>
                             <div>
                               <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Duplicate Pick
+                                Missed Cut
                               </label>
                               <div className="flex items-center gap-2">
                                 <span className="text-gray-500 dark:text-gray-400">$</span>
                                 <input
                                   type="number"
-                                  value={leagueSettings.duplicate_pick_penalty}
+                                  value={leagueSettings.missed_cut_penalty}
                                   onChange={(e) => setLeagueSettings({
                                     ...leagueSettings,
-                                    duplicate_pick_penalty: parseInt(e.target.value) || 0
+                                    missed_cut_penalty: parseInt(e.target.value) || 0
+                                  })}
+                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                Withdrawal
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 dark:text-gray-400">$</span>
+                                <input
+                                  type="number"
+                                  value={leagueSettings.withdrawal_penalty}
+                                  onChange={(e) => setLeagueSettings({
+                                    ...leagueSettings,
+                                    withdrawal_penalty: parseInt(e.target.value) || 0
+                                  })}
+                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                Disqualification
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 dark:text-gray-400">$</span>
+                                <input
+                                  type="number"
+                                  value={leagueSettings.dq_penalty}
+                                  onChange={(e) => setLeagueSettings({
+                                    ...leagueSettings,
+                                    dq_penalty: parseInt(e.target.value) || 0
                                   })}
                                   className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                                 />
@@ -1946,7 +1982,9 @@ const handleSubmitPick = async () => {
                           <button
                             onClick={() => handleUpdateLeagueSettings({
                               no_pick_penalty: leagueSettings.no_pick_penalty,
-                              duplicate_pick_penalty: leagueSettings.duplicate_pick_penalty
+                              missed_cut_penalty: leagueSettings.missed_cut_penalty,
+                              withdrawal_penalty: leagueSettings.withdrawal_penalty,
+                              dq_penalty: leagueSettings.dq_penalty
                             })}
                             className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
                           >
@@ -2144,10 +2182,9 @@ const handleSubmitPick = async () => {
                         <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Penalties</h4>
                         <ul className="text-sm text-red-900 dark:text-red-300 space-y-1">
                           <li>• <strong>No Pick Submitted:</strong> ${leagueSettings.no_pick_penalty} penalty</li>
-                          <li>• <strong>Duplicate Pick:</strong> ${leagueSettings.duplicate_pick_penalty} penalty</li>
-                          <li>• <strong>Missed Cut:</strong> $10 penalty</li>
-                          <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
-                          <li>• <strong>Disqualification:</strong> $10 penalty</li>
+                          <li>• <strong>Missed Cut:</strong> ${leagueSettings.missed_cut_penalty} penalty</li>
+                          <li>• <strong>Withdrawal:</strong> ${leagueSettings.withdrawal_penalty} penalty {!leagueSettings.backup_picks_enabled && '(pre-tournament or during)'}</li>
+                          <li>• <strong>Disqualification:</strong> ${leagueSettings.dq_penalty} penalty</li>
                         </ul>
                       </div>
 
