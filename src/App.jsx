@@ -2124,7 +2124,7 @@ const handleSubmitPick = async () => {
                                       <td className="py-2 px-2 text-center">
                                         {player.weekData?.penalty > 0 ? (
                                           <span className="text-red-600 dark:text-red-400 text-xs">
-                                            ${player.weekData.penalty}
+                                            ${player.weekData.penalty} ({player.weekData.penaltyReason?.replace('_', ' ') || 'penalty'})
                                           </span>
                                         ) : (
                                           <span className="text-gray-400">-</span>
