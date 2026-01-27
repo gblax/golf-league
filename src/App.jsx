@@ -1651,7 +1651,13 @@ const handleSubmitPick = async () => {
                         className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none text-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                       >
                         <option value="">-- Select a tournament --</option>
-                        {tournaments.map(t => (
+                        {tournaments
+                          .filter(t => {
+                            // Only show tournaments where picks are locked (tournament has started)
+                            const lockTime = t.picks_lock_time ? new Date(t.picks_lock_time) : null;
+                            return lockTime && new Date() >= lockTime;
+                          })
+                          .map(t => (
                           <option key={t.id} value={t.id}>
                             Week {t.week}: {t.name} {t.completed ? '✓' : ''}
                           </option>
