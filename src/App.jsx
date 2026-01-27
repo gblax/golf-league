@@ -2106,8 +2106,11 @@ const handleSubmitPick = async () => {
                                   })
                                   .sort((a, b) => (b.weekData?.winnings || 0) - (a.weekData?.winnings || 0))
                                   .map(player => (
-                                    <tr key={player.id} className="border-b border-gray-100 dark:border-slate-700">
-                                      <td className="py-2 px-2 text-gray-800 dark:text-gray-200">{player.name}</td>
+                                    <tr key={player.id} className={`border-b border-gray-100 dark:border-slate-700 ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/30 font-semibold' : ''}`}>
+                                      <td className="py-2 px-2 text-gray-800 dark:text-gray-200">
+                                        {player.name}
+                                        {player.id === currentUser?.id && <span className="ml-1 text-green-600 dark:text-green-400 text-xs">(you)</span>}
+                                      </td>
                                       <td className="py-2 px-2">
                                         {player.weekData?.golfer ? (
                                           <span className="text-green-700 dark:text-green-400">{player.weekData.golfer}</span>
