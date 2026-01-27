@@ -27,11 +27,16 @@ export default {
       },
       animation: {
         'pulse-gentle': 'pulse-gentle 2s ease-in-out infinite',
+        'fade-in': 'fade-in 0.3s ease-out',
       },
       keyframes: {
         'pulse-gentle': {
           '0%, 100%': { opacity: '1', transform: 'scale(1)' },
           '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+        },
+        'fade-in': {
+          '0%': { opacity: '0', transform: 'translate(-50%, -20px)' },
+          '100%': { opacity: '1', transform: 'translate(-50%, 0)' },
         }
       }
     },

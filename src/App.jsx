@@ -64,6 +64,14 @@ const App = () => {
   });
   const [showLeagueSettings, setShowLeagueSettings] = useState(false);
 
+  // Toast notification state
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (type, message) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
   // Dark mode state - initialize from localStorage or system preference
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -389,7 +397,7 @@ const loadUserData = async () => {
           .single();
         
         if (error) {
-          alert('Signup failed: ' + error.message);
+          showNotification('error', 'Signup failed: ' + error.message);
           return;
         }
         setCurrentUser(data);
@@ -404,7 +412,7 @@ const loadUserData = async () => {
           .single();
         
         if (error || !data) {
-          alert('Invalid email or password');
+          showNotification('error', 'Invalid email or password');
           return;
         }
         setCurrentUser(data);
@@ -413,13 +421,13 @@ const loadUserData = async () => {
       
       setShowLogin(false);
     } catch (error) {
-      alert('Login error: ' + error.message);
+      showNotification('error', 'Login error: ' + error.message);
     }
   };
 
   const handleUpdateProfile = async () => {
     if (!editName || !editEmail) {
-      alert('Name and email are required');
+      showNotification('error', 'Name and email are required');
       return;
     }
 
@@ -433,33 +441,33 @@ const loadUserData = async () => {
         .eq('id', currentUser.id);
       
       if (error) {
-        alert('Error updating profile: ' + error.message);
+        showNotification('error', 'Error updating profile: ' + error.message);
         return;
       }
       
       // Update local state
       setCurrentUser({ ...currentUser, name: editName, email: editEmail });
-      alert('Profile updated successfully!');
+      showNotification('success', 'Profile updated successfully!');
       setShowAccountSettings(false);
       loadData(); // Reload to update standings
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      alert('All password fields are required');
+      showNotification('error', 'All password fields are required');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      alert('New passwords do not match');
+      showNotification('error', 'New passwords do not match');
       return;
     }
 
     if (newPassword.length < 6) {
-      alert('Password must be at least 6 characters');
+      showNotification('error', 'Password must be at least 6 characters');
       return;
     }
 
@@ -472,7 +480,7 @@ const loadUserData = async () => {
         .single();
       
       if (verifyData.password_hash !== currentPassword) {
-        alert('Current password is incorrect');
+        showNotification('error', 'Current password is incorrect');
         return;
       }
 
@@ -483,16 +491,16 @@ const loadUserData = async () => {
         .eq('id', currentUser.id);
       
       if (error) {
-        alert('Error updating password: ' + error.message);
+        showNotification('error', 'Error updating password: ' + error.message);
         return;
       }
       
-      alert('Password updated successfully!');
+      showNotification('success', 'Password updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
@@ -504,7 +512,7 @@ const loadUserData = async () => {
 
   const handleAddGolfer = async () => {
     if (!newGolferName.trim()) {
-      alert('Please enter a golfer name');
+      showNotification('error', 'Please enter a golfer name');
       return;
     }
 
@@ -515,19 +523,19 @@ const loadUserData = async () => {
       
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
-          alert('This golfer already exists in the list');
+          showNotification('error', 'This golfer already exists in the list');
         } else {
-          alert('Error adding golfer: ' + error.message);
+          showNotification('error', 'Error adding golfer: ' + error.message);
         }
         return;
       }
       
-      alert(`Successfully added ${newGolferName}!`);
+      showNotification('success', `Added ${newGolferName} to golfer list`);
       setNewGolferName('');
       setShowAddGolfer(false);
       loadData(); // Reload to update available golfers
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
@@ -542,14 +550,14 @@ const loadUserData = async () => {
         .eq('id', leagueSettings.id);
 
       if (error) {
-        alert('Error saving settings: ' + error.message);
+        showNotification('error', 'Error saving settings: ' + error.message);
         return;
       }
 
       setLeagueSettings({ ...leagueSettings, ...newSettings });
-      alert('Settings saved successfully!');
+      showNotification('success', 'Settings saved');
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
@@ -566,7 +574,7 @@ const handleSaveResults = async (playerId) => {
       // If player didn't submit a pick, create a record with just penalties
       if (!hasSubmittedPick) {
         if (!penaltyType) {
-          alert('Please select a penalty for players who did not submit a pick');
+          showNotification('error', 'Please select a penalty for players who did not submit a pick');
           return;
         }
         
@@ -583,7 +591,7 @@ const handleSaveResults = async (playerId) => {
           });
         
         if (pickError) {
-          alert('Error saving penalty: ' + pickError.message);
+          showNotification('error', 'Error saving penalty: ' + pickError.message);
           return;
         }
         
@@ -597,7 +605,7 @@ const handleSaveResults = async (playerId) => {
             amount: 10
           }, { onConflict: 'user_id,tournament_id' });
         
-        alert('Penalty saved successfully!');
+        showNotification('success', 'Penalty saved');
         loadData();
         return;
       }
@@ -614,7 +622,7 @@ const handleSaveResults = async (playerId) => {
         .eq('tournament_id', tournamentId);
       
       if (pickError) {
-        alert('Error saving results: ' + pickError.message);
+        showNotification('error', 'Error saving results: ' + pickError.message);
         return;
       }
       
@@ -630,10 +638,10 @@ const handleSaveResults = async (playerId) => {
           }, { onConflict: 'user_id,tournament_id' });
       }
       
-      alert('Results saved successfully!');
+      showNotification('success', 'Results saved');
       loadData(); // Reload to show updated standings
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
@@ -754,22 +762,22 @@ const handleSaveResults = async (playerId) => {
           .eq('tournament_id', editTournamentId);
       }
 
-      alert('Results updated successfully!');
+      showNotification('success', 'Results updated');
       loadTournamentPicks(editTournamentId); // Reload picks
       loadData(); // Reload standings
     } catch (error) {
-      alert('Error saving: ' + error.message);
+      showNotification('error', 'Error saving: ' + error.message);
     }
   };
 
 const handleSubmitPick = async () => {
     if (!selectedPlayer) {
-      alert('Please select a primary golfer');
+      showNotification('error', 'Please select a primary golfer');
       return;
     }
     
     if (backupPlayer && backupPlayer === selectedPlayer) {
-      alert('Backup golfer must be different from primary pick');
+      showNotification('error', 'Backup golfer must be different from primary pick');
       return;
     }
   
@@ -780,7 +788,7 @@ const handleSubmitPick = async () => {
     const lockTime = new Date(currentTournament.picks_lock_time);
     
     if (now >= lockTime) {
-      alert('Picks are locked! The tournament has already started.');
+      showNotification('error', 'Picks are locked! The tournament has already started.');
       return;
     }
     
@@ -796,14 +804,14 @@ const handleSubmitPick = async () => {
         }, { onConflict: 'user_id,tournament_id' });
       
       if (error) {
-        alert('Error submitting pick: ' + error.message);
+        showNotification('error', 'Error submitting pick: ' + error.message);
         return;
       }
       
-      alert(`Pick submitted!\nPrimary: ${selectedPlayer}${backupPlayer ? `\nBackup: ${backupPlayer}` : ''}`);
+      showNotification('success', `Pick submitted: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (Backup: ${backupPlayer})` : ''}`);
       loadData();
     } catch (error) {
-      alert('Error: ' + error.message);
+      showNotification('error', error.message);
     }
   };
 
@@ -922,6 +930,27 @@ const handleSubmitPick = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
+      {/* Toast Notification */}
+      {notification && (
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-fade-in ${
+          notification.type === 'success'
+            ? 'bg-green-600 text-white'
+            : 'bg-red-600 text-white'
+        }`}>
+          {notification.type === 'success' ? (
+            <CheckCircle size={20} />
+          ) : (
+            <XCircle size={20} />
+          )}
+          <span className="font-medium">{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 hover:opacity-70 transition-opacity"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-slate-900/50 p-4 sm:p-8 mb-4 sm:mb-6 border border-gray-100 dark:border-slate-700 transition-colors duration-300">
@@ -1623,30 +1652,46 @@ const handleSubmitPick = async () => {
                       <div>
                         {(() => {
                           const selectedTournament = tournaments.find(t => t.id === editTournamentId);
-                          return (
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-4 rounded-r-xl">
-                              <p className="text-blue-800 dark:text-blue-300">
-                                <strong>Editing:</strong> {selectedTournament?.name} (Week {selectedTournament?.week})
-                              </p>
-                              <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
-                                {selectedTournament?.completed
-                                  ? 'This tournament is marked as completed. You can still edit results.'
-                                  : 'This tournament is not yet completed.'}
-                              </p>
-                            </div>
-                          );
-                        })()}
+                          const now = new Date();
+                          const lockTime = selectedTournament?.picks_lock_time ? new Date(selectedTournament.picks_lock_time) : null;
+                          const isPicksLocked = lockTime && now >= lockTime;
+                          const isCurrentWeekTournament = selectedTournament?.week === currentWeek && !selectedTournament?.completed;
 
-                        {loadingEditPicks ? (
-                          <div className="text-center py-8">
-                            <div className="w-10 h-10 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                            <p className="text-gray-600 dark:text-gray-400">Loading picks...</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {editTournamentPicks.map(user => {
-                              const userData = editResultsData[user.id] || {};
-                              const hasGolfer = userData.golferName;
+                          return (
+                            <>
+                              <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-4 rounded-r-xl">
+                                <p className="text-blue-800 dark:text-blue-300">
+                                  <strong>Editing:</strong> {selectedTournament?.name} (Week {selectedTournament?.week})
+                                </p>
+                                <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
+                                  {selectedTournament?.completed
+                                    ? 'This tournament is marked as completed. You can still edit results.'
+                                    : isCurrentWeekTournament && !isPicksLocked
+                                    ? '🔒 Picks are not yet locked. Player picks will be visible after the tournament starts.'
+                                    : 'This tournament is not yet completed.'}
+                                </p>
+                              </div>
+
+                              {isCurrentWeekTournament && !isPicksLocked ? (
+                                <div className="text-center py-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-300 dark:border-amber-700">
+                                  <Shield className="text-amber-500 dark:text-amber-400 mx-auto mb-4" size={48} />
+                                  <h3 className="text-lg font-bold text-amber-800 dark:text-amber-300 mb-2">Picks Not Yet Visible</h3>
+                                  <p className="text-amber-700 dark:text-amber-400">
+                                    Player picks for this tournament will be visible once picks lock.
+                                  </p>
+                                </div>
+                              ) : (
+                                <>
+                                  {loadingEditPicks ? (
+                                    <div className="text-center py-8">
+                                      <div className="w-10 h-10 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                      <p className="text-gray-600 dark:text-gray-400">Loading picks...</p>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-4">
+                                      {editTournamentPicks.map(user => {
+                                        const userData = editResultsData[user.id] || {};
+                                        const hasGolfer = userData.golferName;
 
                               return (
                                 <div key={user.id} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-4">
@@ -1719,8 +1764,13 @@ const handleSubmitPick = async () => {
                                 </div>
                               );
                             })}
-                          </div>
-                        )}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
 
