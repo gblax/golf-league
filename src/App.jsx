@@ -2060,6 +2060,11 @@ const handleSubmitPick = async () => {
                               </span>
                             </div>
                             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
+                            {(tournament.course || tournament.location) && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500">
+                                {tournament.course}{tournament.course && tournament.location && ' • '}{tournament.location}
+                              </p>
+                            )}
                           </div>
                           <div className="flex-shrink-0 flex items-center gap-2">
                             {tournament.completed ? (
