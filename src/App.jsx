@@ -1879,7 +1879,7 @@ const handleSubmitPick = async () => {
                     ) : (
                       <div className="border border-green-200 dark:border-green-800 rounded-xl p-4 bg-green-50 dark:bg-green-900/20">
                         <h4 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">Add New Golfer</h4>
-                        <div className="flex gap-3">
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <input
                             type="text"
                             value={newGolferName}
@@ -1888,21 +1888,23 @@ const handleSubmitPick = async () => {
                             placeholder="Enter golfer name (e.g., Tiger Woods)"
                             className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                           />
-                          <button
-                            onClick={handleAddGolfer}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
-                          >
-                            Add
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowAddGolfer(false);
-                              setNewGolferName('');
-                            }}
-                            className="bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors"
-                          >
-                            Cancel
-                          </button>
+                          <div className="flex gap-2 sm:gap-3">
+                            <button
+                              onClick={handleAddGolfer}
+                              className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors active:scale-95"
+                            >
+                              Add
+                            </button>
+                            <button
+                              onClick={() => {
+                                setShowAddGolfer(false);
+                                setNewGolferName('');
+                              }}
+                              className="flex-1 sm:flex-none bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors active:scale-95"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
                           Tip: Use proper capitalization (e.g., "Jon Rahm" not "jon rahm")
