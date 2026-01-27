@@ -1175,8 +1175,8 @@ const handleSubmitPick = async () => {
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
-              <Trophy size={20} />
-              <span className="hidden sm:inline text-base">Results</span>
+              <Shield size={20} />
+              <span className="hidden sm:inline text-base">Commissioner</span>
             </button>
           </div>
 
@@ -1433,23 +1433,168 @@ const handleSubmitPick = async () => {
 
             {activeTab === 'results' && (
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Manage Tournament Results</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Commissioner</h2>
 
                 {!currentUser?.is_admin ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
                     <Shield className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={64} />
                     <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Commissioner Only</h3>
                     <p className="text-gray-600 dark:text-gray-400">
-                      Only the league commissioner can manage tournament results.
+                      Only the league commissioner can change league rules and manage tournament results.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Tournament Selector */}
-                    <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-4">
-                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Select Tournament to Edit
-                      </label>
+                    {/* League Settings */}
+                    <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
+                      <button
+                        onClick={() => setShowLeagueSettings(!showLeagueSettings)}
+                        className="w-full flex items-center justify-between"
+                      >
+                        <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                          <Settings className="text-purple-600 dark:text-purple-400" />
+                          League Settings
+                        </h3>
+                        <ChevronDown
+                          size={20}
+                          className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+
+                      {showLeagueSettings && (
+                        <div className="mt-4 space-y-4">
+                          {/* Backup Picks Toggle */}
+                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-600 rounded-xl">
+                            <div>
+                              <p className="font-semibold text-gray-800 dark:text-gray-100">Backup Picks</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">
+                                Allow players to select a backup golfer in case their primary withdraws
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleUpdateLeagueSettings({
+                                backup_picks_enabled: !leagueSettings.backup_picks_enabled
+                              })}
+                              className={`relative w-14 h-8 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                                leagueSettings.backup_picks_enabled
+                                  ? 'bg-green-500'
+                                  : 'bg-gray-300 dark:bg-slate-500'
+                              }`}
+                            >
+                              <span
+                                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-all duration-200 ${
+                                  leagueSettings.backup_picks_enabled ? 'translate-x-6' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                          </div>
+
+                          {/* Penalty Amounts */}
+                          <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">Penalty Amounts</p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  No Pick Submitted
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 dark:text-gray-400">$</span>
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.no_pick_penalty}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      no_pick_penalty: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  Missed Cut
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 dark:text-gray-400">$</span>
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.missed_cut_penalty}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      missed_cut_penalty: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  Withdrawal
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 dark:text-gray-400">$</span>
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.withdrawal_penalty}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      withdrawal_penalty: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  Disqualification
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 dark:text-gray-400">$</span>
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.dq_penalty}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      dq_penalty: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleUpdateLeagueSettings({
+                                no_pick_penalty: leagueSettings.no_pick_penalty,
+                                missed_cut_penalty: leagueSettings.missed_cut_penalty,
+                                withdrawal_penalty: leagueSettings.withdrawal_penalty,
+                                dq_penalty: leagueSettings.dq_penalty
+                              })}
+                              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
+                            >
+                              Save Penalty Settings
+                            </button>
+                          </div>
+
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                            Changes take effect immediately for new picks and penalties.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Manage Tournament Results */}
+                    <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6 shadow-lg">
+                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100 mb-4">
+                        <Trophy className="text-yellow-500" />
+                        Manage Tournament Results
+                      </h3>
+
+                      <div className="mb-4">
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Select Tournament to Edit
+                        </label>
                       <select
                         value={editTournamentId || ''}
                         onChange={(e) => {
@@ -1585,6 +1730,7 @@ const handleSubmitPick = async () => {
                         <p className="text-gray-600 dark:text-gray-400">Select a tournament above to view and edit results.</p>
                       </div>
                     )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1860,147 +2006,6 @@ const handleSubmitPick = async () => {
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Info</h2>
 
                 <div className="space-y-6">
-                  {/* Commissioner Settings - Admin only */}
-                  {currentUser?.is_admin && (
-                    <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
-                      <button
-                        onClick={() => setShowLeagueSettings(!showLeagueSettings)}
-                        className="w-full flex items-center justify-between"
-                      >
-                        <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                          <Settings className="text-purple-600 dark:text-purple-400" />
-                          Commissioner Settings
-                        </h3>
-                        <ChevronDown
-                          size={20}
-                          className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-
-                    {showLeagueSettings && (
-                      <div className="mt-4 space-y-4">
-                        {/* Backup Picks Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-600 rounded-xl">
-                          <div>
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">Backup Picks</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">
-                              Allow players to select a backup golfer in case their primary withdraws
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleUpdateLeagueSettings({
-                              backup_picks_enabled: !leagueSettings.backup_picks_enabled
-                            })}
-                            className={`relative w-14 h-8 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                              leagueSettings.backup_picks_enabled
-                                ? 'bg-green-500'
-                                : 'bg-gray-300 dark:bg-slate-500'
-                            }`}
-                          >
-                            <span
-                              className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-all duration-200 ${
-                                leagueSettings.backup_picks_enabled ? 'translate-x-6' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                        </div>
-
-                        {/* Penalty Amounts */}
-                        <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
-                          <p className="font-semibold text-gray-800 dark:text-gray-100">Penalty Amounts</p>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                No Pick Submitted
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 dark:text-gray-400">$</span>
-                                <input
-                                  type="number"
-                                  value={leagueSettings.no_pick_penalty}
-                                  onChange={(e) => setLeagueSettings({
-                                    ...leagueSettings,
-                                    no_pick_penalty: parseInt(e.target.value) || 0
-                                  })}
-                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Missed Cut
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 dark:text-gray-400">$</span>
-                                <input
-                                  type="number"
-                                  value={leagueSettings.missed_cut_penalty}
-                                  onChange={(e) => setLeagueSettings({
-                                    ...leagueSettings,
-                                    missed_cut_penalty: parseInt(e.target.value) || 0
-                                  })}
-                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Withdrawal
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 dark:text-gray-400">$</span>
-                                <input
-                                  type="number"
-                                  value={leagueSettings.withdrawal_penalty}
-                                  onChange={(e) => setLeagueSettings({
-                                    ...leagueSettings,
-                                    withdrawal_penalty: parseInt(e.target.value) || 0
-                                  })}
-                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                Disqualification
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-500 dark:text-gray-400">$</span>
-                                <input
-                                  type="number"
-                                  value={leagueSettings.dq_penalty}
-                                  onChange={(e) => setLeagueSettings({
-                                    ...leagueSettings,
-                                    dq_penalty: parseInt(e.target.value) || 0
-                                  })}
-                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                />
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => handleUpdateLeagueSettings({
-                              no_pick_penalty: leagueSettings.no_pick_penalty,
-                              missed_cut_penalty: leagueSettings.missed_cut_penalty,
-                              withdrawal_penalty: leagueSettings.withdrawal_penalty,
-                              dq_penalty: leagueSettings.dq_penalty
-                            })}
-                            className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
-                          >
-                            Save Penalty Settings
-                          </button>
-                        </div>
-
-                        <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                          Changes take effect immediately for new picks and penalties.
-                        </p>
-                      </div>
-                    )}
-                    </div>
-                  )}
-
                   {/* Prize Pool Calculator */}
                   <div className="bg-white dark:bg-slate-700 border border-green-500 dark:border-green-400 rounded-xl p-6 shadow-lg">
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
