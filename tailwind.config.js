@@ -24,6 +24,15 @@ export default {
       boxShadow: {
         'golf': '0 4px 14px 0 rgba(34, 197, 94, 0.15)',
         'golf-lg': '0 10px 40px 0 rgba(34, 197, 94, 0.2)',
+      },
+      animation: {
+        'pulse-gentle': 'pulse-gentle 2s ease-in-out infinite',
+      },
+      keyframes: {
+        'pulse-gentle': {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
+        }
       }
     },
   },

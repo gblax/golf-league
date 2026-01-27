@@ -1082,7 +1082,7 @@ const handleSubmitPick = async () => {
           <div className="flex border-b border-gray-200 dark:border-slate-700">
             <button
               onClick={() => setActiveTab('picks')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'picks'
                   ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -1093,7 +1093,7 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('standings')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'standings'
                   ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -1104,7 +1104,7 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'schedule'
                   ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -1115,7 +1115,7 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'admin'
                   ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -1126,7 +1126,7 @@ const handleSubmitPick = async () => {
             </button>
             <button
               onClick={() => setActiveTab('results')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-colors ${
+              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'results'
                   ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
@@ -1362,7 +1362,7 @@ const handleSubmitPick = async () => {
                       <button
                         onClick={handleSubmitPick}
                         disabled={!selectedPlayer || isLocked}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 dark:disabled:from-slate-600 dark:disabled:to-slate-700 disabled:cursor-not-allowed transform hover:-translate-y-0.5 disabled:transform-none transition-all"
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 dark:disabled:from-slate-600 dark:disabled:to-slate-700 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:scale-95 disabled:transform-none disabled:active:scale-100 transition-all duration-150"
                       >
                         {isLocked ? 'Picks Locked' : 'Submit Pick'}
                       </button>
@@ -1548,16 +1548,16 @@ const handleSubmitPick = async () => {
             {activeTab === 'standings' && (
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Standings</h2>
-                <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
-                  <table className="w-full min-w-[600px]">
+                <div className="overflow-x-auto -mx-3 px-3 sm:-mx-6 sm:px-6 md:mx-0 md:px-0">
+                  <table className="w-full min-w-[480px]">
                     <thead>
                       <tr className="bg-gray-100 dark:bg-slate-700">
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tl-lg">Rank</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm">Player</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">Winnings</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm hidden sm:table-cell">Penalties</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">This Week</th>
-                        <th className="py-2 sm:py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tr-lg"></th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tl-lg">#</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Player</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Won</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pen.</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pick</th>
+                        <th className="py-2 sm:py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tr-lg"></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1566,16 +1566,32 @@ const handleSubmitPick = async () => {
                           <tr
                             className={`border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/20 font-semibold' : ''}`}
                           >
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm text-gray-800 dark:text-gray-200">
-                              {idx === 0 && <Trophy className="inline text-yellow-500 mr-1 sm:mr-2" size={16} />}
-                              {idx + 1}
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+                              {idx === 0 ? (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <span className="text-base sm:text-lg">🥇</span>
+                                  <span className="hidden sm:inline font-bold text-yellow-600 dark:text-yellow-400">1</span>
+                                </span>
+                              ) : idx === 1 ? (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <span className="text-base sm:text-lg">🥈</span>
+                                  <span className="hidden sm:inline font-semibold text-gray-500 dark:text-gray-400">2</span>
+                                </span>
+                              ) : idx === 2 ? (
+                                <span className="inline-flex items-center gap-0.5">
+                                  <span className="text-base sm:text-lg">🥉</span>
+                                  <span className="hidden sm:inline font-semibold text-amber-700 dark:text-amber-500">3</span>
+                                </span>
+                              ) : (
+                                idx + 1
+                              )}
                             </td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-sm hidden sm:table-cell">
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-xs sm:text-sm">
                               {player.penalties > 0 ? `$${player.penalties}` : '-'}
                             </td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center text-sm">
+                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm">
                               {(() => {
                                 const now = new Date();
                                 const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
@@ -1586,42 +1602,42 @@ const handleSubmitPick = async () => {
                                 if (isCurrentUser) {
                                   return player.currentPick?.golfer_name ? (
                                     <div>
-                                      <div className="text-green-700 dark:text-green-400">{player.currentPick.golfer_name}</div>
+                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
                                       {player.currentPick.backup_golfer_name && (
-                                        <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
+                                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
                                       )}
                                     </div>
                                   ) : (
-                                    <span className="text-red-500 dark:text-red-400">Not submitted</span>
+                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
                                   );
                                 }
 
                                 // Other users - hide if NOT locked yet
                                 if (!isLocked) {
                                   return player.currentPick?.golfer_name ? (
-                                    <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
+                                    <span className="text-gray-500 dark:text-gray-400">🔒</span>
                                   ) : (
-                                    <span className="text-red-500 dark:text-red-400">Not submitted</span>
+                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
                                   );
                                 }
 
                                 // Locked - show everyone's picks
                                 return player.currentPick?.golfer_name ? (
                                   <div>
-                                    <div className="text-green-700 dark:text-green-400">{player.currentPick.golfer_name}</div>
+                                    <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
                                     {player.currentPick.backup_golfer_name && (
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
+                                      <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-red-500 dark:text-red-400">Not submitted</span>
+                                  <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
                                 );
                               })()}
                             </td>
-                            <td className="py-2 sm:py-3 px-2 sm:px-4 text-center">
+                            <td className="py-2 sm:py-3 px-1 sm:px-2 text-center">
                               <button
                                 onClick={() => toggleRowExpansion(player.id)}
-                                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-1 mx-auto text-xs sm:text-sm transition-colors"
+                                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-0.5 mx-auto text-xs sm:text-sm transition-all active:scale-95"
                               >
                                 {expandedRows[player.id] ? (
                                   <>
@@ -1729,9 +1745,9 @@ const handleSubmitPick = async () => {
                   {tournaments.map((tournament) => (
                     <div
                       key={tournament.id}
-                      className={`p-3 sm:p-4 rounded-xl border transition-colors ${
+                      className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-default ${
                         tournament.week === currentWeek
-                          ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20'
+                          ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20 shadow-sm'
                           : tournament.completed
                           ? 'border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50'
                           : 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
@@ -1758,7 +1774,7 @@ const handleSubmitPick = async () => {
                               <span className="text-xs sm:text-sm">Completed</span>
                             </span>
                           ) : tournament.week === currentWeek ? (
-                            <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg">
+                            <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg animate-pulse-gentle">
                               Current Week
                             </span>
                           ) : (
