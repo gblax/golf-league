@@ -1321,7 +1321,7 @@ const handleSubmitPick = async () => {
                   </div>
                   {backupPlayer && (
                     <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
-                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ {backupPlayer}</span>
+                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
                       <button
                         onClick={() => {
                           setBackupPlayer('');
