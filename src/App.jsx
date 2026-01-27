@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -53,6 +53,14 @@ const App = () => {
   const [availableGolfers, setAvailableGolfers] = useState([]);
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
+
+  // League settings state
+  const [leagueSettings, setLeagueSettings] = useState({
+    backup_picks_enabled: true,
+    no_pick_penalty: 500,
+    duplicate_pick_penalty: 500
+  });
+  const [showLeagueSettings, setShowLeagueSettings] = useState(false);
 
   // Dark mode state - initialize from localStorage or system preference
   const [darkMode, setDarkMode] = useState(() => {
@@ -178,12 +186,23 @@ const App = () => {
 
 const loadData = async () => {
     try {
+      // Load league settings
+      const { data: settingsData } = await supabase
+        .from('league_settings')
+        .select('*')
+        .limit(1)
+        .single();
+
+      if (settingsData) {
+        setLeagueSettings(settingsData);
+      }
+
       // Load tournaments FIRST
       const { data: tournamentsData } = await supabase
         .from('tournaments')
         .select('*')
         .order('week');
-      
+
       setTournaments(tournamentsData || []);
       
       // Load available golfers
@@ -505,6 +524,28 @@ const loadUserData = async () => {
       setNewGolferName('');
       setShowAddGolfer(false);
       loadData(); // Reload to update available golfers
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  };
+
+  const handleUpdateLeagueSettings = async (newSettings) => {
+    try {
+      const { error } = await supabase
+        .from('league_settings')
+        .update({
+          ...newSettings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', leagueSettings.id);
+
+      if (error) {
+        alert('Error saving settings: ' + error.message);
+        return;
+      }
+
+      setLeagueSettings({ ...leagueSettings, ...newSettings });
+      alert('Settings saved successfully!');
     } catch (error) {
       alert('Error: ' + error.message);
     }
@@ -1177,7 +1218,7 @@ const handleSubmitPick = async () => {
                           </span>
                         </div>
                         <p className="text-white text-xl font-bold">{selectedPlayer || currentWeekPick.golfer}</p>
-                        {(backupPlayer || currentWeekPick.backup) && (
+                        {leagueSettings.backup_picks_enabled && (backupPlayer || currentWeekPick.backup) && (
                           <p className="text-blue-200 text-sm mt-1">
                             Backup: <span className="font-semibold text-white">{backupPlayer || currentWeekPick.backup}</span>
                           </p>
@@ -1278,65 +1319,67 @@ const handleSubmitPick = async () => {
                   </p>
                 </div>
 
-                {/* Backup Pick */}
-                <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-                    <Shield className="text-amber-600 dark:text-amber-400" size={20} />
-                    Backup Pick (Optional but Recommended)
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={backupPlayer || backupSearchTerm}
-                      onChange={(e) => {
-                        setBackupSearchTerm(e.target.value);
-                        setBackupPlayer('');
-                        setShowBackupDropdown(true);
-                      }}
-                      onFocus={() => setShowBackupDropdown(true)}
-                      placeholder="Start typing to search golfers..."
-                      className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-                    />
-                    {showBackupDropdown && backupSearchTerm && (
-                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                        {filteredBackupGolfers.length > 0 ? (
-                          filteredBackupGolfers.map((golfer, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => {
-                                setBackupPlayer(golfer);
-                                setBackupSearchTerm('');
-                                setShowBackupDropdown(false);
-                              }}
-                              className="p-3 hover:bg-amber-100 dark:hover:bg-amber-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
-                            >
-                              {golfer}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
-                        )}
+                {/* Backup Pick - only show if enabled in settings */}
+                {leagueSettings.backup_picks_enabled && (
+                  <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
+                    <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+                      <Shield className="text-amber-600 dark:text-amber-400" size={20} />
+                      Backup Pick (Optional but Recommended)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={backupPlayer || backupSearchTerm}
+                        onChange={(e) => {
+                          setBackupSearchTerm(e.target.value);
+                          setBackupPlayer('');
+                          setShowBackupDropdown(true);
+                        }}
+                        onFocus={() => setShowBackupDropdown(true)}
+                        placeholder="Start typing to search golfers..."
+                        className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                      />
+                      {showBackupDropdown && backupSearchTerm && (
+                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                          {filteredBackupGolfers.length > 0 ? (
+                            filteredBackupGolfers.map((golfer, idx) => (
+                              <div
+                                key={idx}
+                                onClick={() => {
+                                  setBackupPlayer(golfer);
+                                  setBackupSearchTerm('');
+                                  setShowBackupDropdown(false);
+                                }}
+                                className="p-3 hover:bg-amber-100 dark:hover:bg-amber-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
+                              >
+                                {golfer}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {backupPlayer && (
+                      <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
+                        <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
+                        <button
+                          onClick={() => {
+                            setBackupPlayer('');
+                            setBackupSearchTerm('');
+                          }}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
+                        >
+                          Clear
+                        </button>
                       </div>
                     )}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      <strong>Note:</strong> Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
+                    </p>
                   </div>
-                  {backupPlayer && (
-                    <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
-                      <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
-                      <button
-                        onClick={() => {
-                          setBackupPlayer('');
-                          setBackupSearchTerm('');
-                        }}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    <strong>Note:</strong> Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
-                  </p>
-                </div>
+                )}
 
 {(() => {
                   const now = new Date();
@@ -1603,7 +1646,7 @@ const handleSubmitPick = async () => {
                                   return player.currentPick?.golfer_name ? (
                                     <div>
                                       <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
-                                      {player.currentPick.backup_golfer_name && (
+                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
                                         <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
                                       )}
                                     </div>
@@ -1625,7 +1668,7 @@ const handleSubmitPick = async () => {
                                 return player.currentPick?.golfer_name ? (
                                   <div>
                                     <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
-                                    {player.currentPick.backup_golfer_name && (
+                                    {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
                                       <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
                                     )}
                                   </div>
@@ -1667,7 +1710,9 @@ const handleSubmitPick = async () => {
                                           <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Week</th>
                                           <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Tournament</th>
                                           <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Golfer</th>
-                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Backup</th>
+                                          {leagueSettings.backup_picks_enabled && (
+                                            <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Backup</th>
+                                          )}
                                           <th className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">Winnings</th>
                                           <th className="py-2 px-3 text-center text-gray-800 dark:text-gray-200">Penalty</th>
                                         </tr>
@@ -1699,15 +1744,17 @@ const handleSubmitPick = async () => {
                                                 <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
                                               )}
                                             </td>
-                                            <td className="py-2 px-3">
-                                              {shouldHidePick ? (
-                                                <span className="text-gray-300 dark:text-gray-600">-</span>
-                                              ) : weekData.backup ? (
-                                                <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
-                                              ) : (
-                                                <span className="text-gray-300 dark:text-gray-600">-</span>
-                                              )}
-                                            </td>
+                                            {leagueSettings.backup_picks_enabled && (
+                                              <td className="py-2 px-3">
+                                                {shouldHidePick ? (
+                                                  <span className="text-gray-300 dark:text-gray-600">-</span>
+                                                ) : weekData.backup ? (
+                                                  <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
+                                                ) : (
+                                                  <span className="text-gray-300 dark:text-gray-600">-</span>
+                                                )}
+                                              </td>
+                                            )}
                                             <td className="py-2 px-3 text-right">
                                               {weekData.winnings > 0 ? (
                                                 <span className="text-green-600 dark:text-green-400 font-semibold">${weekData.winnings.toLocaleString()}</span>
@@ -1730,7 +1777,7 @@ const handleSubmitPick = async () => {
                                       </tbody>
                                       <tfoot>
                                         <tr className="bg-gray-200 dark:bg-slate-600 font-bold">
-                                          <td colSpan="4" className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">TOTALS:</td>
+                                          <td colSpan={leagueSettings.backup_picks_enabled ? 4 : 3} className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">TOTALS:</td>
                                           <td className="py-2 px-3 text-right text-green-700 dark:text-green-400">
                                             ${player.winnings.toLocaleString()}
                                           </td>
@@ -1811,6 +1858,109 @@ const handleSubmitPick = async () => {
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Info</h2>
 
                 <div className="space-y-6">
+                  {/* Commissioner Settings */}
+                  <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
+                    <button
+                      onClick={() => setShowLeagueSettings(!showLeagueSettings)}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                        <Settings className="text-purple-600 dark:text-purple-400" />
+                        Commissioner Settings
+                      </h3>
+                      <ChevronDown
+                        size={20}
+                        className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {showLeagueSettings && (
+                      <div className="mt-4 space-y-4">
+                        {/* Backup Picks Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-600 rounded-xl">
+                          <div>
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">Backup Picks</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Allow players to select a backup golfer in case their primary withdraws
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleUpdateLeagueSettings({
+                              backup_picks_enabled: !leagueSettings.backup_picks_enabled
+                            })}
+                            className={`relative w-14 h-8 rounded-full transition-colors duration-200 ${
+                              leagueSettings.backup_picks_enabled
+                                ? 'bg-green-500'
+                                : 'bg-gray-300 dark:bg-slate-500'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
+                                leagueSettings.backup_picks_enabled ? 'translate-x-7' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Penalty Amounts */}
+                        <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
+                          <p className="font-semibold text-gray-800 dark:text-gray-100">Penalty Amounts</p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                No Pick Submitted
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 dark:text-gray-400">$</span>
+                                <input
+                                  type="number"
+                                  value={leagueSettings.no_pick_penalty}
+                                  onChange={(e) => setLeagueSettings({
+                                    ...leagueSettings,
+                                    no_pick_penalty: parseInt(e.target.value) || 0
+                                  })}
+                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                Duplicate Pick
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 dark:text-gray-400">$</span>
+                                <input
+                                  type="number"
+                                  value={leagueSettings.duplicate_pick_penalty}
+                                  onChange={(e) => setLeagueSettings({
+                                    ...leagueSettings,
+                                    duplicate_pick_penalty: parseInt(e.target.value) || 0
+                                  })}
+                                  className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleUpdateLeagueSettings({
+                              no_pick_penalty: leagueSettings.no_pick_penalty,
+                              duplicate_pick_penalty: leagueSettings.duplicate_pick_penalty
+                            })}
+                            className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
+                          >
+                            Save Penalty Settings
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                          Changes take effect immediately for new picks and penalties.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Prize Pool Calculator */}
                   <div className="bg-white dark:bg-slate-700 border border-green-500 dark:border-green-400 rounded-xl p-6 shadow-lg">
                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
@@ -1983,15 +2133,18 @@ const handleSubmitPick = async () => {
                         <ul className="text-sm text-amber-900 dark:text-amber-300 space-y-1">
                           <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
                           <li>• Each golfer can only be used <strong>once per season</strong></li>
-                          <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
+                          {leagueSettings.backup_picks_enabled && (
+                            <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
+                          )}
                           <li>• New week picks open Monday after current tournament ends</li>
                         </ul>
                       </div>
 
                       <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
-                        <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Penalties ($10 each)</h4>
+                        <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Penalties</h4>
                         <ul className="text-sm text-red-900 dark:text-red-300 space-y-1">
-                          <li>• <strong>No Pick Submitted:</strong> $10 penalty</li>
+                          <li>• <strong>No Pick Submitted:</strong> ${leagueSettings.no_pick_penalty} penalty</li>
+                          <li>• <strong>Duplicate Pick:</strong> ${leagueSettings.duplicate_pick_penalty} penalty</li>
                           <li>• <strong>Missed Cut:</strong> $10 penalty</li>
                           <li>• <strong>Withdrawal (during tournament):</strong> $10 penalty</li>
                           <li>• <strong>Disqualification:</strong> $10 penalty</li>
@@ -2058,7 +2211,7 @@ const handleSubmitPick = async () => {
                                     <span className="text-green-700 dark:text-green-400 font-semibold">Submitted</span>
                                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                       {player.currentPick.golfer_name}
-                                      {player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
                                     </p>
                                   </div>
                                 ) : (
