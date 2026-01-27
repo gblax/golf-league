@@ -1860,21 +1860,22 @@ const handleSubmitPick = async () => {
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Info</h2>
 
                 <div className="space-y-6">
-                  {/* Commissioner Settings */}
-                  <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
-                    <button
-                      onClick={() => setShowLeagueSettings(!showLeagueSettings)}
-                      className="w-full flex items-center justify-between"
-                    >
-                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                        <Settings className="text-purple-600 dark:text-purple-400" />
-                        Commissioner Settings
-                      </h3>
-                      <ChevronDown
-                        size={20}
-                        className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
-                      />
-                    </button>
+                  {/* Commissioner Settings - Admin only */}
+                  {currentUser?.is_admin && (
+                    <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
+                      <button
+                        onClick={() => setShowLeagueSettings(!showLeagueSettings)}
+                        className="w-full flex items-center justify-between"
+                      >
+                        <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
+                          <Settings className="text-purple-600 dark:text-purple-400" />
+                          Commissioner Settings
+                        </h3>
+                        <ChevronDown
+                          size={20}
+                          className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
+                        />
+                      </button>
 
                     {showLeagueSettings && (
                       <div className="mt-4 space-y-4">
@@ -1997,7 +1998,8 @@ const handleSubmitPick = async () => {
                         </p>
                       </div>
                     )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Prize Pool Calculator */}
                   <div className="bg-white dark:bg-slate-700 border border-green-500 dark:border-green-400 rounded-xl p-6 shadow-lg">
