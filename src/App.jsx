@@ -1084,7 +1084,7 @@ const handleSubmitPick = async () => {
               onClick={() => setActiveTab('picks')}
               className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'picks'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -1095,7 +1095,7 @@ const handleSubmitPick = async () => {
               onClick={() => setActiveTab('standings')}
               className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'standings'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -1106,7 +1106,7 @@ const handleSubmitPick = async () => {
               onClick={() => setActiveTab('schedule')}
               className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'schedule'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -1117,7 +1117,7 @@ const handleSubmitPick = async () => {
               onClick={() => setActiveTab('admin')}
               className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'admin'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
@@ -1128,7 +1128,7 @@ const handleSubmitPick = async () => {
               onClick={() => setActiveTab('results')}
               className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
                 activeTab === 'results'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
               }`}
             >
