@@ -510,6 +510,18 @@ const loadUserData = async () => {
     setShowAccountSettings(true);
   };
 
+  // Helper to get penalty amount based on type
+  const getPenaltyAmount = (penaltyType) => {
+    if (!penaltyType) return 0;
+    switch (penaltyType) {
+      case 'no_pick': return leagueSettings.no_pick_penalty || 0;
+      case 'missed_cut': return leagueSettings.missed_cut_penalty || 0;
+      case 'withdrawal': return leagueSettings.withdrawal_penalty || 0;
+      case 'disqualification': return leagueSettings.dq_penalty || 0;
+      default: return 0;
+    }
+  };
+
   const handleAddGolfer = async () => {
     if (!newGolferName.trim()) {
       showNotification('error', 'Please enter a golfer name');
@@ -586,7 +598,7 @@ const handleSaveResults = async (playerId) => {
             golfer_name: null,
             backup_golfer_name: null,
             winnings: 0,
-            penalty_amount: 10,
+            penalty_amount: getPenaltyAmount(penaltyType),
             penalty_reason: penaltyType
           });
         
@@ -602,7 +614,7 @@ const handleSaveResults = async (playerId) => {
             user_id: playerId,
             tournament_id: tournamentId,
             penalty_type: penaltyType,
-            amount: 10
+            amount: getPenaltyAmount(penaltyType)
           }, { onConflict: 'user_id,tournament_id' });
         
         showNotification('success', 'Penalty saved');
@@ -615,7 +627,7 @@ const handleSaveResults = async (playerId) => {
         .from('picks')
         .update({
           winnings: parseInt(winnings) || 0,
-          penalty_amount: penaltyType ? 10 : 0,
+          penalty_amount: getPenaltyAmount(penaltyType),
           penalty_reason: penaltyType || null
         })
         .eq('user_id', playerId)
@@ -634,7 +646,7 @@ const handleSaveResults = async (playerId) => {
             user_id: playerId,
             tournament_id: tournamentId,
             penalty_type: penaltyType,
-            amount: 10
+            amount: getPenaltyAmount(penaltyType)
           }, { onConflict: 'user_id,tournament_id' });
       }
       
@@ -717,7 +729,7 @@ const handleSaveResults = async (playerId) => {
     try {
       const updateData = {
         winnings: parseInt(userData.winnings) || 0,
-        penalty_amount: userData.penalty ? 10 : 0,
+        penalty_amount: getPenaltyAmount(userData.penalty),
         penalty_reason: userData.penalty || null
       };
 
@@ -751,7 +763,7 @@ const handleSaveResults = async (playerId) => {
             user_id: userId,
             tournament_id: editTournamentId,
             penalty_type: userData.penalty,
-            amount: 10
+            amount: getPenaltyAmount(userData.penalty)
           }, { onConflict: 'user_id,tournament_id' });
       } else {
         // Remove penalty if cleared
@@ -1747,10 +1759,10 @@ const handleSubmitPick = async () => {
                                         className="w-full p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
                                       >
                                         <option value="">No penalty</option>
-                                        <option value="no_pick">No Pick Submitted ($10)</option>
-                                        <option value="missed_cut">Missed Cut ($10)</option>
-                                        <option value="withdrawal">Withdrawal ($10)</option>
-                                        <option value="disqualification">Disqualification ($10)</option>
+                                        <option value="no_pick">No Pick Submitted (${leagueSettings.no_pick_penalty})</option>
+                                        <option value="missed_cut">Missed Cut (${leagueSettings.missed_cut_penalty})</option>
+                                        <option value="withdrawal">Withdrawal (${leagueSettings.withdrawal_penalty})</option>
+                                        <option value="disqualification">Disqualification (${leagueSettings.dq_penalty})</option>
                                       </select>
                                     </div>
                                   </div>
