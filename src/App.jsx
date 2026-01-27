@@ -1290,7 +1290,7 @@ const handleSubmitPick = async () => {
                 <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 relative searchable-dropdown">
                   <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
                     <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
-                    Primary Pick for Week {currentWeek}:
+                    Pick for Week {currentWeek}:
                   </label>
                   <div className="relative">
                     <input
@@ -1453,24 +1453,28 @@ const handleSubmitPick = async () => {
                   );
                 })()}
 
-                {/* Used Golfers Section */}
-                {userPicks.length > 0 && (
-                  <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
-                    <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                      Golfers Used This Season ({userPicks.filter(p => p).length})
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {userPicks.filter(p => p).map((golfer, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-block px-2 py-1 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 text-xs rounded-full"
-                        >
-                          {golfer}
-                        </span>
-                      ))}
+                {/* Used Golfers Section - exclude current week's pick */}
+                {(() => {
+                  const currentPick = selectedPlayer || currentWeekPick.golfer;
+                  const pastPicks = userPicks.filter(p => p && p !== currentPick);
+                  return pastPicks.length > 0 && (
+                    <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
+                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Golfers Used in Prior Weeks ({pastPicks.length})
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {pastPicks.map((golfer, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-block px-2 py-1 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 text-xs rounded-full"
+                          >
+                            {golfer}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
               )
             )}
