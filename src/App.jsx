@@ -811,7 +811,7 @@ const handleSubmitPick = async () => {
           user_id: currentUser.id,
           tournament_id: currentTournament.id,
           golfer_name: selectedPlayer,
-          backup_golfer_name: backupPlayer || null,
+          backup_golfer_name: leagueSettings.backup_picks_enabled ? (backupPlayer || null) : null,
           winnings: 0
         }, { onConflict: 'user_id,tournament_id' });
       
