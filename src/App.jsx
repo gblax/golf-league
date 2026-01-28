@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, BellOff, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
-import { isPushSupported, getPermissionStatus, subscribeToPush, unsubscribeFromPush, isSubscribed, sendTestNotification } from './pushNotifications';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -36,9 +35,6 @@ const App = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [notificationsLoading, setNotificationsLoading] = useState(false);
-  const [pushSupported, setPushSupported] = useState(false);
   const [showAddGolfer, setShowAddGolfer] = useState(false);
   const [newGolferName, setNewGolferName] = useState('');
   const [primarySearchTerm, setPrimarySearchTerm] = useState('');
@@ -123,20 +119,6 @@ const App = () => {
     if (currentUser) {
       loadData();
     }
-  }, [currentUser]);
-
-  // Check push notification support and subscription status
-  useEffect(() => {
-    const checkPushStatus = async () => {
-      const supported = isPushSupported();
-      setPushSupported(supported);
-
-      if (supported && currentUser) {
-        const subscribed = await isSubscribed(supabase, currentUser.id);
-        setNotificationsEnabled(subscribed);
-      }
-    };
-    checkPushStatus();
   }, [currentUser]);
 
   // Update dropdowns when data loads
@@ -520,32 +502,6 @@ const loadUserData = async () => {
       setConfirmPassword('');
     } catch (error) {
       showNotification('error', error.message);
-    }
-  };
-
-  const handleToggleNotifications = async () => {
-    if (!pushSupported) {
-      showNotification('error', 'Push notifications are not supported in this browser');
-      return;
-    }
-
-    setNotificationsLoading(true);
-    try {
-      if (notificationsEnabled) {
-        await unsubscribeFromPush(supabase, currentUser.id);
-        setNotificationsEnabled(false);
-        showNotification('success', 'Notifications disabled');
-      } else {
-        await subscribeToPush(supabase, currentUser.id);
-        setNotificationsEnabled(true);
-        // Send a test notification to confirm it works
-        await sendTestNotification();
-        showNotification('success', 'Notifications enabled! You\'ll get reminders before pick deadlines.');
-      }
-    } catch (error) {
-      showNotification('error', error.message);
-    } finally {
-      setNotificationsLoading(false);
     }
   };
 
@@ -1143,50 +1099,6 @@ const handleSubmitPick = async () => {
                         Save Profile Changes
                       </button>
                     </div>
-                  </div>
-
-                  {/* Notifications Section */}
-                  <div className="mb-8 pb-6 border-b border-gray-200 dark:border-slate-700">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Notifications</h3>
-
-                    {pushSupported ? (
-                      <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          {notificationsEnabled ? (
-                            <Bell className="text-green-600 dark:text-green-400" size={24} />
-                          ) : (
-                            <BellOff className="text-gray-400" size={24} />
-                          )}
-                          <div>
-                            <p className="font-semibold text-gray-800 dark:text-gray-200">Pick Deadline Reminders</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Get notified before pick deadlines
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleToggleNotifications}
-                          disabled={notificationsLoading}
-                          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                            notificationsEnabled
-                              ? 'bg-green-600'
-                              : 'bg-gray-300 dark:bg-slate-600'
-                          } ${notificationsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <span
-                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform ${
-                              notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                        <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                          Push notifications are not supported in this browser. Try using Chrome, Firefox, or Safari on a supported device.
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Change Password Section */}
