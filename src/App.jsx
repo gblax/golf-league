@@ -42,6 +42,7 @@ const App = () => {
   const [showPrimaryDropdown, setShowPrimaryDropdown] = useState(false);
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   const [timeUntilLock, setTimeUntilLock] = useState('');
+  const [lockUrgent, setLockUrgent] = useState(false);
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -180,6 +181,7 @@ const App = () => {
       const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
+      const isUrgent = days === 0 && hours < 10;
       if (days > 0) {
         setTimeUntilLock(`${days}d ${hours}h ${minutes}m`);
       } else if (hours > 0) {
@@ -187,6 +189,7 @@ const App = () => {
       } else {
         setTimeUntilLock(`${minutes}m`);
       }
+      setLockUrgent(isUrgent);
     };
 
     updateCountdown();
@@ -983,7 +986,7 @@ const handleSubmitPick = async () => {
                   </span>
                 </div>
                 {timeUntilLock && timeUntilLock !== 'Locked' && (
-                  <span className="text-xs sm:text-sm bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1.5 rounded-full font-semibold w-fit border border-amber-200 dark:border-amber-800">
+                  <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border ${lockUrgent ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
                     ⏰ {timeUntilLock} until lock
                   </span>
                 )}
