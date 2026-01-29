@@ -203,7 +203,7 @@ const App = () => {
         .select('id')
         .eq('league_id', league.id)
         .eq('user_id', currentUser.id)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         showNotification('error', 'You are already a member of this league');
@@ -268,7 +268,7 @@ const App = () => {
           .from('users')
           .select('*')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (data) {
           setCurrentUser(data);
@@ -402,7 +402,7 @@ const loadData = async () => {
         .select('*')
         .eq('league_id', leagueId)
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (settingsData) {
         setLeagueSettings(settingsData);
@@ -661,7 +661,7 @@ const loadUserData = async () => {
           .from('users')
           .select('*')
           .eq('id', authData.user.id)
-          .single();
+          .maybeSingle();
 
         if (userError || !userData) {
           showNotification('error', 'Account not found. Please sign up.');
