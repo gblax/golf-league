@@ -28,6 +28,9 @@ const App = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [isSignup, setIsSignup] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   // League state
   const [currentLeague, setCurrentLeague] = useState(null);
@@ -295,7 +298,10 @@ const App = () => {
     loadSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
+      if (event === 'PASSWORD_RECOVERY') {
+        setShowResetPassword(true);
+        setShowLogin(false);
+      } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setCurrentLeague(null);
         setUserLeagues([]);
@@ -687,6 +693,45 @@ const loadUserData = async () => {
       }
     } catch (error) {
       showNotification('error', 'Login error: ' + error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!loginEmail.trim()) {
+      showNotification('error', 'Please enter your email address first');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(loginEmail.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        showNotification('error', 'Error sending reset email: ' + error.message);
+      } else {
+        showNotification('success', 'Password reset email sent! Check your inbox.');
+        setShowForgotPassword(false);
+      }
+    } catch (error) {
+      showNotification('error', 'Error: ' + error.message);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      showNotification('error', 'Password must be at least 6 characters');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        showNotification('error', 'Error resetting password: ' + error.message);
+      } else {
+        showNotification('success', 'Password updated successfully!');
+        setShowResetPassword(false);
+        setNewPassword('');
+      }
+    } catch (error) {
+      showNotification('error', 'Error: ' + error.message);
     }
   };
 
@@ -1133,6 +1178,40 @@ const handleSubmitPick = async () => {
     );
   }
 
+  if (showResetPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+              <Trophy className="text-white" size={40} />
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Set New Password</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Enter your new password below</p>
+          </div>
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                placeholder="New password (min 6 characters)"
+              />
+            </div>
+            <button
+              onClick={handleResetPassword}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+            >
+              Update Password
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (showLogin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
@@ -1151,7 +1230,7 @@ const handleSubmitPick = async () => {
               <Trophy className="text-white" size={40} />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">{isSignup ? 'Create Account' : 'Welcome Back'}</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">{showForgotPassword ? 'Reset Password' : isSignup ? 'Create Account' : 'Welcome Back'}</p>
           </div>
 
           <div className="space-y-5">
@@ -1179,30 +1258,60 @@ const handleSubmitPick = async () => {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
-              <input
-                type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-                placeholder="Password"
-              />
-            </div>
+            {!showForgotPassword && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  placeholder="Password"
+                />
+              </div>
+            )}
 
-            <button
-              onClick={handleLogin}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
-            >
-              {isSignup ? 'Create Account' : 'Sign In'}
-            </button>
+            {showForgotPassword ? (
+              <>
+                <button
+                  onClick={handleForgotPassword}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  Send Reset Email
+                </button>
+                <button
+                  onClick={() => setShowForgotPassword(false)}
+                  className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                >
+                  Back to sign in
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleLogin}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                >
+                  {isSignup ? 'Create Account' : 'Sign In'}
+                </button>
 
-            <button
-              onClick={() => setIsSignup(!isSignup)}
-              className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
-            >
-              {isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
-            </button>
+                {!isSignup && (
+                  <button
+                    onClick={() => setShowForgotPassword(true)}
+                    className="w-full text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 text-sm font-medium transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setIsSignup(!isSignup)}
+                  className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                >
+                  {isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
