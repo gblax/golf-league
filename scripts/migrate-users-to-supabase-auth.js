@@ -54,6 +54,7 @@ async function migrate() {
       password: TEMP_PASSWORD,
       email_confirm: true, // Skip email verification for existing users
       user_metadata: { name: user.name },
+      app_metadata: { provider: 'email', providers: ['email'] },
     });
 
     if (createError) {
