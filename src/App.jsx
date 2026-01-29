@@ -278,7 +278,7 @@ const App = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const { data } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle();
@@ -451,7 +451,7 @@ const loadData = async () => {
       const memberIds = memberData?.map(m => m.user_id) || [];
 
       const { data: usersData } = await supabase
-        .from('users')
+        .from('profiles')
         .select(`
           id,
           name,
@@ -645,7 +645,7 @@ const loadUserData = async () => {
 
         // Create matching row in users table
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('profiles')
           .insert([{ id: authData.user.id, email: loginEmail.trim(), name: signupName.trim() }])
           .select()
           .maybeSingle();
@@ -674,7 +674,7 @@ const loadUserData = async () => {
 
         // Fetch user profile from users table
         const { data: userData, error: userError } = await supabase
-          .from('users')
+          .from('profiles')
           .select('*')
           .eq('id', authData.user.id)
           .maybeSingle();
@@ -763,7 +763,7 @@ const loadUserData = async () => {
 
       // Update name (and email) in users table
       const { error } = await supabase
-        .from('users')
+        .from('profiles')
         .update({
           name: editName,
           email: editEmail
@@ -1002,7 +1002,7 @@ const handleSaveResults = async (playerId) => {
       // Fetch user info for all member user IDs
       const memberUserIds = members?.map(m => m.user_id).filter(Boolean) || [];
       const { data: usersData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, name')
         .in('id', memberUserIds);
 
