@@ -635,9 +635,9 @@ const loadUserData = async () => {
         // Create matching row in users table
         const { data: userData, error: userError } = await supabase
           .from('users')
-          .insert([{ id: authData.user.id, email: loginEmail, name: signupName }])
+          .insert([{ id: authData.user.id, email: loginEmail.trim(), name: signupName.trim() }])
           .select()
-          .single();
+          .maybeSingle();
 
         if (userError) {
           showNotification('error', 'Error creating profile: ' + userError.message);
@@ -1180,6 +1180,14 @@ const handleSubmitPick = async () => {
   if (showResetPassword) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+        {notification && (
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
+            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+            <span className="font-medium">{notification.message}</span>
+          </div>
+        )}
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
@@ -1222,6 +1230,15 @@ const handleSubmitPick = async () => {
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
+
+        {notification && (
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
+            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+            <span className="font-medium">{notification.message}</span>
+          </div>
+        )}
 
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
           <div className="text-center mb-8">
