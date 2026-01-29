@@ -28,6 +28,15 @@ const App = () => {
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
   const [isSignup, setIsSignup] = useState(false);
+
+  // League state
+  const [currentLeague, setCurrentLeague] = useState(null);
+  const [userLeagues, setUserLeagues] = useState([]);
+  const [userRole, setUserRole] = useState('member');
+  const [showLeagueSelect, setShowLeagueSelect] = useState(false);
+  const [newLeagueName, setNewLeagueName] = useState('');
+  const [joinInviteCode, setJoinInviteCode] = useState('');
+  const [leagueAction, setLeagueAction] = useState('select'); // 'select', 'create', 'join'
   const [expandedRows, setExpandedRows] = useState({});
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [editName, setEditName] = useState('');
@@ -100,6 +109,129 @@ const App = () => {
     }
   };
 
+  // League helper functions
+  const loadUserLeagues = async (userId) => {
+    const { data: memberships } = await supabase
+      .from('league_members')
+      .select('league_id, role, leagues(id, name, invite_code, created_at)')
+      .eq('user_id', userId);
+
+    const leagues = memberships?.map(m => ({
+      ...m.leagues,
+      role: m.role
+    })) || [];
+
+    setUserLeagues(leagues);
+    return leagues;
+  };
+
+  const selectLeague = (league) => {
+    setCurrentLeague(league);
+    setUserRole(league.role);
+    setShowLeagueSelect(false);
+    localStorage.setItem('currentLeagueId', league.id);
+  };
+
+  const handleCreateLeague = async () => {
+    if (!newLeagueName.trim()) {
+      showNotification('error', 'Please enter a league name');
+      return;
+    }
+
+    try {
+      const inviteCode = Math.random().toString(36).substring(2, 10);
+      const { data: league, error } = await supabase
+        .from('leagues')
+        .insert([{ name: newLeagueName.trim(), invite_code: inviteCode, created_by: currentUser.id }])
+        .select()
+        .single();
+
+      if (error) {
+        showNotification('error', 'Error creating league: ' + error.message);
+        return;
+      }
+
+      // Add creator as commissioner
+      await supabase
+        .from('league_members')
+        .insert([{ league_id: league.id, user_id: currentUser.id, role: 'commissioner' }]);
+
+      // Create default league settings
+      await supabase
+        .from('league_settings')
+        .insert([{
+          league_id: league.id,
+          backup_picks_enabled: true,
+          no_pick_penalty: 500,
+          missed_cut_penalty: 10,
+          withdrawal_penalty: 10,
+          dq_penalty: 10
+        }]);
+
+      showNotification('success', `League "${league.name}" created! Invite code: ${inviteCode}`);
+      const leagues = await loadUserLeagues(currentUser.id);
+      const created = leagues.find(l => l.id === league.id);
+      if (created) selectLeague(created);
+      setNewLeagueName('');
+      setLeagueAction('select');
+    } catch (error) {
+      showNotification('error', error.message);
+    }
+  };
+
+  const handleJoinLeague = async () => {
+    if (!joinInviteCode.trim()) {
+      showNotification('error', 'Please enter an invite code');
+      return;
+    }
+
+    try {
+      // Find the league
+      const { data: league, error: findError } = await supabase
+        .from('leagues')
+        .select('*')
+        .eq('invite_code', joinInviteCode.trim())
+        .single();
+
+      if (findError || !league) {
+        showNotification('error', 'Invalid invite code. Please check and try again.');
+        return;
+      }
+
+      // Check if already a member
+      const { data: existing } = await supabase
+        .from('league_members')
+        .select('id')
+        .eq('league_id', league.id)
+        .eq('user_id', currentUser.id)
+        .single();
+
+      if (existing) {
+        showNotification('error', 'You are already a member of this league');
+        return;
+      }
+
+      // Join the league
+      const { error: joinError } = await supabase
+        .from('league_members')
+        .insert([{ league_id: league.id, user_id: currentUser.id, role: 'member' }]);
+
+      if (joinError) {
+        showNotification('error', 'Error joining league: ' + joinError.message);
+        return;
+      }
+
+      showNotification('success', `Joined "${league.name}"!`);
+      const leagues = await loadUserLeagues(currentUser.id);
+      const joined = leagues.find(l => l.id === league.id);
+      if (joined) selectLeague(joined);
+      setJoinInviteCode('');
+      setLeagueAction('select');
+    } catch (error) {
+      showNotification('error', error.message);
+    }
+  };
+
   // Toast notification state
   const [notification, setNotification] = useState(null);
 
@@ -138,10 +270,26 @@ const App = () => {
           .select('*')
           .eq('id', userId)
           .single();
-        
+
         if (data) {
           setCurrentUser(data);
           setShowLogin(false);
+
+          // Load leagues and restore selected league
+          const leagues = await loadUserLeagues(data.id);
+          const savedLeagueId = localStorage.getItem('currentLeagueId');
+          const savedLeague = leagues.find(l => l.id === savedLeagueId);
+
+          if (savedLeague) {
+            selectLeague(savedLeague);
+          } else if (leagues.length === 1) {
+            selectLeague(leagues[0]);
+          } else if (leagues.length > 0) {
+            setShowLeagueSelect(true);
+          } else {
+            // No leagues — show create/join screen
+            setShowLeagueSelect(true);
+          }
         }
       }
       setLoading(false);
@@ -149,12 +297,12 @@ const App = () => {
     loadSession();
   }, []);
 
-// Load initial data
+// Load initial data when user and league are set
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && currentLeague) {
       loadData();
     }
-  }, [currentUser]);
+  }, [currentUser, currentLeague]);
 
   // Update dropdowns when data loads
   useEffect(() => {
@@ -233,11 +381,15 @@ const App = () => {
   }, [tournaments]);
 
 const loadData = async () => {
+    if (!currentLeague) return;
+    const leagueId = currentLeague.id;
+
     try {
       // Load league settings
       const { data: settingsData } = await supabase
         .from('league_settings')
         .select('*')
+        .eq('league_id', leagueId)
         .limit(1)
         .single();
 
@@ -249,32 +401,43 @@ const loadData = async () => {
       const { data: tournamentsData } = await supabase
         .from('tournaments')
         .select('*')
+        .eq('league_id', leagueId)
         .order('week');
 
       setTournaments(tournamentsData || []);
-      
+
       // Load available golfers
       const { data: golfersData } = await supabase
         .from('available_golfers')
         .select('*')
+        .eq('league_id', leagueId)
         .eq('active', true);
-      
+
       setAvailableGolfers(golfersData?.map(g => g.name) || []);
-      
-      // Load all users for standings
+
+      // Load league members with their picks for standings
+      const { data: memberData } = await supabase
+        .from('league_members')
+        .select('user_id, role')
+        .eq('league_id', leagueId);
+
+      const memberIds = memberData?.map(m => m.user_id) || [];
+
       const { data: usersData } = await supabase
         .from('users')
         .select(`
           id,
           name,
           email,
-          picks:picks(golfer_name, winnings, penalty_amount, penalty_reason, tournament_id, backup_golfer_name)
-        `);
+          picks:picks(golfer_name, winnings, penalty_amount, penalty_reason, tournament_id, backup_golfer_name, league_id)
+        `)
+        .in('id', memberIds.length > 0 ? memberIds : ['none']);
       
-// Calculate standings with detailed pick history
+// Calculate standings with detailed pick history (filtered to current league)
 const playersWithWinnings = (usersData || []).map(user => {
+  const leaguePicks = user.picks?.filter(p => p.league_id === leagueId) || [];
   const picksByWeek = (tournamentsData || []).map(tournament => {
-    const pick = user.picks?.find(p => p.tournament_id === tournament.id);
+    const pick = leaguePicks.find(p => p.tournament_id === tournament.id);
     return {
       week: tournament.week,
       tournamentName: tournament.name,
@@ -290,11 +453,11 @@ const playersWithWinnings = (usersData || []).map(user => {
     id: user.id,
     name: user.name,
     email: user.email,
-    winnings: user.picks?.reduce((sum, pick) => sum + (pick.winnings || 0), 0) || 0,
-    penalties: user.picks?.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0) || 0,
-    picks: user.picks?.map(p => p.golfer_name) || [],
+    winnings: leaguePicks.reduce((sum, pick) => sum + (pick.winnings || 0), 0),
+    penalties: leaguePicks.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0),
+    picks: leaguePicks.map(p => p.golfer_name),
     picksByWeek: picksByWeek,
-    currentPick: user.picks?.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
+    currentPick: leaguePicks.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
   };
 });
       
@@ -308,14 +471,15 @@ const playersWithWinnings = (usersData || []).map(user => {
   };
 
   const loadUserDataWithTournaments = async (tournamentsData) => {
-    if (!currentUser) return;
-    
+    if (!currentUser || !currentLeague) return;
+
     setPicksLoading(true);
-    
+
     const { data: picksData } = await supabase
       .from('picks')
       .select('*')
-      .eq('user_id', currentUser.id);
+      .eq('user_id', currentUser.id)
+      .eq('league_id', currentLeague.id);
     
     console.log('All picks data:', picksData);
     
@@ -351,14 +515,15 @@ const playersWithWinnings = (usersData || []).map(user => {
   };
 
 const loadUserData = async () => {
-    if (!currentUser) return;
-    
+    if (!currentUser || !currentLeague) return;
+
     setPicksLoading(true);
-    
+
     const { data: picksData } = await supabase
       .from('picks')
       .select('*')
-      .eq('user_id', currentUser.id);
+      .eq('user_id', currentUser.id)
+      .eq('league_id', currentLeague.id);
     
     console.log('All picks data:', picksData);
     
@@ -426,6 +591,7 @@ const loadUserData = async () => {
 
   const handleLogin = async () => {
     try {
+      let userData;
       if (isSignup) {
         // Simple signup
         const { data, error } = await supabase
@@ -433,13 +599,12 @@ const loadUserData = async () => {
           .insert([{ email: loginEmail, name: signupName, password_hash: loginPassword }])
           .select()
           .single();
-        
+
         if (error) {
           showNotification('error', 'Signup failed: ' + error.message);
           return;
         }
-        setCurrentUser(data);
-        localStorage.setItem('currentUserId', data.id);
+        userData = data;
       } else {
         // Simple login
         const { data, error } = await supabase
@@ -448,16 +613,31 @@ const loadUserData = async () => {
           .eq('email', loginEmail)
           .eq('password_hash', loginPassword)
           .single();
-        
+
         if (error || !data) {
           showNotification('error', 'Invalid email or password');
           return;
         }
-        setCurrentUser(data);
-        localStorage.setItem('currentUserId', data.id);
+        userData = data;
       }
-      
+
+      setCurrentUser(userData);
+      localStorage.setItem('currentUserId', userData.id);
       setShowLogin(false);
+
+      // Load leagues for the user
+      const leagues = await loadUserLeagues(userData.id);
+      const savedLeagueId = localStorage.getItem('currentLeagueId');
+      const savedLeague = leagues.find(l => l.id === savedLeagueId);
+
+      if (savedLeague) {
+        selectLeague(savedLeague);
+      } else if (leagues.length === 1) {
+        selectLeague(leagues[0]);
+      } else {
+        // Show league selection (create/join for new users, pick for multi-league users)
+        setShowLeagueSelect(true);
+      }
     } catch (error) {
       showNotification('error', 'Login error: ' + error.message);
     }
@@ -569,7 +749,7 @@ const loadUserData = async () => {
     try {
       const { error } = await supabase
         .from('available_golfers')
-        .insert([{ name: newGolferName.trim(), active: true }]);
+        .insert([{ name: newGolferName.trim(), active: true, league_id: currentLeague.id }]);
       
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
@@ -597,7 +777,7 @@ const loadUserData = async () => {
           ...newSettings,
           updated_at: new Date().toISOString()
         })
-        .eq('id', leagueSettings.id);
+        .eq('league_id', currentLeague.id);
 
       if (error) {
         showNotification('error', 'Error saving settings: ' + error.message);
@@ -633,24 +813,26 @@ const handleSaveResults = async (playerId) => {
           .insert({
             user_id: playerId,
             tournament_id: tournamentId,
+            league_id: currentLeague.id,
             golfer_name: null,
             backup_golfer_name: null,
             winnings: 0,
             penalty_amount: getPenaltyAmount(penaltyType),
             penalty_reason: penaltyType
           });
-        
+
         if (pickError) {
           showNotification('error', 'Error saving penalty: ' + pickError.message);
           return;
         }
-        
+
         // Add to penalties table
         await supabase
           .from('penalties')
           .upsert({
             user_id: playerId,
             tournament_id: tournamentId,
+            league_id: currentLeague.id,
             penalty_type: penaltyType,
             amount: getPenaltyAmount(penaltyType)
           }, { onConflict: 'user_id,tournament_id' });
@@ -683,11 +865,12 @@ const handleSaveResults = async (playerId) => {
           .upsert({
             user_id: playerId,
             tournament_id: tournamentId,
+            league_id: currentLeague.id,
             penalty_type: penaltyType,
             amount: getPenaltyAmount(penaltyType)
           }, { onConflict: 'user_id,tournament_id' });
       }
-      
+
       showNotification('success', 'Results saved');
       loadData(); // Reload to show updated standings
     } catch (error) {
@@ -704,19 +887,22 @@ const handleSaveResults = async (playerId) => {
 
     setLoadingEditPicks(true);
     try {
-      // Get all picks for this tournament with user info
+      // Get all picks for this tournament with user info (scoped to league)
       const { data: picks, error } = await supabase
         .from('picks')
         .select('*, users(id, name)')
-        .eq('tournament_id', tournamentId);
+        .eq('tournament_id', tournamentId)
+        .eq('league_id', currentLeague.id);
 
       if (error) throw error;
 
-      // Get all users to show those without picks too
-      const { data: allUsers } = await supabase
-        .from('users')
-        .select('id, name')
-        .order('name');
+      // Get league members to show those without picks too
+      const { data: members } = await supabase
+        .from('league_members')
+        .select('user_id, users(id, name)')
+        .eq('league_id', currentLeague.id);
+
+      const allUsers = members?.map(m => m.users).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)) || [];
 
       // Create a map of existing picks
       const picksMap = {};
@@ -786,6 +972,7 @@ const handleSaveResults = async (playerId) => {
           .insert({
             user_id: userId,
             tournament_id: editTournamentId,
+            league_id: currentLeague.id,
             golfer_name: null,
             ...updateData
           });
@@ -800,6 +987,7 @@ const handleSaveResults = async (playerId) => {
           .upsert({
             user_id: userId,
             tournament_id: editTournamentId,
+            league_id: currentLeague.id,
             penalty_type: userData.penalty,
             amount: getPenaltyAmount(userData.penalty)
           }, { onConflict: 'user_id,tournament_id' });
@@ -848,6 +1036,7 @@ const handleSubmitPick = async () => {
         .upsert({
           user_id: currentUser.id,
           tournament_id: currentTournament.id,
+          league_id: currentLeague.id,
           golfer_name: selectedPlayer,
           backup_golfer_name: leagueSettings.backup_picks_enabled ? (backupPlayer || null) : null,
           winnings: 0
@@ -978,6 +1167,157 @@ const handleSubmitPick = async () => {
     );
   }
 
+  // League selection/creation screen
+  if (showLeagueSelect || !currentLeague) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+        <button
+          onClick={() => setDarkMode(!darkMode)}
+          className="fixed top-4 right-4 p-3 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:shadow-xl transition-all duration-200 text-gray-600 dark:text-yellow-400"
+          aria-label="Toggle dark mode"
+        >
+          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        {notification && (
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
+            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          }`}>
+            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+            <span className="font-medium">{notification.message}</span>
+          </div>
+        )}
+
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+              <Trophy className="text-white" size={32} />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Welcome, {currentUser?.name}</p>
+          </div>
+
+          {/* League selection tabs */}
+          <div className="flex border-b border-gray-200 dark:border-slate-600 mb-6">
+            {userLeagues.length > 0 && (
+              <button
+                onClick={() => setLeagueAction('select')}
+                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+              >
+                My Leagues
+              </button>
+            )}
+            <button
+              onClick={() => setLeagueAction('join')}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              Join League
+            </button>
+            <button
+              onClick={() => setLeagueAction('create')}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+            >
+              Create League
+            </button>
+          </div>
+
+          {/* Select existing league */}
+          {leagueAction === 'select' && userLeagues.length > 0 && (
+            <div className="space-y-3">
+              {userLeagues.map(league => (
+                <button
+                  key={league.id}
+                  onClick={() => selectLeague(league)}
+                  className="w-full p-4 bg-gray-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/20 border-2 border-gray-200 dark:border-slate-600 hover:border-green-400 dark:hover:border-green-500 rounded-xl text-left transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-gray-800 dark:text-gray-100">{league.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {league.role === 'commissioner' ? 'Commissioner' : 'Member'}
+                      </p>
+                    </div>
+                    <ChevronRight className="text-gray-400" size={20} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Join a league */}
+          {leagueAction === 'join' && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Enter the invite code from your league commissioner to join an existing league.
+              </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Invite Code</label>
+                <input
+                  type="text"
+                  value={joinInviteCode}
+                  onChange={(e) => setJoinInviteCode(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleJoinLeague()}
+                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  placeholder="e.g. a1b2c3d4"
+                />
+              </div>
+              <button
+                onClick={handleJoinLeague}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+              >
+                Join League
+              </button>
+            </div>
+          )}
+
+          {/* Create a league */}
+          {leagueAction === 'create' && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Create a new league and invite your friends with a unique invite code.
+              </p>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">League Name</label>
+                <input
+                  type="text"
+                  value={newLeagueName}
+                  onChange={(e) => setNewLeagueName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleCreateLeague()}
+                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  placeholder="e.g. Weekend Warriors Golf"
+                />
+              </div>
+              <button
+                onClick={handleCreateLeague}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+              >
+                Create League
+              </button>
+            </div>
+          )}
+
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-600">
+            <button
+              onClick={() => {
+                localStorage.removeItem('currentUserId');
+                localStorage.removeItem('currentLeagueId');
+                setCurrentUser(null);
+                setCurrentLeague(null);
+                setUserLeagues([]);
+                setShowLogin(true);
+                setShowLeagueSelect(false);
+              }}
+              className="w-full text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
       {/* Toast Notification */}
@@ -1010,7 +1350,7 @@ const handleSubmitPick = async () => {
                 <div className="p-2 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl shadow-lg">
                   <Trophy className="text-white" size={28} />
                 </div>
-                <span className="leading-tight bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</span>
+                <span className="leading-tight bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">{currentLeague?.name || 'Golf One and Done'}</span>
               </h1>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -1045,10 +1385,25 @@ const handleSubmitPick = async () => {
                     <Bell size={14} />
                     Notifications
                   </button>
+                  {userLeagues.length > 1 && (
+                    <button
+                      onClick={() => {
+                        setCurrentLeague(null);
+                        setShowLeagueSelect(true);
+                      }}
+                      className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
+                    >
+                      <ChevronDown size={14} />
+                      Switch League
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       localStorage.removeItem('currentUserId');
+                      localStorage.removeItem('currentLeagueId');
                       setCurrentUser(null);
+                      setCurrentLeague(null);
+                      setUserLeagues([]);
                       setShowLogin(true);
                     }}
                     className="text-xs sm:text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-1.5 transition-colors"
@@ -1531,7 +1886,7 @@ const handleSubmitPick = async () => {
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Commissioner</h2>
 
-                {!currentUser?.is_admin ? (
+                {userRole !== 'commissioner' ? (
                   <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
                     <Shield className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={64} />
                     <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Commissioner Only</h3>
@@ -1541,6 +1896,31 @@ const handleSubmitPick = async () => {
                   </div>
                 ) : (
                   <div className="space-y-6">
+                    {/* Invite Code */}
+                    <div className="bg-white dark:bg-slate-700 border border-green-300 dark:border-green-600 rounded-xl p-6 shadow-lg">
+                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100 mb-3">
+                        <Mail className="text-green-600 dark:text-green-400" />
+                        Invite Members
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Share this code with friends so they can join your league.
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 p-3 bg-gray-100 dark:bg-slate-600 rounded-xl font-mono text-lg text-center font-bold text-gray-800 dark:text-gray-100 tracking-widest select-all">
+                          {currentLeague?.invite_code}
+                        </div>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentLeague?.invite_code || '');
+                            showNotification('success', 'Invite code copied!');
+                          }}
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors active:scale-95"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
                     {/* League Settings */}
                     <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
                       <button
