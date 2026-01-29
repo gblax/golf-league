@@ -1298,7 +1298,7 @@ const handleSubmitPick = async () => {
                 </div>
 
                 {/* Current Selection - Prominent at top */}
-                {(selectedPlayer || currentWeekPick.golfer) && (
+                {currentWeekPick.golfer && (
                   <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1308,10 +1308,10 @@ const handleSubmitPick = async () => {
                             {formatPrizePool(currentTournament?.prize_pool)} purse
                           </span>
                         </div>
-                        <p className="text-white text-xl font-bold">{selectedPlayer || currentWeekPick.golfer}</p>
-                        {leagueSettings.backup_picks_enabled && (backupPlayer || currentWeekPick.backup) && (
+                        <p className="text-white text-xl font-bold">{currentWeekPick.golfer}</p>
+                        {leagueSettings.backup_picks_enabled && currentWeekPick.backup && (
                           <p className="text-blue-200 text-sm mt-1">
-                            Backup: <span className="font-semibold text-white">{backupPlayer || currentWeekPick.backup}</span>
+                            Backup: <span className="font-semibold text-white">{currentWeekPick.backup}</span>
                           </p>
                         )}
                       </div>
@@ -1321,7 +1321,7 @@ const handleSubmitPick = async () => {
                 )}
 
                 {/* No selection prompt */}
-                {!selectedPlayer && !currentWeekPick.golfer && (
+                {!currentWeekPick.golfer && (
                   <div className="mb-6 p-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600">
                     <div className="text-center">
                       <p className="text-gray-500 dark:text-gray-400 mb-2">
