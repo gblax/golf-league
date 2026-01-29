@@ -44,7 +44,6 @@ const App = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showAddGolfer, setShowAddGolfer] = useState(false);
   const [newGolferName, setNewGolferName] = useState('');
