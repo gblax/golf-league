@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -65,6 +65,40 @@ const App = () => {
     dq_penalty: 10
   });
   const [showLeagueSettings, setShowLeagueSettings] = useState(false);
+
+  // Refresh state
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Clear service worker caches for fresh data
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames.map(name => caches.delete(name))
+        );
+      }
+      // Check for service worker updates
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.getRegistration();
+        if (registration) {
+          await registration.update();
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
+      }
+      // Reload data from network
+      await loadData();
+      showNotification('success', 'App refreshed successfully');
+    } catch (err) {
+      console.error('Refresh failed:', err);
+      showNotification('error', 'Refresh failed. Try again.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Toast notification state
   const [notification, setNotification] = useState(null);
@@ -1024,14 +1058,24 @@ const handleSubmitPick = async () => {
                   </button>
                 </div>
               </div>
-              {/* Dark mode toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="sm:absolute sm:top-4 sm:right-4 p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-yellow-400 transition-all duration-200 ml-auto sm:ml-0"
-                aria-label="Toggle dark mode"
-              >
-                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
+              {/* Refresh and dark mode toggles */}
+              <div className="flex gap-2 ml-auto sm:ml-0 sm:absolute sm:top-4 sm:right-4">
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-400 transition-all duration-200 disabled:opacity-50"
+                  aria-label="Refresh app"
+                >
+                  <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+                </button>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-yellow-400 transition-all duration-200"
+                  aria-label="Toggle dark mode"
+                >
+                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
+              </div>
             </div>
           </div>
 
