@@ -114,13 +114,24 @@ const App = () => {
   const loadUserLeagues = async (userId) => {
     const { data: memberships } = await supabase
       .from('league_members')
-      .select('league_id, role, leagues(id, name, invite_code, created_at)')
+      .select('league_id, role')
       .eq('user_id', userId);
 
-    const leagues = memberships?.map(m => ({
-      ...m.leagues,
-      role: m.role
-    })) || [];
+    if (!memberships || memberships.length === 0) {
+      setUserLeagues([]);
+      return [];
+    }
+
+    const leagueIds = memberships.map(m => m.league_id);
+    const { data: leaguesData } = await supabase
+      .from('leagues')
+      .select('id, name, invite_code, created_at')
+      .in('id', leagueIds);
+
+    const leagues = (leaguesData || []).map(league => ({
+      ...league,
+      role: memberships.find(m => m.league_id === league.id)?.role || 'member'
+    }));
 
     setUserLeagues(leagues);
     return leagues;
@@ -973,22 +984,36 @@ const handleSaveResults = async (playerId) => {
 
     setLoadingEditPicks(true);
     try {
-      // Get all picks for this tournament with user info (scoped to league)
+      // Get all picks for this tournament (scoped to league)
       const { data: picks, error } = await supabase
         .from('picks')
-        .select('*, users(id, name)')
+        .select('*')
         .eq('tournament_id', tournamentId)
         .eq('league_id', currentLeague.id);
 
       if (error) throw error;
 
-      // Get league members to show those without picks too
+      // Get league members
       const { data: members } = await supabase
         .from('league_members')
-        .select('user_id, users(id, name)')
+        .select('user_id')
         .eq('league_id', currentLeague.id);
 
-      const allUsers = members?.map(m => m.users).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)) || [];
+      // Fetch user info for all member user IDs
+      const memberUserIds = members?.map(m => m.user_id).filter(Boolean) || [];
+      const { data: usersData } = await supabase
+        .from('users')
+        .select('id, name')
+        .in('id', memberUserIds);
+
+      const allUsers = (usersData || []).sort((a, b) => a.name.localeCompare(b.name));
+
+      // Attach user info to picks
+      const usersMap = {};
+      allUsers.forEach(u => { usersMap[u.id] = u; });
+      picks?.forEach(pick => {
+        pick.users = usersMap[pick.user_id] || null;
+      });
 
       // Create a map of existing picks
       const picksMap = {};
