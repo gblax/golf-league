@@ -601,11 +601,19 @@ const loadUserData = async () => {
   const currentWeek = getCurrentTournament()?.week || 1;
 
   const handleLogin = async () => {
+    if (!loginEmail.trim() || !loginPassword) {
+      showNotification('error', 'Email and password are required');
+      return;
+    }
+    if (isSignup && !signupName.trim()) {
+      showNotification('error', 'Name is required');
+      return;
+    }
     try {
       if (isSignup) {
         // Supabase Auth signup
         const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: loginEmail,
+          email: loginEmail.trim(),
           password: loginPassword,
         });
 
@@ -639,7 +647,7 @@ const loadUserData = async () => {
       } else {
         // Supabase Auth login
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-          email: loginEmail,
+          email: loginEmail.trim(),
           password: loginPassword,
         });
 
