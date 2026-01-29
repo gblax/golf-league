@@ -23,7 +23,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [picksLoading, setPicksLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [showLogin, setShowLogin] = useState(!localStorage.getItem('currentUserId'));
+  const [showLogin, setShowLogin] = useState(true);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [signupName, setSignupName] = useState('');
@@ -41,7 +41,6 @@ const App = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showAddGolfer, setShowAddGolfer] = useState(false);
@@ -260,15 +259,15 @@ const App = () => {
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
-  // Restore session on page load
+  // Restore session on page load and listen for auth changes
   useEffect(() => {
     const loadSession = async () => {
-      const userId = localStorage.getItem('currentUserId');
-      if (userId) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
         const { data } = await supabase
           .from('users')
           .select('*')
-          .eq('id', userId)
+          .eq('id', session.user.id)
           .single();
 
         if (data) {
@@ -287,7 +286,6 @@ const App = () => {
           } else if (leagues.length > 0) {
             setShowLeagueSelect(true);
           } else {
-            // No leagues — show create/join screen
             setShowLeagueSelect(true);
           }
         }
@@ -295,6 +293,19 @@ const App = () => {
       setLoading(false);
     };
     loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setCurrentLeague(null);
+        setUserLeagues([]);
+        setShowLogin(true);
+        setShowLeagueSelect(false);
+        localStorage.removeItem('currentLeagueId');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
 // Load initial data when user and league are set
@@ -591,52 +602,80 @@ const loadUserData = async () => {
 
   const handleLogin = async () => {
     try {
-      let userData;
       if (isSignup) {
-        // Simple signup
-        const { data, error } = await supabase
+        // Supabase Auth signup
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: loginEmail,
+          password: loginPassword,
+        });
+
+        if (authError) {
+          showNotification('error', 'Signup failed: ' + authError.message);
+          return;
+        }
+
+        if (!authData.user) {
+          showNotification('error', 'Signup failed. Please try again.');
+          return;
+        }
+
+        // Create matching row in users table
+        const { data: userData, error: userError } = await supabase
           .from('users')
-          .insert([{ email: loginEmail, name: signupName, password_hash: loginPassword }])
+          .insert([{ id: authData.user.id, email: loginEmail, name: signupName }])
           .select()
           .single();
 
-        if (error) {
-          showNotification('error', 'Signup failed: ' + error.message);
+        if (userError) {
+          showNotification('error', 'Error creating profile: ' + userError.message);
           return;
         }
-        userData = data;
-      } else {
-        // Simple login
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', loginEmail)
-          .eq('password_hash', loginPassword)
-          .single();
 
-        if (error || !data) {
+        setCurrentUser(userData);
+        setShowLogin(false);
+
+        // New user — show league create/join
+        setShowLeagueSelect(true);
+      } else {
+        // Supabase Auth login
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: loginEmail,
+          password: loginPassword,
+        });
+
+        if (authError) {
           showNotification('error', 'Invalid email or password');
           return;
         }
-        userData = data;
-      }
 
-      setCurrentUser(userData);
-      localStorage.setItem('currentUserId', userData.id);
-      setShowLogin(false);
+        // Fetch user profile from users table
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
 
-      // Load leagues for the user
-      const leagues = await loadUserLeagues(userData.id);
-      const savedLeagueId = localStorage.getItem('currentLeagueId');
-      const savedLeague = leagues.find(l => l.id === savedLeagueId);
+        if (userError || !userData) {
+          showNotification('error', 'Account not found. Please sign up.');
+          await supabase.auth.signOut();
+          return;
+        }
 
-      if (savedLeague) {
-        selectLeague(savedLeague);
-      } else if (leagues.length === 1) {
-        selectLeague(leagues[0]);
-      } else {
-        // Show league selection (create/join for new users, pick for multi-league users)
-        setShowLeagueSelect(true);
+        setCurrentUser(userData);
+        setShowLogin(false);
+
+        // Load leagues for the user
+        const leagues = await loadUserLeagues(userData.id);
+        const savedLeagueId = localStorage.getItem('currentLeagueId');
+        const savedLeague = leagues.find(l => l.id === savedLeagueId);
+
+        if (savedLeague) {
+          selectLeague(savedLeague);
+        } else if (leagues.length === 1) {
+          selectLeague(leagues[0]);
+        } else {
+          setShowLeagueSelect(true);
+        }
       }
     } catch (error) {
       showNotification('error', 'Login error: ' + error.message);
@@ -650,6 +689,16 @@ const loadUserData = async () => {
     }
 
     try {
+      // If email changed, update it in Supabase Auth
+      if (editEmail !== currentUser.email) {
+        const { error: authError } = await supabase.auth.updateUser({ email: editEmail });
+        if (authError) {
+          showNotification('error', 'Error updating email: ' + authError.message);
+          return;
+        }
+      }
+
+      // Update name (and email) in users table
       const { error } = await supabase
         .from('users')
         .update({
@@ -657,25 +706,26 @@ const loadUserData = async () => {
           email: editEmail
         })
         .eq('id', currentUser.id);
-      
+
       if (error) {
         showNotification('error', 'Error updating profile: ' + error.message);
         return;
       }
-      
-      // Update local state
+
       setCurrentUser({ ...currentUser, name: editName, email: editEmail });
-      showNotification('success', 'Profile updated successfully!');
+      showNotification('success', editEmail !== currentUser.email
+        ? 'Profile updated! Check your new email to confirm the change.'
+        : 'Profile updated successfully!');
       setShowAccountSettings(false);
-      loadData(); // Reload to update standings
+      loadData();
     } catch (error) {
       showNotification('error', error.message);
     }
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      showNotification('error', 'All password fields are required');
+    if (!newPassword || !confirmPassword) {
+      showNotification('error', 'New password fields are required');
       return;
     }
 
@@ -690,29 +740,13 @@ const loadUserData = async () => {
     }
 
     try {
-      // Verify current password
-      const { data: verifyData } = await supabase
-        .from('users')
-        .select('password_hash')
-        .eq('id', currentUser.id)
-        .single();
-      
-      if (verifyData.password_hash !== currentPassword) {
-        showNotification('error', 'Current password is incorrect');
-        return;
-      }
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
 
-      // Update password
-      const { error } = await supabase
-        .from('users')
-        .update({ password_hash: newPassword })
-        .eq('id', currentUser.id);
-      
       if (error) {
         showNotification('error', 'Error updating password: ' + error.message);
         return;
       }
-      
+
       showNotification('success', 'Password updated successfully!');
       setCurrentPassword('');
       setNewPassword('');
@@ -1298,14 +1332,9 @@ const handleSubmitPick = async () => {
 
           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-600">
             <button
-              onClick={() => {
-                localStorage.removeItem('currentUserId');
+              onClick={async () => {
+                await supabase.auth.signOut();
                 localStorage.removeItem('currentLeagueId');
-                setCurrentUser(null);
-                setCurrentLeague(null);
-                setUserLeagues([]);
-                setShowLogin(true);
-                setShowLeagueSelect(false);
               }}
               className="w-full text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
             >
@@ -1398,13 +1427,9 @@ const handleSubmitPick = async () => {
                     </button>
                   )}
                   <button
-                    onClick={() => {
-                      localStorage.removeItem('currentUserId');
+                    onClick={async () => {
+                      await supabase.auth.signOut();
                       localStorage.removeItem('currentLeagueId');
-                      setCurrentUser(null);
-                      setCurrentLeague(null);
-                      setUserLeagues([]);
-                      setShowLogin(true);
                     }}
                     className="text-xs sm:text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-1.5 transition-colors"
                   >
@@ -1508,17 +1533,6 @@ const handleSubmitPick = async () => {
                     <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Change Password</h3>
 
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
-                        <input
-                          type="password"
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
-                          placeholder="Enter current password"
-                        />
-                      </div>
-
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
                         <input
