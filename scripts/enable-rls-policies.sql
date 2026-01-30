@@ -6,20 +6,20 @@
 -- all queries and Supabase returns 500 "Database error querying schema".
 
 -- ============================================================
--- USERS
+-- PROFILES (formerly "users", renamed to avoid auth.users conflict)
 -- ============================================================
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can read own profile"
-  ON users FOR SELECT
+  ON profiles FOR SELECT
   USING (auth.uid() = id);
 
 CREATE POLICY "Users can update own profile"
-  ON users FOR UPDATE
+  ON profiles FOR UPDATE
   USING (auth.uid() = id);
 
 CREATE POLICY "Users can insert own profile"
-  ON users FOR INSERT
+  ON profiles FOR INSERT
   WITH CHECK (auth.uid() = id);
 
 -- ============================================================

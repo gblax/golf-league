@@ -33,7 +33,7 @@ const TEMP_PASSWORD = process.env.TEMP_PASSWORD || 'ChangeMe123!';
 async function migrate() {
   // Fetch all existing users
   const { data: users, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('id, email, name');
 
   if (error) {

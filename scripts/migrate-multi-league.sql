@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS leagues (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name TEXT NOT NULL,
   invite_code TEXT UNIQUE NOT NULL,
-  created_by UUID REFERENCES users(id),
+  created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS leagues (
 CREATE TABLE IF NOT EXISTS league_members (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   league_id UUID NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('commissioner', 'member')),
   joined_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(league_id, user_id)
@@ -42,7 +42,7 @@ DECLARE
   admin_user_id UUID;
 BEGIN
   -- Find the existing admin user
-  SELECT id INTO admin_user_id FROM users WHERE is_admin = true LIMIT 1;
+    SELECT id INTO admin_user_id FROM profiles WHERE is_admin = true LIMIT 1;
 
   -- Create the default league
   INSERT INTO leagues (name, invite_code, created_by)
@@ -55,7 +55,7 @@ BEGIN
     default_league_id,
     id,
     CASE WHEN is_admin = true THEN 'commissioner' ELSE 'member' END
-  FROM users;
+  FROM profiles;
 
   -- Backfill league_id on all existing rows
   UPDATE tournaments SET league_id = default_league_id WHERE league_id IS NULL;

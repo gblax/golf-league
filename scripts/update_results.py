@@ -3,6 +3,7 @@
 Golf League Results Updater
 
 Scrapes ESPN PGA leaderboard, uses Gemini to parse it, and updates Supabase.
+Processes picks across all leagues, applying each league's own penalty settings.
 """
 
 import os
@@ -157,7 +158,7 @@ def get_supabase_client() -> Client:
 def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict:
     """
     Find a tournament in the database by matching the ESPN tournament name.
-    Uses fuzzy matching to handle slight name differences.
+    Tournaments are shared across all leagues.
     """
     # Get all tournaments
     response = supabase.table("tournaments").select("*").order("week", desc=True).execute()
@@ -197,13 +198,7 @@ def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict
 def get_tournament_to_update(supabase: Client) -> dict:
     """
     Get the tournament that needs results updated.
-
-    Logic: Find the most recent tournament that:
-    1. Has ended (tournament_date + 3 days has passed)
-    2. Is not yet marked as completed
-
-    This handles the Monday morning scenario where we want to update
-    results for the tournament that just finished over the weekend.
+    Tournaments are shared across all leagues.
     """
     from datetime import datetime, timedelta
 
@@ -233,28 +228,46 @@ def get_tournament_to_update(supabase: Client) -> dict:
                 return tournament
 
     # If no ended tournament found, return the earliest incomplete one
-    # (this handles the case where script runs mid-tournament)
     return response.data[-1] if response.data else None
 
 
 def get_picks_for_tournament(supabase: Client, tournament_id: str) -> list[dict]:
-    """Get all picks for the current tournament."""
-    response = supabase.table("picks").select("*, users(name)").eq("tournament_id", tournament_id).execute()
-    return response.data or []
+    """Get all picks for a tournament across all leagues."""
+    # Fetch picks without embedded join (profiles table renamed from users)
+    response = supabase.table("picks").select("*").eq("tournament_id", tournament_id).execute()
+    picks = response.data or []
+
+    # Fetch user names separately
+    user_ids = list(set(p["user_id"] for p in picks if p.get("user_id")))
+    users_map = {}
+    if user_ids:
+        users_response = supabase.table("profiles").select("id, name").in_("id", user_ids).execute()
+        for user in (users_response.data or []):
+            users_map[user["id"]] = user
+
+    # Attach user info to picks
+    for pick in picks:
+        pick["user_info"] = users_map.get(pick.get("user_id"), {})
+
+    return picks
 
 
-def get_league_settings(supabase: Client) -> dict:
-    """Get league settings for penalty amounts."""
-    response = supabase.table("league_settings").select("*").limit(1).execute()
-    if response.data:
-        return response.data[0]
-    # Default values if no settings found
-    return {
-        "no_pick_penalty": 500,
-        "missed_cut_penalty": 10,
-        "withdrawal_penalty": 10,
-        "dq_penalty": 10
-    }
+def get_all_league_settings(supabase: Client) -> dict:
+    """Get settings for all leagues, keyed by league_id."""
+    response = supabase.table("league_settings").select("*").execute()
+    settings_map = {}
+    for settings in (response.data or []):
+        settings_map[settings["league_id"]] = settings
+
+    return settings_map
+
+
+DEFAULT_LEAGUE_SETTINGS = {
+    "no_pick_penalty": 500,
+    "missed_cut_penalty": 10,
+    "withdrawal_penalty": 10,
+    "dq_penalty": 10
+}
 
 
 def update_pick_winnings(supabase: Client, pick_id: str, winnings: int, penalty_amount: int = 0, penalty_reason: str = None):
@@ -307,7 +320,7 @@ def calculate_penalty(status: str, position: str, league_settings: dict) -> tupl
 
 
 def update_results(dry_run: bool = True, mark_complete: bool = False):
-    """Main function to update tournament results."""
+    """Main function to update tournament results across all leagues."""
     print("=" * 50)
     print("Golf League Results Updater")
     print("=" * 50)
@@ -315,12 +328,9 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
     # Initialize
     supabase = get_supabase_client()
 
-    # Load league settings for penalty amounts
-    league_settings = get_league_settings(supabase)
-    print(f"League settings loaded: no_pick=${league_settings.get('no_pick_penalty')}, "
-          f"missed_cut=${league_settings.get('missed_cut_penalty')}, "
-          f"withdrawal=${league_settings.get('withdrawal_penalty')}, "
-          f"dq=${league_settings.get('dq_penalty')}")
+    # Load all league settings
+    all_league_settings = get_all_league_settings(supabase)
+    print(f"Loaded settings for {len(all_league_settings)} league(s)")
 
     # Scrape and parse leaderboard FIRST to get tournament name
     raw_text = scrape_espn_leaderboard()
@@ -341,94 +351,113 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
 
     print(f"Matched to: {tournament['name']} (Week {tournament['week']})")
 
-    # Get picks for this tournament
+    # Get all picks for this tournament across all leagues
     picks = get_picks_for_tournament(supabase, tournament["id"])
-    print(f"\nFound {len(picks)} picks for this tournament")
+    print(f"\nFound {len(picks)} picks across all leagues for this tournament")
+
+    # Group picks by league for per-league penalty settings
+    picks_by_league = {}
+    for pick in picks:
+        league_id = pick.get("league_id", "unknown")
+        if league_id not in picks_by_league:
+            picks_by_league[league_id] = []
+        picks_by_league[league_id].append(pick)
 
     # Match picks to results and update
-    print("\n" + "-" * 50)
-    print("Matching picks to leaderboard results:")
-    print("-" * 50)
-
     updates = []
 
-    for pick in picks:
-        golfer_name = pick.get("golfer_name")
-        user_name = pick.get("users", {}).get("name", "Unknown User")
+    for league_id, league_picks in picks_by_league.items():
+        league_settings = all_league_settings.get(league_id, DEFAULT_LEAGUE_SETTINGS)
 
-        if not golfer_name:
-            # Check if commissioner already entered a penalty manually
-            existing_penalty = pick.get("penalty_amount", 0) or 0
-            existing_reason = pick.get("penalty_reason")
+        print(f"\n{'─' * 50}")
+        print(f"League: {league_id}")
+        print(f"  Settings: no_pick=${league_settings.get('no_pick_penalty', 500)}, "
+              f"missed_cut=${league_settings.get('missed_cut_penalty', 10)}, "
+              f"wd=${league_settings.get('withdrawal_penalty', 10)}, "
+              f"dq=${league_settings.get('dq_penalty', 10)}")
+        print(f"{'─' * 50}")
 
-            if existing_penalty > 0 and existing_reason:
-                print(f"  {user_name}: No pick submitted (PRESERVING existing penalty: ${existing_penalty} - {existing_reason})")
+        for pick in league_picks:
+            golfer_name = pick.get("golfer_name")
+            user_name = pick.get("user_info", {}).get("name", "Unknown User")
+
+            if not golfer_name:
+                # Check if commissioner already entered a penalty manually
+                existing_penalty = pick.get("penalty_amount", 0) or 0
+                existing_reason = pick.get("penalty_reason")
+
+                if existing_penalty > 0 and existing_reason:
+                    print(f"  {user_name}: No pick submitted (PRESERVING existing penalty: ${existing_penalty} - {existing_reason})")
+                    updates.append({
+                        "pick_id": pick["id"],
+                        "user": user_name,
+                        "league_id": league_id,
+                        "golfer": None,
+                        "winnings": 0,
+                        "penalty": existing_penalty,
+                        "penalty_reason": existing_reason,
+                        "preserved": True
+                    })
+                else:
+                    no_pick_penalty = league_settings.get("no_pick_penalty", 500)
+                    print(f"  {user_name}: No pick submitted (penalty: ${no_pick_penalty})")
+                    updates.append({
+                        "pick_id": pick["id"],
+                        "user": user_name,
+                        "league_id": league_id,
+                        "golfer": None,
+                        "winnings": 0,
+                        "penalty": no_pick_penalty,
+                        "penalty_reason": "no_pick"
+                    })
+                continue
+
+            result = match_golfer_name(golfer_name, leaderboard_results)
+
+            if result:
+                winnings = result.get("winnings", 0) or 0
+
+                # Check if commissioner already entered a penalty manually
+                existing_penalty = pick.get("penalty_amount", 0) or 0
+                existing_reason = pick.get("penalty_reason")
+
+                if existing_penalty > 0 and existing_reason:
+                    # Preserve manually-entered penalty
+                    penalty = existing_penalty
+                    penalty_reason = existing_reason
+                    print(f"  {user_name}: {golfer_name} -> {result['position']} ({result['score']}) = ${winnings:,}")
+                    print(f"    ^ PRESERVING existing penalty: ${penalty} ({penalty_reason})")
+                else:
+                    # Calculate penalty from leaderboard status
+                    penalty, penalty_reason = calculate_penalty(result.get("status", ""), result.get("position", ""), league_settings)
+                    print(f"  {user_name}: {golfer_name} -> {result['position']} ({result['score']}) = ${winnings:,}")
+                    if penalty > 0:
+                        print(f"    ^ Penalty: ${penalty} ({penalty_reason})")
+
                 updates.append({
                     "pick_id": pick["id"],
                     "user": user_name,
-                    "golfer": None,
-                    "winnings": 0,
-                    "penalty": existing_penalty,
-                    "penalty_reason": existing_reason,
-                    "preserved": True
+                    "league_id": league_id,
+                    "golfer": golfer_name,
+                    "position": result["position"],
+                    "score": result["score"],
+                    "winnings": winnings,
+                    "penalty": penalty,
+                    "penalty_reason": penalty_reason,
+                    "preserved": existing_penalty > 0 and existing_reason is not None
                 })
             else:
-                no_pick_penalty = league_settings.get("no_pick_penalty", 500)
-                print(f"  {user_name}: No pick submitted (penalty: ${no_pick_penalty})")
+                print(f"  {user_name}: {golfer_name} -> NOT FOUND on leaderboard")
                 updates.append({
                     "pick_id": pick["id"],
                     "user": user_name,
-                    "golfer": None,
+                    "league_id": league_id,
+                    "golfer": golfer_name,
                     "winnings": 0,
-                    "penalty": no_pick_penalty,
-                    "penalty_reason": "no_pick"
+                    "penalty": 0,
+                    "penalty_reason": None,
+                    "error": "not_found"
                 })
-            continue
-
-        result = match_golfer_name(golfer_name, leaderboard_results)
-
-        if result:
-            winnings = result.get("winnings", 0) or 0
-
-            # Check if commissioner already entered a penalty manually
-            existing_penalty = pick.get("penalty_amount", 0) or 0
-            existing_reason = pick.get("penalty_reason")
-
-            if existing_penalty > 0 and existing_reason:
-                # Preserve manually-entered penalty
-                penalty = existing_penalty
-                penalty_reason = existing_reason
-                print(f"  {user_name}: {golfer_name} -> {result['position']} ({result['score']}) = ${winnings:,}")
-                print(f"    ^ PRESERVING existing penalty: ${penalty} ({penalty_reason})")
-            else:
-                # Calculate penalty from leaderboard status
-                penalty, penalty_reason = calculate_penalty(result.get("status", ""), result.get("position", ""), league_settings)
-                print(f"  {user_name}: {golfer_name} -> {result['position']} ({result['score']}) = ${winnings:,}")
-                if penalty > 0:
-                    print(f"    ^ Penalty: ${penalty} ({penalty_reason})")
-
-            updates.append({
-                "pick_id": pick["id"],
-                "user": user_name,
-                "golfer": golfer_name,
-                "position": result["position"],
-                "score": result["score"],
-                "winnings": winnings,
-                "penalty": penalty,
-                "penalty_reason": penalty_reason,
-                "preserved": existing_penalty > 0 and existing_reason is not None
-            })
-        else:
-            print(f"  {user_name}: {golfer_name} -> NOT FOUND on leaderboard")
-            updates.append({
-                "pick_id": pick["id"],
-                "user": user_name,
-                "golfer": golfer_name,
-                "winnings": 0,
-                "penalty": 0,
-                "penalty_reason": None,
-                "error": "not_found"
-            })
 
     # Summary
     print("\n" + "=" * 50)

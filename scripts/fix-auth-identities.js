@@ -25,7 +25,7 @@ const TEMP_PASSWORD = process.env.TEMP_PASSWORD || 'ChangeMe123!';
 async function fix() {
   // Fetch all users from the app's users table
   const { data: users, error } = await supabase
-    .from('users')
+    .from('profiles')
     .select('id, email, name');
 
   if (error) {
