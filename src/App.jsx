@@ -609,7 +609,7 @@ const playersWithWinnings = (usersData || []).map(user => {
     return {
       week: tournament.week,
       tournamentName: tournament.name,
-      golfer: pick?.golfer_name || null,
+      golfer: (pick?.golfer_name && pick.golfer_name !== 'No Pick') ? pick.golfer_name : null,
       backup: pick?.backup_golfer_name || null,
       winnings: pick?.winnings || 0,
       penalty: pick?.penalty_amount || 0,
@@ -1803,10 +1803,19 @@ const handleSubmitPick = async () => {
           {/* Notification Settings Panel */}
           {showSettings && (
             <div className="mt-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-6 border border-gray-200 dark:border-slate-600 transition-colors">
-              <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-200">
-                <Bell className="text-green-600 dark:text-green-400" />
-                Notification Settings
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-200">
+                  <Bell className="text-green-600 dark:text-green-400" />
+                  Notification Settings
+                </h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  aria-label="Close notification settings"
+                >
+                  <XCircle size={20} />
+                </button>
+              </div>
               <div className="space-y-3">
                 {!pushSupported ? (
                   <p className="text-gray-600 dark:text-gray-400">
@@ -2771,9 +2780,11 @@ const handleSubmitPick = async () => {
 
                                 // Current user can always see their own pick
                                 if (isCurrentUser) {
-                                  return player.currentPick?.golfer_name ? (
+                                  const pickName = player.currentPick?.golfer_name;
+                                  const hasRealPick = pickName && pickName !== 'No Pick';
+                                  return hasRealPick ? (
                                     <div>
-                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
+                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{pickName}</div>
                                       {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
                                         <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
                                       )}
@@ -2785,7 +2796,9 @@ const handleSubmitPick = async () => {
 
                                 // Other users - hide if NOT locked yet
                                 if (!isLocked) {
-                                  return player.currentPick?.golfer_name ? (
+                                  const otherPickName = player.currentPick?.golfer_name;
+                                  const otherHasReal = otherPickName && otherPickName !== 'No Pick';
+                                  return otherHasReal ? (
                                     <span className="text-gray-500 dark:text-gray-400">🔒</span>
                                   ) : (
                                     <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
@@ -2793,16 +2806,20 @@ const handleSubmitPick = async () => {
                                 }
 
                                 // Locked - show everyone's picks
-                                return player.currentPick?.golfer_name ? (
-                                  <div>
-                                    <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{player.currentPick.golfer_name}</div>
-                                    {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
-                                      <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
-                                );
+                                {
+                                  const lockedPickName = player.currentPick?.golfer_name;
+                                  const lockedHasReal = lockedPickName && lockedPickName !== 'No Pick';
+                                  return lockedHasReal ? (
+                                    <div>
+                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{lockedPickName}</div>
+                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
+                                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
+                                  );
+                                }
                               })()}
                             </td>
                             <td className="py-2 sm:py-3 px-1 sm:px-2 text-center">
@@ -3302,28 +3319,38 @@ const handleSubmitPick = async () => {
                               <p className="font-semibold text-gray-800 dark:text-gray-100">{player.name}</p>
                             </div>
                             <div className="text-right">
-                              {player.currentPick?.golfer_name ? (
-                                isLocked ? (
+                              {(() => {
+                                const infoPickName = player.currentPick?.golfer_name;
+                                const infoHasReal = infoPickName && infoPickName !== 'No Pick';
+                                if (infoHasReal) {
+                                  return isLocked ? (
+                                    <div>
+                                      <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
+                                      <span className="text-green-700 dark:text-green-400 font-semibold">Submitted</span>
+                                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                        {infoPickName}
+                                        {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div>
+                                      <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
+                                      <span className="text-green-700 dark:text-green-400 font-semibold">Submitted (Hidden)</span>
+                                    </div>
+                                  );
+                                }
+                                return isLocked ? (
                                   <div>
-                                    <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
-                                    <span className="text-green-700 dark:text-green-400 font-semibold">Submitted</span>
-                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                      {player.currentPick.golfer_name}
-                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                                    </p>
+                                    <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
+                                    <span className="text-red-700 dark:text-red-400 font-semibold">No Pick</span>
                                   </div>
                                 ) : (
                                   <div>
-                                    <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
-                                    <span className="text-green-700 dark:text-green-400 font-semibold">Submitted (Hidden)</span>
+                                    <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
+                                    <span className="text-red-700 dark:text-red-400 font-semibold">Pending</span>
                                   </div>
-                                )
-                              ) : (
-                                <div>
-                                  <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
-                                  <span className="text-red-700 dark:text-red-400 font-semibold">Pending</span>
-                                </div>
-                              )}
+                                );
+                              })()}
                             </div>
                           </div>
                         );
