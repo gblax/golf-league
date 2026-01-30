@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw, Menu } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -54,6 +54,7 @@ const App = () => {
   const [showBackupDropdown, setShowBackupDropdown] = useState(false);
   const [timeUntilLock, setTimeUntilLock] = useState('');
   const [lockUrgent, setLockUrgent] = useState(false);
+  const [lockTimeLabel, setLockTimeLabel] = useState('');
   
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -73,9 +74,14 @@ const App = () => {
     no_pick_penalty: 10,
     missed_cut_penalty: 10,
     withdrawal_penalty: 10,
-    dq_penalty: 10
+    dq_penalty: 10,
+    buy_in_amount: 50,
+    payout_first_pct: 65,
+    payout_second_pct: 25,
+    payout_third_pct: 10
   });
   const [showLeagueSettings, setShowLeagueSettings] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Refresh state
   const [refreshing, setRefreshing] = useState(false);
@@ -188,7 +194,11 @@ const App = () => {
           no_pick_penalty: 10,
           missed_cut_penalty: 10,
           withdrawal_penalty: 10,
-          dq_penalty: 10
+          dq_penalty: 10,
+          buy_in_amount: 50,
+          payout_first_pct: 65,
+          payout_second_pct: 25,
+          payout_third_pct: 10
         }]);
 
       showNotification('success', `League "${league.name}" created! Invite code: ${inviteCode}`);
@@ -468,6 +478,9 @@ const App = () => {
         setShowPrimaryDropdown(false);
         setShowBackupDropdown(false);
       }
+      if (!event.target.closest('.profile-menu')) {
+        setShowProfileMenu(false);
+      }
     };
     
     document.addEventListener('mousedown', handleClickOutside);
@@ -497,10 +510,18 @@ const App = () => {
 
       if (!activeTournament?.picks_lock_time) {
         setTimeUntilLock('');
+        setLockTimeLabel('');
         return;
       }
 
       const lockTime = new Date(activeTournament.picks_lock_time);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = dayNames[lockTime.getDay()];
+      const hours12 = lockTime.getHours() % 12 || 12;
+      const mins = String(lockTime.getMinutes()).padStart(2, '0');
+      const ampm = lockTime.getHours() >= 12 ? 'PM' : 'AM';
+      setLockTimeLabel(`Locks ${dayName} ${hours12}:${mins} ${ampm} ET`);
+
       const diff = lockTime - now;
 
       if (diff <= 0) {
@@ -1667,10 +1688,21 @@ const handleSubmitPick = async () => {
                     {formatPrizePool(currentTournament?.prize_pool)}
                   </span>
                 </div>
-                {timeUntilLock && timeUntilLock !== 'Locked' && (
-                  <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border ${lockUrgent ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
-                    ⏰ {timeUntilLock} until lock
-                  </span>
+                {timeUntilLock && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {timeUntilLock === 'Locked' ? (
+                      <span className="text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800">
+                        🔒 Locked
+                      </span>
+                    ) : (
+                      <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border ${lockUrgent ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
+                        ⏰ {timeUntilLock} until lock
+                      </span>
+                    )}
+                    {lockTimeLabel && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{lockTimeLabel}</span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -1678,41 +1710,50 @@ const handleSubmitPick = async () => {
               <div className="text-left sm:text-right">
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Playing as</p>
                 <p className="text-lg sm:text-xl font-bold text-green-700 dark:text-green-400">{currentUser?.name}</p>
-                <div className="flex flex-col items-start sm:items-end gap-1.5 mt-2">
+                <div className="relative mt-2 profile-menu">
                   <button
-                    onClick={openAccountSettings}
-                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 hover:border-green-300 dark:hover:border-green-600"
+                    aria-haspopup="true"
+                    aria-expanded={showProfileMenu}
                   >
-                    <Users size={14} />
-                    Account
+                    <Menu size={14} />
+                    Settings
+                    <ChevronDown size={12} className={`transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`} />
                   </button>
-                  <button
-                    onClick={() => setShowSettings(!showSettings)}
-                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
-                  >
-                    <Bell size={14} />
-                    Notifications
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCurrentLeague(null);
-                      setShowLeagueSelect(true);
-                    }}
-                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
-                  >
-                    <ChevronDown size={14} />
-                    {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
-                  </button>
-                  <button
-                    onClick={async () => {
-                      await supabase.auth.signOut();
-                      localStorage.removeItem('currentLeagueId');
-                    }}
-                    className="text-xs sm:text-sm text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 flex items-center gap-1.5 transition-colors"
-                  >
-                    <LogOut size={14} />
-                    Sign Out
-                  </button>
+                  {showProfileMenu && (
+                    <div className="absolute right-0 mt-1 w-52 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      <button
+                        onClick={() => { openAccountSettings(); setShowProfileMenu(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2 transition-colors"
+                      >
+                        <Users size={14} />
+                        Account
+                      </button>
+                      <button
+                        onClick={() => { setShowSettings(!showSettings); setShowProfileMenu(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2 transition-colors"
+                      >
+                        <Bell size={14} />
+                        Notifications
+                      </button>
+                      <button
+                        onClick={() => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2 transition-colors"
+                      >
+                        <ChevronRight size={14} />
+                        {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
+                      </button>
+                      <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
+                      <button
+                        onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-colors"
+                      >
+                        <LogOut size={14} />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Refresh and dark mode toggles */}
@@ -1765,30 +1806,38 @@ const handleSubmitPick = async () => {
                       </button>
                     </div>
                     <div className="border-t border-gray-200 dark:border-slate-600 pt-3 space-y-3">
-                      <label className="flex items-center justify-between cursor-pointer">
+                      <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Results notifications</p>
+                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">When weekly results are posted</p>
                         </div>
-                        <div
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={notifyResults}
+                          aria-labelledby="notify-results-label"
                           onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
                           className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
                         >
-                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
-                        </div>
-                      </label>
-                      <label className="flex items-center justify-between cursor-pointer">
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Pick reminders</p>
+                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">Wednesday evening if you haven't picked yet</p>
                         </div>
-                        <div
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={notifyReminders}
+                          aria-labelledby="notify-reminders-label"
                           onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
                           className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
                         >
-                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
-                        </div>
-                      </label>
+                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2364,16 +2413,97 @@ const handleSubmitPick = async () => {
                               </div>
                             </div>
 
+                          </div>
+
+                          {/* Buy-In & Payout Settings */}
+                          <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
+                            <p className="font-semibold text-gray-800 dark:text-gray-100">Buy-In & Payout Split</p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  Season Buy-In
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-500 dark:text-gray-400">$</span>
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.buy_in_amount}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      buy_in_amount: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  1st Place Payout
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.payout_first_pct}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      payout_first_pct: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                  <span className="text-gray-500 dark:text-gray-400">%</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  2nd Place Payout
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.payout_second_pct}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      payout_second_pct: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                  <span className="text-gray-500 dark:text-gray-400">%</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                                  3rd Place Payout
+                                </label>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    value={leagueSettings.payout_third_pct}
+                                    onChange={(e) => setLeagueSettings({
+                                      ...leagueSettings,
+                                      payout_third_pct: parseInt(e.target.value) || 0
+                                    })}
+                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                                  />
+                                  <span className="text-gray-500 dark:text-gray-400">%</span>
+                                </div>
+                              </div>
+                            </div>
+
                             <button
                               onClick={() => handleUpdateLeagueSettings({
                                 no_pick_penalty: leagueSettings.no_pick_penalty,
                                 missed_cut_penalty: leagueSettings.missed_cut_penalty,
                                 withdrawal_penalty: leagueSettings.withdrawal_penalty,
-                                dq_penalty: leagueSettings.dq_penalty
+                                dq_penalty: leagueSettings.dq_penalty,
+                                buy_in_amount: leagueSettings.buy_in_amount,
+                                payout_first_pct: leagueSettings.payout_first_pct,
+                                payout_second_pct: leagueSettings.payout_second_pct,
+                                payout_third_pct: leagueSettings.payout_third_pct
                               })}
                               className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
                             >
-                              Save Penalty Settings
+                              Save League Settings
                             </button>
                           </div>
 
@@ -2912,13 +3042,16 @@ const handleSubmitPick = async () => {
                     </h3>
 
                     {(() => {
-                      const buyIn = 50;
+                      const buyIn = leagueSettings.buy_in_amount ?? 50;
+                      const pctFirst = leagueSettings.payout_first_pct ?? 65;
+                      const pctSecond = leagueSettings.payout_second_pct ?? 25;
+                      const pctThird = leagueSettings.payout_third_pct ?? 10;
                       const numPlayers = players.length;
                       const totalPenalties = players.reduce((sum, p) => sum + (p.penalties || 0), 0);
                       const totalPot = (numPlayers * buyIn) + totalPenalties;
-                      const firstPlace = Math.round(totalPot * 0.65);
-                      const secondPlace = Math.round(totalPot * 0.25);
-                      const thirdPlace = Math.round(totalPot * 0.10);
+                      const firstPlace = Math.round(totalPot * pctFirst / 100);
+                      const secondPlace = Math.round(totalPot * pctSecond / 100);
+                      const thirdPlace = Math.round(totalPot * pctThird / 100);
 
                       return (
                         <div>
@@ -2944,17 +3077,17 @@ const handleSubmitPick = async () => {
                           <div className="grid grid-cols-3 gap-4">
                             <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 p-4 rounded-xl text-center">
                               <div className="text-3xl mb-1">🥇</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">1st Place (65%)</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">1st Place ({pctFirst}%)</p>
                               <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">${firstPlace}</p>
                             </div>
                             <div className="bg-gray-100 dark:bg-slate-600 border border-gray-400 dark:border-slate-500 p-4 rounded-xl text-center">
                               <div className="text-3xl mb-1">🥈</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">2nd Place (25%)</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">2nd Place ({pctSecond}%)</p>
                               <p className="text-xl font-bold text-gray-600 dark:text-gray-300">${secondPlace}</p>
                             </div>
                             <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-600 p-4 rounded-xl text-center">
                               <div className="text-3xl mb-1">🥉</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">3rd Place (10%)</p>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">3rd Place ({pctThird}%)</p>
                               <p className="text-xl font-bold text-orange-600 dark:text-orange-400">${thirdPlace}</p>
                             </div>
                           </div>
@@ -3066,7 +3199,7 @@ const handleSubmitPick = async () => {
                       <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
                         <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Buy-In & Fees</h4>
                         <ul className="text-sm text-blue-900 dark:text-blue-300 space-y-1">
-                          <li>• Season buy-in: <strong>$50</strong></li>
+                          <li>• Season buy-in: <strong>${leagueSettings.buy_in_amount ?? 50}</strong></li>
                           <li>• Penalties added to prize pool</li>
                         </ul>
                       </div>
@@ -3096,9 +3229,9 @@ const handleSubmitPick = async () => {
                       <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
                         <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Payout Structure</h4>
                         <ul className="text-sm text-green-900 dark:text-green-300 space-y-1">
-                          <li>• <strong>1st Place:</strong> 65% of total pot</li>
-                          <li>• <strong>2nd Place:</strong> 25% of total pot</li>
-                          <li>• <strong>3rd Place:</strong> 10% of total pot</li>
+                          <li>• <strong>1st Place:</strong> {leagueSettings.payout_first_pct ?? 65}% of total pot</li>
+                          <li>• <strong>2nd Place:</strong> {leagueSettings.payout_second_pct ?? 25}% of total pot</li>
+                          <li>• <strong>3rd Place:</strong> {leagueSettings.payout_third_pct ?? 10}% of total pot</li>
                           <li>• Final standings based on total season winnings</li>
                         </ul>
                       </div>
