@@ -40,6 +40,7 @@ const App = () => {
   const [newLeagueName, setNewLeagueName] = useState('');
   const [joinInviteCode, setJoinInviteCode] = useState('');
   const [leagueAction, setLeagueAction] = useState('select'); // 'select', 'create', 'join'
+  const [creatingLeague, setCreatingLeague] = useState(false);
   const [expandedRows, setExpandedRows] = useState({});
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [editName, setEditName] = useState('');
@@ -157,6 +158,8 @@ const App = () => {
       showNotification('error', 'Please enter a league name');
       return;
     }
+    if (creatingLeague) return;
+    setCreatingLeague(true);
 
     try {
       const inviteCode = Math.random().toString(36).substring(2, 10);
@@ -196,6 +199,8 @@ const App = () => {
       setLeagueAction('select');
     } catch (error) {
       showNotification('error', error.message);
+    } finally {
+      setCreatingLeague(false);
     }
   };
 
@@ -1596,9 +1601,10 @@ const handleSubmitPick = async () => {
               </div>
               <button
                 onClick={handleCreateLeague}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                disabled={creatingLeague}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Create League
+                {creatingLeague ? 'Creating...' : 'Create League'}
               </button>
             </div>
           )}
