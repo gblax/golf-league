@@ -623,7 +623,7 @@ const playersWithWinnings = (usersData || []).map(user => {
     email: user.email,
     winnings: leaguePicks.reduce((sum, pick) => sum + (pick.winnings || 0), 0),
     penalties: leaguePicks.reduce((sum, pick) => sum + (pick.penalty_amount || 0), 0),
-    picks: leaguePicks.map(p => p.golfer_name),
+    picks: leaguePicks.map(p => p.golfer_name).filter(n => n && n !== 'No Pick'),
     picksByWeek: picksByWeek,
     currentPick: leaguePicks.find(p => p.tournament_id === getCurrentTournament(tournamentsData)?.id) || { golfer_name: '', backup_golfer_name: '' }
   };
@@ -651,7 +651,7 @@ const playersWithWinnings = (usersData || []).map(user => {
     
     console.log('All picks data:', picksData);
     
-    const allUserPicks = picksData?.map(p => p.golfer_name) || [];
+    const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
     setUserPicks(allUserPicks);
     
     const currentTournament = getCurrentTournament(tournamentsData);
@@ -695,7 +695,7 @@ const loadUserData = async () => {
     
     console.log('All picks data:', picksData);
     
-    const allUserPicks = picksData?.map(p => p.golfer_name) || [];
+    const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
     setUserPicks(allUserPicks);
     
     const currentTournament = getCurrentTournament();
@@ -1037,7 +1037,7 @@ const handleSaveResults = async (playerId) => {
       const penaltyType = playerData.penalty || '';
       
       const player = players.find(p => p.id === playerId);
-      const hasSubmittedPick = player?.currentPick?.golfer_name;
+      const hasSubmittedPick = player?.currentPick?.golfer_name && player.currentPick.golfer_name !== 'No Pick';
       
       // If player didn't submit a pick, create a record with just penalties
       if (!hasSubmittedPick) {
@@ -1052,7 +1052,7 @@ const handleSaveResults = async (playerId) => {
             user_id: playerId,
             tournament_id: tournamentId,
             league_id: currentLeague.id,
-            golfer_name: null,
+            golfer_name: 'No Pick',
             backup_golfer_name: null,
             winnings: 0,
             penalty_amount: getPenaltyAmount(penaltyType),

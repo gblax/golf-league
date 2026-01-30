@@ -232,10 +232,37 @@ def get_tournament_to_update(supabase: Client) -> dict:
 
 
 def get_picks_for_tournament(supabase: Client, tournament_id: str) -> list[dict]:
-    """Get all picks for a tournament across all leagues."""
-    # Fetch picks without embedded join (profiles table renamed from users)
+    """Get all picks for a tournament across all leagues, inserting 'No Pick' rows for members who didn't submit."""
+    # Fetch existing picks
     response = supabase.table("picks").select("*").eq("tournament_id", tournament_id).execute()
     picks = response.data or []
+
+    # Build a set of (user_id, league_id) that already have a pick
+    existing = set((p["user_id"], p["league_id"]) for p in picks)
+
+    # Get all league members across all leagues
+    members_response = supabase.table("league_members").select("user_id, league_id").execute()
+    all_members = members_response.data or []
+
+    # Insert 'No Pick' rows for members missing a pick
+    missing = []
+    for member in all_members:
+        key = (member["user_id"], member["league_id"])
+        if key not in existing:
+            missing.append({
+                "user_id": member["user_id"],
+                "league_id": member["league_id"],
+                "tournament_id": tournament_id,
+                "golfer_name": "No Pick",
+                "winnings": 0,
+            })
+
+    if missing:
+        print(f"  Inserting {len(missing)} 'No Pick' row(s) for members who didn't submit")
+        supabase.table("picks").insert(missing).execute()
+        # Re-fetch so the new rows are included
+        response = supabase.table("picks").select("*").eq("tournament_id", tournament_id).execute()
+        picks = response.data or []
 
     # Fetch user names separately
     user_ids = list(set(p["user_id"] for p in picks if p.get("user_id")))
@@ -381,7 +408,7 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
             golfer_name = pick.get("golfer_name")
             user_name = pick.get("user_info", {}).get("name", "Unknown User")
 
-            if not golfer_name:
+            if not golfer_name or golfer_name == "No Pick":
                 # Check if commissioner already entered a penalty manually
                 existing_penalty = pick.get("penalty_amount", 0) or 0
                 existing_reason = pick.get("penalty_reason")
