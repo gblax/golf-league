@@ -263,7 +263,7 @@ def get_all_league_settings(supabase: Client) -> dict:
 
 
 DEFAULT_LEAGUE_SETTINGS = {
-    "no_pick_penalty": 500,
+    "no_pick_penalty": 10,
     "missed_cut_penalty": 10,
     "withdrawal_penalty": 10,
     "dq_penalty": 10
@@ -490,6 +490,18 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
                     update.get("penalty_reason")
                 )
         print("Results updated!")
+
+        # Send push notifications
+        try:
+            from send_notification import send_to_all
+            send_to_all(
+                title=f"Results: {tournament['name']}",
+                body=f"Week {tournament['week']} results have been posted!",
+                url="/",
+                tag=f"results-week-{tournament['week']}"
+            )
+        except Exception as e:
+            print(f"  Push notifications skipped: {e}")
 
         if mark_complete:
             print(f"Marking tournament '{tournament['name']}' as completed...")

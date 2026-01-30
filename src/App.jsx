@@ -79,6 +79,12 @@ const App = () => {
   // Refresh state
   const [refreshing, setRefreshing] = useState(false);
 
+  // Push notification state
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushPermission, setPushPermission] = useState('default');
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -271,6 +277,95 @@ const App = () => {
     }
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
+
+  // Check push notification support
+  useEffect(() => {
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    setPushSupported(supported);
+    if (supported) {
+      setPushPermission(Notification.permission);
+    }
+  }, []);
+
+  // Check existing push subscription when user logs in
+  useEffect(() => {
+    if (!currentUser || !pushSupported) return;
+    const checkSub = async () => {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          const { data } = await supabase
+            .from('push_subscriptions')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('endpoint', sub.endpoint)
+            .maybeSingle();
+          setPushSubscribed(!!data);
+        } else {
+          setPushSubscribed(false);
+        }
+      } catch { setPushSubscribed(false); }
+    };
+    checkSub();
+  }, [currentUser, pushSupported]);
+
+  const handlePushSubscribe = async () => {
+    if (!pushSupported || !currentUser) return;
+    setPushLoading(true);
+    try {
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+      if (!vapidKey) {
+        setNotification({ message: 'Push notifications not configured', type: 'error' });
+        setPushLoading(false);
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission !== 'granted') {
+        setNotification({ message: 'Notification permission denied', type: 'error' });
+        setPushLoading(false);
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKey
+      });
+      const subJson = sub.toJSON();
+      const { error } = await supabase.from('push_subscriptions').upsert({
+        user_id: currentUser.id,
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth
+      }, { onConflict: 'user_id,endpoint' });
+      if (error) throw error;
+      setPushSubscribed(true);
+      setNotification({ message: 'Push notifications enabled!', type: 'success' });
+    } catch (err) {
+      console.error('Push subscribe error:', err);
+      setNotification({ message: 'Failed to enable notifications', type: 'error' });
+    }
+    setPushLoading(false);
+  };
+
+  const handlePushUnsubscribe = async () => {
+    setPushLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await supabase.from('push_subscriptions').delete().eq('user_id', currentUser.id).eq('endpoint', sub.endpoint);
+        await sub.unsubscribe();
+      }
+      setPushSubscribed(false);
+      setNotification({ message: 'Push notifications disabled', type: 'success' });
+    } catch (err) {
+      console.error('Push unsubscribe error:', err);
+      setNotification({ message: 'Failed to disable notifications', type: 'error' });
+    }
+    setPushLoading(false);
+  };
 
   // Restore session on page load and listen for auth changes
   useEffect(() => {
@@ -1613,7 +1708,7 @@ const handleSubmitPick = async () => {
             </div>
           </div>
 
-          {/* Settings Panel - Future Features */}
+          {/* Notification Settings Panel */}
           {showSettings && (
             <div className="mt-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-6 border border-gray-200 dark:border-slate-600 transition-colors">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-200">
@@ -1621,9 +1716,43 @@ const handleSubmitPick = async () => {
                 Notification Settings
               </h3>
               <div className="space-y-3">
-                <p className="text-gray-600 dark:text-gray-400">
-                  Notification preferences coming soon! In the future, you'll be able to customize how you receive updates about the league.
-                </p>
+                {!pushSupported ? (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Push notifications are not supported on this browser. Try using Chrome, Edge, or Safari 16.4+ with the app installed to your home screen.
+                  </p>
+                ) : pushPermission === 'denied' ? (
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
+                  </p>
+                ) : pushSubscribed ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-800 dark:text-gray-200 font-medium">Push notifications are enabled</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">You'll receive updates when results are posted.</p>
+                    </div>
+                    <button
+                      onClick={handlePushUnsubscribe}
+                      disabled={pushLoading}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
+                    >
+                      {pushLoading ? 'Updating...' : 'Disable'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-800 dark:text-gray-200 font-medium">Get notified when results are posted</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications on this device.</p>
+                    </div>
+                    <button
+                      onClick={handlePushSubscribe}
+                      disabled={pushLoading}
+                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold shadow-lg transition-all disabled:opacity-50"
+                    >
+                      {pushLoading ? 'Enabling...' : 'Enable'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
