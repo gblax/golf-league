@@ -69,7 +69,7 @@ const App = () => {
 
   // League settings state
   const [leagueSettings, setLeagueSettings] = useState({
-    backup_picks_enabled: true,
+    backup_picks_enabled: false,
     no_pick_penalty: 10,
     missed_cut_penalty: 10,
     withdrawal_penalty: 10,
@@ -184,7 +184,7 @@ const App = () => {
         .from('league_settings')
         .insert([{
           league_id: league.id,
-          backup_picks_enabled: true,
+          backup_picks_enabled: false,
           no_pick_penalty: 10,
           missed_cut_penalty: 10,
           withdrawal_penalty: 10,
