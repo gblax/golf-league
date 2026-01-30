@@ -424,20 +424,18 @@ const loadData = async () => {
         setLeagueSettings(settingsData);
       }
 
-      // Load tournaments FIRST
+      // Load tournaments (shared across all leagues)
       const { data: tournamentsData } = await supabase
         .from('tournaments')
         .select('*')
-        .eq('league_id', leagueId)
         .order('week');
 
       setTournaments(tournamentsData || []);
 
-      // Load available golfers
+      // Load available golfers (shared across all leagues)
       const { data: golfersData } = await supabase
         .from('available_golfers')
         .select('*')
-        .eq('league_id', leagueId)
         .eq('active', true);
 
       setAvailableGolfers(golfersData?.map(g => g.name) || []);
@@ -846,7 +844,7 @@ const loadUserData = async () => {
     try {
       const { error } = await supabase
         .from('available_golfers')
-        .insert([{ name: newGolferName.trim(), active: true, league_id: currentLeague.id }]);
+        .insert([{ name: newGolferName.trim(), active: true }]);
       
       if (error) {
         if (error.code === '23505') { // Unique constraint violation
