@@ -1225,7 +1225,7 @@ const handleSaveResults = async (playerId) => {
             user_id: userId,
             tournament_id: editTournamentId,
             league_id: currentLeague.id,
-            golfer_name: null,
+            golfer_name: 'No Pick',
             ...updateData
           });
 
