@@ -661,7 +661,7 @@ const playersWithWinnings = (usersData || []).map(user => {
     console.log('Current week pick found:', currentPick);
     
     if (currentPick) {
-      const primary = currentPick.golfer_name || '';
+      const primary = (currentPick.golfer_name && currentPick.golfer_name !== 'No Pick') ? currentPick.golfer_name : '';
       const backup = currentPick.backup_golfer_name || '';
       
       console.log('Setting primary:', primary, 'backup:', backup);
@@ -705,7 +705,7 @@ const loadUserData = async () => {
     console.log('Current week pick found:', currentPick);
     
     if (currentPick) {
-      const primary = currentPick.golfer_name || '';
+      const primary = (currentPick.golfer_name && currentPick.golfer_name !== 'No Pick') ? currentPick.golfer_name : '';
       const backup = currentPick.backup_golfer_name || '';
       
       console.log('Setting primary:', primary, 'backup:', backup);
