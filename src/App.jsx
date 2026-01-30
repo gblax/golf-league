@@ -1176,7 +1176,7 @@ const handleSaveResults = async (playerId) => {
         if (user.pick) {
           initialEditData[user.id] = {
             pickId: user.pick.id,
-            golferName: user.pick.golfer_name || '',
+            golferName: (user.pick.golfer_name && user.pick.golfer_name !== 'No Pick') ? user.pick.golfer_name : '',
             winnings: user.pick.winnings || 0,
             penalty: user.pick.penalty_reason || ''
           };
@@ -2881,12 +2881,12 @@ const handleSubmitPick = async () => {
                                                 weekData.golfer ? (
                                                   <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
                                                 ) : (
-                                                  <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
+                                                  <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                                                 )
                                               ) : weekData.golfer ? (
                                                 <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
                                               ) : (
-                                                <span className="text-gray-400 dark:text-gray-500 italic">No pick</span>
+                                                <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                                               )}
                                             </td>
                                             {leagueSettings.backup_picks_enabled && (
