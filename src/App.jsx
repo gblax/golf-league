@@ -1570,18 +1570,16 @@ const handleSubmitPick = async () => {
                     <Bell size={14} />
                     Notifications
                   </button>
-                  {userLeagues.length > 1 && (
-                    <button
-                      onClick={() => {
-                        setCurrentLeague(null);
-                        setShowLeagueSelect(true);
-                      }}
-                      className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
-                    >
-                      <ChevronDown size={14} />
-                      Switch League
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setCurrentLeague(null);
+                      setShowLeagueSelect(true);
+                    }}
+                    className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 flex items-center gap-1.5 transition-colors"
+                  >
+                    <ChevronDown size={14} />
+                    {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
+                  </button>
                   <button
                     onClick={async () => {
                       await supabase.auth.signOut();
