@@ -69,7 +69,7 @@ const App = () => {
   // League settings state
   const [leagueSettings, setLeagueSettings] = useState({
     backup_picks_enabled: true,
-    no_pick_penalty: 500,
+    no_pick_penalty: 10,
     missed_cut_penalty: 10,
     withdrawal_penalty: 10,
     dq_penalty: 10
@@ -174,7 +174,7 @@ const App = () => {
         .insert([{
           league_id: league.id,
           backup_picks_enabled: true,
-          no_pick_penalty: 500,
+          no_pick_penalty: 10,
           missed_cut_penalty: 10,
           withdrawal_penalty: 10,
           dq_penalty: 10
@@ -2107,32 +2107,6 @@ const handleSubmitPick = async () => {
 
                       {showLeagueSettings && (
                         <div className="mt-4 space-y-4">
-                          {/* Backup Picks Toggle */}
-                          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-slate-600 rounded-xl">
-                            <div>
-                              <p className="font-semibold text-gray-800 dark:text-gray-100">Backup Picks</p>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Allow players to select a backup golfer in case their primary withdraws
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => handleUpdateLeagueSettings({
-                                backup_picks_enabled: !leagueSettings.backup_picks_enabled
-                              })}
-                              className={`relative w-14 h-8 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                                leagueSettings.backup_picks_enabled
-                                  ? 'bg-green-500'
-                                  : 'bg-gray-300 dark:bg-slate-500'
-                              }`}
-                            >
-                              <span
-                                className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow transition-all duration-200 ${
-                                  leagueSettings.backup_picks_enabled ? 'translate-x-6' : 'translate-x-0'
-                                }`}
-                              />
-                            </button>
-                          </div>
-
                           {/* Penalty Amounts */}
                           <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
                             <p className="font-semibold text-gray-800 dark:text-gray-100">Penalty Amounts</p>
