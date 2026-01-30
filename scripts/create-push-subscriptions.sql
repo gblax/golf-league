@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS push_subscriptions (
   endpoint TEXT NOT NULL,
   p256dh TEXT NOT NULL,
   auth TEXT NOT NULL,
+  notify_results BOOLEAN DEFAULT TRUE,
+  notify_reminders BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, endpoint)
 );
@@ -21,6 +23,9 @@ CREATE POLICY "push_subscriptions_select" ON push_subscriptions FOR SELECT
 
 CREATE POLICY "push_subscriptions_insert" ON push_subscriptions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "push_subscriptions_update" ON push_subscriptions FOR UPDATE
+  USING (auth.uid() = user_id);
 
 CREATE POLICY "push_subscriptions_delete" ON push_subscriptions FOR DELETE
   USING (auth.uid() = user_id);

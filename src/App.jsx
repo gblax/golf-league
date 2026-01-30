@@ -84,6 +84,8 @@ const App = () => {
   const [pushPermission, setPushPermission] = useState('default');
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
+  const [notifyResults, setNotifyResults] = useState(true);
+  const [notifyReminders, setNotifyReminders] = useState(true);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -297,11 +299,15 @@ const App = () => {
         if (sub) {
           const { data } = await supabase
             .from('push_subscriptions')
-            .select('id')
+            .select('id, notify_results, notify_reminders')
             .eq('user_id', currentUser.id)
             .eq('endpoint', sub.endpoint)
             .maybeSingle();
           setPushSubscribed(!!data);
+          if (data) {
+            setNotifyResults(data.notify_results !== false);
+            setNotifyReminders(data.notify_reminders !== false);
+          }
         } else {
           setPushSubscribed(false);
         }
@@ -365,6 +371,22 @@ const App = () => {
       setNotification({ message: 'Failed to disable notifications', type: 'error' });
     }
     setPushLoading(false);
+  };
+
+  const handleToggleNotifyPref = async (pref, value) => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub || !currentUser) return;
+      await supabase.from('push_subscriptions')
+        .update({ [pref]: value })
+        .eq('user_id', currentUser.id)
+        .eq('endpoint', sub.endpoint);
+      if (pref === 'notify_results') setNotifyResults(value);
+      if (pref === 'notify_reminders') setNotifyReminders(value);
+    } catch (err) {
+      console.error('Toggle pref error:', err);
+    }
   };
 
   // Restore session on page load and listen for auth changes
@@ -1725,18 +1747,43 @@ const handleSubmitPick = async () => {
                     Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
                   </p>
                 ) : pushSubscribed ? (
-                  <div className="flex items-center justify-between">
-                    <div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
                       <p className="text-gray-800 dark:text-gray-200 font-medium">Push notifications are enabled</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">You'll receive updates when results are posted.</p>
+                      <button
+                        onClick={handlePushUnsubscribe}
+                        disabled={pushLoading}
+                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
+                      >
+                        {pushLoading ? 'Updating...' : 'Disable All'}
+                      </button>
                     </div>
-                    <button
-                      onClick={handlePushUnsubscribe}
-                      disabled={pushLoading}
-                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
-                    >
-                      {pushLoading ? 'Updating...' : 'Disable'}
-                    </button>
+                    <div className="border-t border-gray-200 dark:border-slate-600 pt-3 space-y-3">
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Results notifications</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">When weekly results are posted</p>
+                        </div>
+                        <div
+                          onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
+                          className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                        >
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
+                        </div>
+                      </label>
+                      <label className="flex items-center justify-between cursor-pointer">
+                        <div>
+                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Pick reminders</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Wednesday evening if you haven't picked yet</p>
+                        </div>
+                        <div
+                          onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
+                          className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                        >
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">

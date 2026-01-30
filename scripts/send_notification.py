@@ -18,9 +18,14 @@ VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def send_to_all(title, body, url="/", tag="golf-league-notification"):
-    """Send a push notification to all subscribed users."""
-    result = supabase.table("push_subscriptions").select("*").execute()
+def send_to_all(title, body, url="/", tag="golf-league-notification", notify_type="results"):
+    """Send a push notification to subscribed users filtered by preference."""
+    query = supabase.table("push_subscriptions").select("*")
+    if notify_type == "results":
+        query = query.eq("notify_results", True)
+    elif notify_type == "reminders":
+        query = query.eq("notify_reminders", True)
+    result = query.execute()
     subscriptions = result.data or []
 
     payload = json.dumps({
