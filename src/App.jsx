@@ -517,6 +517,19 @@ const App = () => {
 
       if (diff <= 0) {
         setTimeUntilLock('Locked');
+        // Show when picks reopen (next tournament's lock time = next deadline)
+        const activeIdx = tournaments.indexOf(activeTournament);
+        const nextTournament = activeIdx >= 0 ? tournaments[activeIdx + 1] : null;
+        if (nextTournament?.picks_lock_time) {
+          const nextLock = new Date(nextTournament.picks_lock_time);
+          const nextDayName = dayNames[nextLock.getDay()];
+          const nextHours12 = nextLock.getHours() % 12 || 12;
+          const nextMins = String(nextLock.getMinutes()).padStart(2, '0');
+          const nextAmpm = nextLock.getHours() >= 12 ? 'PM' : 'AM';
+          setLockTimeLabel(`Picks reopen Mon · Next lock ${nextDayName} ${nextHours12}:${nextMins} ${nextAmpm} ET`);
+        } else {
+          setLockTimeLabel('');
+        }
         return;
       }
 
