@@ -727,23 +727,25 @@ const loadUserData = async () => {
     const now = new Date();
 
     // Find the first tournament that:
-    // 1. Is not marked completed AND
-    // 2. Has not ended yet — stay on current tournament through Sunday night,
-    //    only advance to next tournament on Monday (start + 4 days = Monday end of day)
+    // 1. Has not ended yet — stay on current tournament through Sunday night,
+    //    only advance to next tournament on Monday (start + 4 days = Monday morning)
+    // 2. Even if marked completed, stay on it until Monday so UI doesn't jump ahead
     const activeTournament = list.find(t => {
-      if (t.completed) return false;
-
-      // If tournament_date exists, check if we're past the tournament weekend + Monday
       if (t.tournament_date) {
         const tournamentEnd = new Date(t.tournament_date);
         tournamentEnd.setDate(tournamentEnd.getDate() + 4); // Monday after tournament
         tournamentEnd.setHours(5, 0, 0, 0); // Monday 5 AM ET — new week starts Monday morning
 
-        // If we're past Monday morning, skip to next
+        // If we're past Monday morning, skip to next regardless of completed status
         if (now > tournamentEnd) return false;
+
+        // If we're still within the tournament window, this is the active one
+        // (even if results are already posted)
+        return true;
       }
 
-      return true;
+      // No tournament_date — fall back to completed check
+      return !t.completed;
     });
 
     return activeTournament || list[list.length - 1];
