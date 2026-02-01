@@ -726,25 +726,31 @@ const loadUserData = async () => {
     const list = tournamentsList || tournaments;
     const now = new Date();
 
-    // Find the first tournament that:
-    // 1. Has not ended yet — stay on current tournament through Sunday night,
-    //    only advance to next tournament on Monday (start + 4 days = Monday morning)
-    // 2. Even if marked completed, stay on it until Monday so UI doesn't jump ahead
+    // Find the first tournament that hasn't fully concluded.
+    // A tournament's "active window" ends on the Monday after it finishes:
+    //   - If picks_lock_time exists, the window extends to lock_time + 5 days (lock is ~Thursday,
+    //     so +5 days ≈ Tuesday 5 AM, giving through Monday for results)
+    //   - If tournament_date exists, window is tournament_date + 4 days @ 5 AM
+    //   - Even completed tournaments stay active until their window closes
     const activeTournament = list.find(t => {
-      if (t.tournament_date) {
-        const tournamentEnd = new Date(t.tournament_date);
-        tournamentEnd.setDate(tournamentEnd.getDate() + 4); // Monday after tournament
-        tournamentEnd.setHours(5, 0, 0, 0); // Monday 5 AM ET — new week starts Monday morning
-
-        // If we're past Monday morning, skip to next regardless of completed status
-        if (now > tournamentEnd) return false;
-
-        // If we're still within the tournament window, this is the active one
-        // (even if results are already posted)
+      // Prefer picks_lock_time as the anchor — it's the most reliable date
+      if (t.picks_lock_time) {
+        const lockTime = new Date(t.picks_lock_time);
+        const windowEnd = new Date(lockTime);
+        windowEnd.setDate(windowEnd.getDate() + 5); // ~Monday/Tuesday after tournament
+        windowEnd.setHours(5, 0, 0, 0);
+        if (now > windowEnd) return false;
         return true;
       }
 
-      // No tournament_date — fall back to completed check
+      if (t.tournament_date) {
+        const tournamentEnd = new Date(t.tournament_date);
+        tournamentEnd.setDate(tournamentEnd.getDate() + 4);
+        tournamentEnd.setHours(5, 0, 0, 0);
+        if (now > tournamentEnd) return false;
+        return true;
+      }
+
       return !t.completed;
     });
 
