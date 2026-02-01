@@ -497,16 +497,7 @@ const App = () => {
 
       // Use same logic as getCurrentTournament to find the active tournament
       const now = new Date();
-      const activeTournament = tournaments.find(t => {
-        if (t.completed) return false;
-        if (t.tournament_date) {
-          const tournamentEnd = new Date(t.tournament_date);
-          tournamentEnd.setDate(tournamentEnd.getDate() + 3);
-          tournamentEnd.setHours(23, 59, 59, 999);
-          if (now > tournamentEnd) return false;
-        }
-        return true;
-      }) || tournaments[tournaments.length - 1];
+      const activeTournament = getCurrentTournament(tournaments);
 
       if (!activeTournament?.picks_lock_time) {
         setTimeUntilLock('');
