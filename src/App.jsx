@@ -606,6 +606,8 @@ const playersWithWinnings = (usersData || []).map(user => {
   const leaguePicks = user.picks?.filter(p => p.league_id === leagueId) || [];
   const picksByWeek = (tournamentsData || []).map(tournament => {
     const pick = leaguePicks.find(p => p.tournament_id === tournament.id);
+    const lockTime = tournament.picks_lock_time ? new Date(tournament.picks_lock_time) : null;
+    const isPast = lockTime ? new Date() >= lockTime : tournament.completed;
     return {
       week: tournament.week,
       tournamentName: tournament.name,
@@ -613,7 +615,8 @@ const playersWithWinnings = (usersData || []).map(user => {
       backup: pick?.backup_golfer_name || null,
       winnings: pick?.winnings || 0,
       penalty: pick?.penalty_amount || 0,
-      penaltyReason: pick?.penalty_reason || null
+      penaltyReason: pick?.penalty_reason || null,
+      isPast
     };
   });
 
@@ -734,18 +737,18 @@ const loadUserData = async () => {
 
     // Find the first tournament that:
     // 1. Is not marked completed AND
-    // 2. Has not ended yet (tournament_date + 4 days covers the full weekend)
-    // This ensures picks unlock on Monday after a tournament ends
+    // 2. Has not ended yet — stay on current tournament through Sunday night,
+    //    only advance to next tournament on Monday (start + 4 days = Monday end of day)
     const activeTournament = list.find(t => {
       if (t.completed) return false;
 
-      // If tournament_date exists, check if we're past the tournament weekend
+      // If tournament_date exists, check if we're past the tournament weekend + Monday
       if (t.tournament_date) {
         const tournamentEnd = new Date(t.tournament_date);
-        tournamentEnd.setDate(tournamentEnd.getDate() + 3); // Tournament ends Sunday (start + 3 days)
-        tournamentEnd.setHours(23, 59, 59, 999); // End of Sunday
+        tournamentEnd.setDate(tournamentEnd.getDate() + 4); // Monday after tournament
+        tournamentEnd.setHours(5, 0, 0, 0); // Monday 5 AM ET — new week starts Monday morning
 
-        // If we're past the tournament weekend, skip to next
+        // If we're past Monday morning, skip to next
         if (now > tournamentEnd) return false;
       }
 
@@ -2885,8 +2888,10 @@ const handleSubmitPick = async () => {
                                                 )
                                               ) : weekData.golfer ? (
                                                 <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
-                                              ) : (
+                                              ) : weekData.isPast ? (
                                                 <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
+                                              ) : (
+                                                <span className="text-gray-300 dark:text-gray-600">—</span>
                                               )}
                                             </td>
                                             {leagueSettings.backup_picks_enabled && (
