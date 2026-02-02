@@ -1056,7 +1056,7 @@ const handleSaveResults = async (playerId) => {
         
         const { error: pickError } = await supabase
           .from('picks')
-          .insert({
+          .upsert({
             user_id: playerId,
             tournament_id: tournamentId,
             league_id: currentLeague.id,
@@ -1065,7 +1065,7 @@ const handleSaveResults = async (playerId) => {
             winnings: 0,
             penalty_amount: getPenaltyAmount(penaltyType),
             penalty_reason: penaltyType
-          });
+          }, { onConflict: 'user_id,tournament_id,league_id' });
 
         if (pickError) {
           showNotification('error', 'Error saving penalty: ' + pickError.message);
@@ -1097,7 +1097,8 @@ const handleSaveResults = async (playerId) => {
           penalty_reason: penaltyType || null
         })
         .eq('user_id', playerId)
-        .eq('tournament_id', tournamentId);
+        .eq('tournament_id', tournamentId)
+        .eq('league_id', currentLeague.id);
       
       if (pickError) {
         showNotification('error', 'Error saving results: ' + pickError.message);
@@ -1257,7 +1258,8 @@ const handleSaveResults = async (playerId) => {
           .from('penalties')
           .delete()
           .eq('user_id', userId)
-          .eq('tournament_id', editTournamentId);
+          .eq('tournament_id', editTournamentId)
+          .eq('league_id', currentLeague.id);
       }
 
       showNotification('success', 'Results updated');
@@ -2998,7 +3000,11 @@ const handleSubmitPick = async () => {
                             )}
                           </div>
                           <div className="flex-shrink-0 flex items-center gap-2">
-                            {tournament.completed ? (
+                            {tournament.week === currentWeek ? (
+                              <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg animate-pulse-gentle">
+                                Current Week
+                              </span>
+                            ) : tournament.completed || tournament.week < currentWeek ? (
                               <>
                                 <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
                                   <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
@@ -3009,10 +3015,6 @@ const handleSubmitPick = async () => {
                                   className={`text-gray-400 transition-transform ${expandedScheduleTournament === tournament.id ? 'rotate-180' : ''}`}
                                 />
                               </>
-                            ) : tournament.week === currentWeek ? (
-                              <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg animate-pulse-gentle">
-                                Current Week
-                              </span>
                             ) : (
                               <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs sm:text-sm">Upcoming</span>
                             )}
