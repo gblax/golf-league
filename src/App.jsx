@@ -526,7 +526,7 @@ const App = () => {
           const nextHours12 = nextLock.getHours() % 12 || 12;
           const nextMins = String(nextLock.getMinutes()).padStart(2, '0');
           const nextAmpm = nextLock.getHours() >= 12 ? 'PM' : 'AM';
-          setLockTimeLabel(`Picks reopen Mon · Next lock ${nextDayName} ${nextHours12}:${nextMins} ${nextAmpm} ET`);
+          setLockTimeLabel(`Picks reopen Mon 5:00 AM ET · Next lock ${nextDayName} ${nextHours12}:${nextMins} ${nextAmpm} ET`);
         } else {
           setLockTimeLabel('');
         }
@@ -740,30 +740,23 @@ const loadUserData = async () => {
     const now = new Date();
 
     // Find the first tournament that hasn't fully concluded.
-    // A tournament's "active window" ends on the Monday after it finishes:
-    //   - If picks_lock_time exists, the window extends to lock_time + 5 days (lock is ~Thursday,
-    //     so +5 days ≈ Tuesday 5 AM, giving through Monday for results)
-    //   - If tournament_date exists, window is tournament_date + 4 days @ 5 AM
-    //   - Even completed tournaments stay active until their window closes
+    // A tournament's "active window" ends on the Monday after the lock time.
+    // Picks lock Thursday morning; the tournament runs Thu–Sun. We stay on
+    // this tournament until the following Monday at 5 AM ET so results can
+    // be reviewed before the UI advances to the next week.
     const activeTournament = list.find(t => {
-      // Prefer picks_lock_time as the anchor — it's the most reliable date
-      if (t.picks_lock_time) {
-        const lockTime = new Date(t.picks_lock_time);
-        const windowEnd = new Date(lockTime);
-        windowEnd.setDate(windowEnd.getDate() + 5); // ~Monday/Tuesday after tournament
-        windowEnd.setHours(5, 0, 0, 0);
+      const anchor = t.picks_lock_time || t.tournament_date;
+      if (anchor) {
+        const anchorDate = new Date(anchor);
+        // Find the next Monday after the anchor date
+        const dayOfWeek = anchorDate.getUTCDay(); // 0=Sun, 1=Mon, ..., 4=Thu
+        const daysUntilMonday = (8 - dayOfWeek) % 7 || 7; // days from anchor to next Monday
+        const windowEnd = new Date(anchorDate);
+        windowEnd.setUTCDate(windowEnd.getUTCDate() + daysUntilMonday);
+        windowEnd.setUTCHours(10, 0, 0, 0); // Monday 10:00 UTC = Monday 5 AM ET
         if (now > windowEnd) return false;
         return true;
       }
-
-      if (t.tournament_date) {
-        const tournamentEnd = new Date(t.tournament_date);
-        tournamentEnd.setDate(tournamentEnd.getDate() + 4);
-        tournamentEnd.setHours(5, 0, 0, 0);
-        if (now > tournamentEnd) return false;
-        return true;
-      }
-
       return !t.completed;
     });
 
