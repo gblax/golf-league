@@ -1081,7 +1081,7 @@ const handleSaveResults = async (playerId) => {
             league_id: currentLeague.id,
             penalty_type: penaltyType,
             amount: getPenaltyAmount(penaltyType)
-          }, { onConflict: 'user_id,tournament_id' });
+          }, { onConflict: 'user_id,tournament_id,league_id' });
         
         showNotification('success', 'Penalty saved');
         loadData();
@@ -1114,7 +1114,7 @@ const handleSaveResults = async (playerId) => {
             league_id: currentLeague.id,
             penalty_type: penaltyType,
             amount: getPenaltyAmount(penaltyType)
-          }, { onConflict: 'user_id,tournament_id' });
+          }, { onConflict: 'user_id,tournament_id,league_id' });
       }
 
       showNotification('success', 'Results saved');
@@ -1250,7 +1250,7 @@ const handleSaveResults = async (playerId) => {
             league_id: currentLeague.id,
             penalty_type: userData.penalty,
             amount: getPenaltyAmount(userData.penalty)
-          }, { onConflict: 'user_id,tournament_id' });
+          }, { onConflict: 'user_id,tournament_id,league_id' });
       } else {
         // Remove penalty if cleared
         await supabase
@@ -1300,7 +1300,7 @@ const handleSubmitPick = async () => {
           golfer_name: selectedPlayer,
           backup_golfer_name: leagueSettings.backup_picks_enabled ? (backupPlayer || null) : null,
           winnings: 0
-        }, { onConflict: 'user_id,tournament_id' });
+        }, { onConflict: 'user_id,tournament_id,league_id' });
       
       if (error) {
         showNotification('error', 'Error submitting pick: ' + error.message);
