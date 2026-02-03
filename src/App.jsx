@@ -1733,55 +1733,79 @@ const handleSubmitPick = async () => {
                   </button>
                   {showProfileMenu && (
                     <>
-                      {/* Backdrop - mobile only */}
+                      {/* Backdrop with centered card modal - mobile only */}
                       <div
-                        className="sm:hidden fixed inset-0 bg-black/40 z-40"
+                        className="sm:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center animate-modal-fade-in"
                         onClick={() => setShowProfileMenu(false)}
-                      />
-                      {/* Bottom sheet on mobile, dropdown on desktop */}
-                      <div className="fixed bottom-0 left-0 right-0 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:mt-1 sm:w-52 bg-white dark:bg-slate-700 sm:border border-gray-200 dark:border-slate-600 rounded-t-2xl sm:rounded-xl shadow-lg z-50 overflow-hidden">
-                        {/* Drag handle - mobile only */}
-                        <div className="sm:hidden flex justify-center pt-3 pb-1">
-                          <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-slate-500" />
+                      >
+                        <div
+                          className="w-[90%] max-w-xs bg-white dark:bg-slate-700 rounded-2xl shadow-xl overflow-hidden animate-scale-in"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="py-2">
+                            <button
+                              onClick={() => { openAccountSettings(); setShowProfileMenu(false); }}
+                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
+                            >
+                              <Users size={18} />
+                              Account
+                            </button>
+                            <button
+                              onClick={() => { setShowSettings(!showSettings); setShowProfileMenu(false); }}
+                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
+                            >
+                              <Bell size={18} />
+                              Notifications
+                            </button>
+                            <button
+                              onClick={() => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); }}
+                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
+                            >
+                              <ChevronRight size={18} />
+                              {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
+                            </button>
+                            <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
+                            <button
+                              onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
+                              className="w-full text-left px-5 py-3.5 text-base text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 flex items-center gap-3 transition-colors"
+                            >
+                              <LogOut size={18} />
+                              Sign Out
+                            </button>
+                          </div>
                         </div>
-                        <div className="py-2 sm:py-1">
+                      </div>
+                      {/* Desktop dropdown */}
+                      <div className="hidden sm:block absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl shadow-lg z-50 overflow-hidden">
+                        <div className="py-1">
                           <button
                             onClick={() => { openAccountSettings(); setShowProfileMenu(false); }}
-                            className="w-full text-left px-5 sm:px-4 py-3.5 sm:py-2.5 text-base sm:text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 sm:gap-2 transition-colors"
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
                           >
-                            <Users size={18} className="sm:w-3.5 sm:h-3.5" />
+                            <Users size={14} />
                             Account
                           </button>
                           <button
                             onClick={() => { setShowSettings(!showSettings); setShowProfileMenu(false); }}
-                            className="w-full text-left px-5 sm:px-4 py-3.5 sm:py-2.5 text-base sm:text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 sm:gap-2 transition-colors"
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
                           >
-                            <Bell size={18} className="sm:w-3.5 sm:h-3.5" />
+                            <Bell size={14} />
                             Notifications
                           </button>
                           <button
                             onClick={() => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); }}
-                            className="w-full text-left px-5 sm:px-4 py-3.5 sm:py-2.5 text-base sm:text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 sm:gap-2 transition-colors"
+                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
                           >
-                            <ChevronRight size={18} className="sm:w-3.5 sm:h-3.5" />
+                            <ChevronRight size={14} />
                             {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
                           </button>
                           <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
                           <button
                             onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
-                            className="w-full text-left px-5 sm:px-4 py-3.5 sm:py-2.5 text-base sm:text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 flex items-center gap-3 sm:gap-2 transition-colors"
+                            className="w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 flex items-center gap-2 transition-colors"
                           >
-                            <LogOut size={18} className="sm:w-3.5 sm:h-3.5" />
+                            <LogOut size={14} />
                             Sign Out
-                          </button>
-                        </div>
-                        {/* Cancel button - mobile only, safe area padding for iOS */}
-                        <div className="sm:hidden px-4 pb-4" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-                          <button
-                            onClick={() => setShowProfileMenu(false)}
-                            className="w-full py-3 text-base font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-slate-600 rounded-xl active:bg-gray-200 dark:active:bg-slate-500 transition-colors"
-                          >
-                            Cancel
                           </button>
                         </div>
                       </div>
