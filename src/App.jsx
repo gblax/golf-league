@@ -1834,93 +1834,107 @@ const handleSubmitPick = async () => {
             </div>
           </div>
 
-          {/* Notification Settings Panel */}
+          {/* Notification Settings Modal */}
           {showSettings && (
-            <div className="mt-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl p-6 border border-gray-200 dark:border-slate-600 transition-colors">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-200">
-                  <Bell className="text-green-600 dark:text-green-400" />
-                  Notification Settings
-                </h3>
-                <button
-                  onClick={() => setShowSettings(false)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
-                  aria-label="Close notification settings"
-                >
-                  <XCircle size={20} />
-                </button>
-              </div>
-              <div className="space-y-3">
-                {!pushSupported ? (
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Push notifications are not supported on this browser. Try using Chrome, Edge, or Safari 16.4+ with the app installed to your home screen.
-                  </p>
-                ) : pushPermission === 'denied' ? (
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
-                  </p>
-                ) : pushSubscribed ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-gray-800 dark:text-gray-200 font-medium">Push notifications are enabled</p>
-                      <button
-                        onClick={handlePushUnsubscribe}
-                        disabled={pushLoading}
-                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
-                      >
-                        {pushLoading ? 'Updating...' : 'Disable All'}
-                      </button>
-                    </div>
-                    <div className="border-t border-gray-200 dark:border-slate-600 pt-3 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">When weekly results are posted</p>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={notifyResults}
-                          aria-labelledby="notify-results-label"
-                          onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
-                          className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
-                        >
-                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
-                        </button>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Wednesday evening if you haven't picked yet</p>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={notifyReminders}
-                          aria-labelledby="notify-reminders-label"
-                          onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
-                          className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
-                        >
-                          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-800 dark:text-gray-200 font-medium">Get notified when results are posted</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications on this device.</p>
-                    </div>
+            <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-700 transition-colors">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                      <Bell className="text-green-600 dark:text-green-400" size={28} />
+                      Notifications
+                    </h2>
                     <button
-                      onClick={handlePushSubscribe}
-                      disabled={pushLoading}
-                      className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold shadow-lg transition-all disabled:opacity-50"
+                      onClick={() => setShowSettings(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      aria-label="Close notification settings"
                     >
-                      {pushLoading ? 'Enabling...' : 'Enable'}
+                      <XCircle size={28} />
                     </button>
                   </div>
-                )}
+
+                  <div className="space-y-4">
+                    {!pushSupported ? (
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Push notifications are not supported on this browser. Try using Chrome, Edge, or Safari 16.4+ with the app installed to your home screen.
+                      </p>
+                    ) : pushPermission === 'denied' ? (
+                      <p className="text-gray-600 dark:text-gray-400">
+                        Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
+                      </p>
+                    ) : pushSubscribed ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-800 dark:text-gray-200 font-medium">Push notifications are enabled</p>
+                          <button
+                            onClick={handlePushUnsubscribe}
+                            disabled={pushLoading}
+                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
+                          >
+                            {pushLoading ? 'Updating...' : 'Disable All'}
+                          </button>
+                        </div>
+                        <div className="border-t border-gray-200 dark:border-slate-600 pt-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">When weekly results are posted</p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={notifyResults}
+                              aria-labelledby="notify-results-label"
+                              onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
+                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">Wednesday evening if you haven't picked yet</p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={notifyReminders}
+                              aria-labelledby="notify-reminders-label"
+                              onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
+                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                            >
+                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-gray-800 dark:text-gray-200 font-medium">Get notified when results are posted</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications on this device.</p>
+                        </div>
+                        <button
+                          onClick={handlePushSubscribe}
+                          disabled={pushLoading}
+                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold shadow-lg transition-all disabled:opacity-50"
+                        >
+                          {pushLoading ? 'Enabling...' : 'Enable'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                    <button
+                      onClick={() => setShowSettings(false)}
+                      className="w-full bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 px-6 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
