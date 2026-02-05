@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw, Menu } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import PicksTab from './components/PicksTab';
+import StandingsTab from './components/StandingsTab';
+import ScheduleTab from './components/ScheduleTab';
+import LeagueInfoTab from './components/LeagueInfoTab';
+import CommissionerTab from './components/CommissionerTab';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -682,43 +687,6 @@ const playersWithWinnings = (usersData || []).map(user => {
     setPicksLoading(false);
   };
 
-const loadUserData = async () => {
-    if (!currentUser || !currentLeague) return;
-
-    setPicksLoading(true);
-
-    const { data: picksData } = await supabase
-      .from('picks')
-      .select('*')
-      .eq('user_id', currentUser.id)
-      .eq('league_id', currentLeague.id);
-    
-    const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
-    setUserPicks(allUserPicks);
-
-    const currentTournament = getCurrentTournament();
-
-    const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
-
-    if (currentPick) {
-      const primary = (currentPick.golfer_name && currentPick.golfer_name !== 'No Pick') ? currentPick.golfer_name : '';
-      const backup = currentPick.backup_golfer_name || '';
-
-      setSelectedPlayer(primary);
-      setBackupPlayer(backup);
-      setCurrentWeekPick({
-        golfer: primary,
-        backup: backup
-      });
-    } else {
-      setSelectedPlayer('');
-      setBackupPlayer('');
-      setCurrentWeekPick({ golfer: '', backup: '' });
-    }
-    
-    setPicksLoading(false);
-  };
-
   const getCurrentTournament = (tournamentsList) => {
     const list = tournamentsList || tournaments;
     const now = new Date();
@@ -1300,30 +1268,36 @@ const handleSubmitPick = async () => {
   };
 
 
-  const toggleRowExpansion = (playerId) => {
+  const toggleRowExpansion = useCallback((playerId) => {
     setExpandedRows(prev => ({
       ...prev,
       [playerId]: !prev[playerId]
     }));
-  };
+  }, []);
 
-  const availableForPick = availableGolfers.filter(g => 
-    !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
-  );
+  const availableForPick = useMemo(() =>
+    availableGolfers.filter(g =>
+      !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
+    ), [availableGolfers, userPicks, selectedPlayer, backupPlayer]);
 
-  // Filter golfers based on search term
-  const filterGolfers = (searchTerm, excludePlayer = null) => {
-    return availableForPick
-      .filter(g => excludePlayer ? g !== excludePlayer : true)
-      .filter(g => g.toLowerCase().includes(searchTerm.toLowerCase()))
-      .slice(0, 50); // Limit to 50 results for performance
-  };
+  const filteredPrimaryGolfers = useMemo(() =>
+    availableForPick
+      .filter(g => g.toLowerCase().includes(primarySearchTerm.toLowerCase()))
+      .slice(0, 50),
+    [availableForPick, primarySearchTerm]);
 
-  const filteredPrimaryGolfers = filterGolfers(primarySearchTerm);
-  const filteredBackupGolfers = filterGolfers(backupSearchTerm, selectedPlayer);
+  const filteredBackupGolfers = useMemo(() =>
+    availableForPick
+      .filter(g => g !== selectedPlayer)
+      .filter(g => g.toLowerCase().includes(backupSearchTerm.toLowerCase()))
+      .slice(0, 50),
+    [availableForPick, backupSearchTerm, selectedPlayer]);
 
-  const sortedStandings = [...players].sort((a, b) => b.winnings - a.winnings);
-  const currentTournament = getCurrentTournament();
+  const sortedStandings = useMemo(() =>
+    [...players].sort((a, b) => b.winnings - a.winnings),
+    [players]);
+
+  const currentTournament = useMemo(() => getCurrentTournament(), [tournaments]);
 
   if (loading) {
     return (
@@ -2091,1312 +2065,99 @@ const handleSubmitPick = async () => {
 
           {/* Tab Content */}
           <div className="p-3 sm:p-6">
-{activeTab === 'picks' && (
-              picksLoading ? (
-                <div className="text-center py-12">
-                  <div className="w-12 h-12 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <div className="text-xl font-semibold text-gray-600 dark:text-gray-400">Loading your picks...</div>
-                </div>
-              ) : (
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Submit Your Pick</h2>
-                  {timeUntilLock && timeUntilLock !== 'Locked' && (
-                    <div className="bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 px-4 py-2 rounded-xl">
-                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                        ⏰ Picks lock in: <span className="font-bold">{timeUntilLock}</span>
-                      </p>
-                    </div>
-                  )}
-                  {timeUntilLock === 'Locked' && (
-                    <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 px-4 py-2 rounded-xl">
-                      <p className="text-sm font-semibold text-red-700 dark:text-red-400">
-                        🔒 Picks are locked
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Current Selection - Prominent at top */}
-                {currentWeekPick.golfer && (
-                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-blue-100 text-sm font-medium">Week {currentWeek} Selection</p>
-                          <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">
-                            {formatPrizePool(currentTournament?.prize_pool)} purse
-                          </span>
-                        </div>
-                        <p className="text-white text-xl font-bold">{currentWeekPick.golfer}</p>
-                        {leagueSettings.backup_picks_enabled && currentWeekPick.backup && (
-                          <p className="text-blue-200 text-sm mt-1">
-                            Backup: <span className="font-semibold text-white">{currentWeekPick.backup}</span>
-                          </p>
-                        )}
-                      </div>
-                      <CheckCircle className="text-white/80" size={40} />
-                    </div>
-                  </div>
-                )}
-
-                {/* No selection prompt */}
-                {!currentWeekPick.golfer && (
-                  <div className="mb-6 p-4 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-slate-700 dark:to-slate-800 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600">
-                    <div className="text-center">
-                      <p className="text-gray-500 dark:text-gray-400 mb-2">
-                        No pick selected yet for Week {currentWeek}
-                      </p>
-                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {formatPrizePool(currentTournament?.prize_pool)} purse this week
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Primary Pick */}
-                <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800 relative searchable-dropdown">
-                  <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-                    <CheckCircle className="text-green-600 dark:text-green-400" size={20} />
-                    Pick for Week {currentWeek}:
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={selectedPlayer || primarySearchTerm}
-                      onChange={(e) => {
-                        setPrimarySearchTerm(e.target.value);
-                        setSelectedPlayer('');
-                        setShowPrimaryDropdown(true);
-                      }}
-                      onFocus={() => setShowPrimaryDropdown(true)}
-                      placeholder="Start typing to search golfers..."
-                      className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-                    />
-                    {showPrimaryDropdown && primarySearchTerm && (
-                      <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                        {filteredPrimaryGolfers.length > 0 ? (
-                          filteredPrimaryGolfers.map((golfer, idx) => (
-                            <div
-                              key={idx}
-                              onClick={() => {
-                                setSelectedPlayer(golfer);
-                                setPrimarySearchTerm('');
-                                setShowPrimaryDropdown(false);
-                              }}
-                              className="p-3 hover:bg-green-100 dark:hover:bg-green-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
-                            >
-                              {golfer}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {selectedPlayer && (
-                    <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-between">
-                      <span className="font-semibold text-green-800 dark:text-green-300">✓ Selected: {selectedPlayer}</span>
-                      <button
-                        onClick={() => {
-                          setSelectedPlayer('');
-                          setPrimarySearchTerm('');
-                        }}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    <strong>Note:</strong> You can only make picks for the current tournament. Future week picks will open on Monday after the current tournament ends.
-                  </p>
-                </div>
-
-                {/* Backup Pick - only show if enabled in settings */}
-                {leagueSettings.backup_picks_enabled && (
-                  <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800 relative searchable-dropdown">
-                    <label className="block font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-                      <Shield className="text-amber-600 dark:text-amber-400" size={20} />
-                      Backup Pick (Optional but Recommended)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={backupPlayer || backupSearchTerm}
-                        onChange={(e) => {
-                          setBackupSearchTerm(e.target.value);
-                          setBackupPlayer('');
-                          setShowBackupDropdown(true);
-                        }}
-                        onFocus={() => setShowBackupDropdown(true)}
-                        placeholder="Start typing to search golfers..."
-                        className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-amber-500 dark:focus:border-amber-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
-                      />
-                      {showBackupDropdown && backupSearchTerm && (
-                        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                          {filteredBackupGolfers.length > 0 ? (
-                            filteredBackupGolfers.map((golfer, idx) => (
-                              <div
-                                key={idx}
-                                onClick={() => {
-                                  setBackupPlayer(golfer);
-                                  setBackupSearchTerm('');
-                                  setShowBackupDropdown(false);
-                                }}
-                                className="p-3 hover:bg-amber-100 dark:hover:bg-amber-900/30 cursor-pointer border-b border-gray-200 dark:border-slate-600 last:border-b-0 text-gray-800 dark:text-gray-200"
-                              >
-                                {golfer}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="p-3 text-gray-500 dark:text-gray-400 italic">No golfers found</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {backupPlayer && (
-                      <div className="mt-2 p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg flex items-center justify-between">
-                        <span className="font-semibold text-amber-800 dark:text-amber-300">✓ Selected: {backupPlayer}</span>
-                        <button
-                          onClick={() => {
-                            setBackupPlayer('');
-                            setBackupSearchTerm('');
-                          }}
-                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm transition-colors"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      <strong>Note:</strong> Auto-activates if your primary withdraws before the tournament. Each golfer can only be used once per season.
-                    </p>
-                  </div>
-                )}
-
-{(() => {
-                  const now = new Date();
-                  const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                  const tournamentStartTime = currentTournament?.tournament_date ? new Date(currentTournament.tournament_date) : null;
-                  const isLocked = lockTime && now >= lockTime;
-                  const tournamentStarted = tournamentStartTime && now >= tournamentStartTime;
-
-                  return (
-                    <>
-                      {isLocked && (
-                        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-xl">
-                          <p className="text-red-800 dark:text-red-300 font-semibold text-center">
-                            {tournamentStarted ? (
-                              <>🔒 Picks are locked! This tournament has already started.</>
-                            ) : (
-                              <>🔒 Picks are locked! The next week will open on Monday after this tournament ends.</>
-                            )}
-                          </p>
-                        </div>
-                      )}
-
-                      <button
-                        onClick={handleSubmitPick}
-                        disabled={!selectedPlayer || isLocked}
-                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 dark:disabled:from-slate-600 dark:disabled:to-slate-700 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:scale-95 disabled:transform-none disabled:active:scale-100 transition-all duration-150"
-                      >
-                        {isLocked ? 'Picks Locked' : 'Submit Pick'}
-                      </button>
-
-                      {lockTime && !isLocked && (
-                        <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 text-center">
-                          Picks lock at {lockTime.toLocaleString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: 'numeric',
-                            minute: '2-digit',
-                            timeZoneName: 'short'
-                          })}
-                        </p>
-                      )}
-                    </>
-                  );
-                })()}
-
-                {/* Used Golfers Section - exclude current week's pick */}
-                {(() => {
-                  const currentPick = selectedPlayer || currentWeekPick.golfer;
-                  const pastPicks = userPicks.filter(p => p && p !== currentPick);
-                  return pastPicks.length > 0 && (
-                    <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
-                      <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                        Golfers Used in Prior Weeks ({pastPicks.length})
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {pastPicks.map((golfer, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-block px-2 py-1 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 text-xs rounded-full"
-                          >
-                            {golfer}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-              )
+            {activeTab === 'picks' && (
+              <PicksTab
+                currentWeek={currentWeek}
+                currentTournament={currentTournament}
+                currentWeekPick={currentWeekPick}
+                selectedPlayer={selectedPlayer}
+                backupPlayer={backupPlayer}
+                primarySearchTerm={primarySearchTerm}
+                backupSearchTerm={backupSearchTerm}
+                showPrimaryDropdown={showPrimaryDropdown}
+                showBackupDropdown={showBackupDropdown}
+                timeUntilLock={timeUntilLock}
+                leagueSettings={leagueSettings}
+                userPicks={userPicks}
+                filteredPrimaryGolfers={filteredPrimaryGolfers}
+                filteredBackupGolfers={filteredBackupGolfers}
+                picksLoading={picksLoading}
+                formatPrizePool={formatPrizePool}
+                setSelectedPlayer={setSelectedPlayer}
+                setBackupPlayer={setBackupPlayer}
+                setPrimarySearchTerm={setPrimarySearchTerm}
+                setBackupSearchTerm={setBackupSearchTerm}
+                setShowPrimaryDropdown={setShowPrimaryDropdown}
+                setShowBackupDropdown={setShowBackupDropdown}
+                handleSubmitPick={handleSubmitPick}
+              />
             )}
 
             {activeTab === 'results' && (
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Commissioner</h2>
-
-                {userRole !== 'commissioner' ? (
-                  <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
-                    <Shield className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={64} />
-                    <h3 className="text-xl font-bold text-gray-700 dark:text-gray-300 mb-2">Commissioner Only</h3>
-                    <p className="text-gray-600 dark:text-gray-400">
-                      Only the league commissioner can change league rules and manage tournament results.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Invite Code */}
-                    <div className="bg-white dark:bg-slate-700 border border-green-300 dark:border-green-600 rounded-xl p-6 shadow-lg">
-                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100 mb-3">
-                        <Mail className="text-green-600 dark:text-green-400" />
-                        Invite Members
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        Share this code with friends so they can join your league.
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 p-3 bg-gray-100 dark:bg-slate-600 rounded-xl font-mono text-lg text-center font-bold text-gray-800 dark:text-gray-100 tracking-widest select-all">
-                          {currentLeague?.invite_code}
-                        </div>
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(currentLeague?.invite_code || '');
-                            showNotification('success', 'Invite code copied!');
-                          }}
-                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-xl font-semibold transition-colors active:scale-95"
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* League Settings */}
-                    <div className="bg-white dark:bg-slate-700 border border-purple-300 dark:border-purple-600 rounded-xl p-6 shadow-lg">
-                      <button
-                        onClick={() => setShowLeagueSettings(!showLeagueSettings)}
-                        className="w-full flex items-center justify-between"
-                      >
-                        <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                          <Settings className="text-purple-600 dark:text-purple-400" />
-                          League Settings
-                        </h3>
-                        <ChevronDown
-                          size={20}
-                          className={`text-gray-500 transition-transform duration-200 ${showLeagueSettings ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-
-                      {showLeagueSettings && (
-                        <div className="mt-4 space-y-4">
-                          {/* Penalty Amounts */}
-                          <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">Penalty Amounts</p>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  No Pick Submitted
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 dark:text-gray-400">$</span>
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.no_pick_penalty}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      no_pick_penalty: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  Missed Cut
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 dark:text-gray-400">$</span>
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.missed_cut_penalty}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      missed_cut_penalty: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  Withdrawal
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 dark:text-gray-400">$</span>
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.withdrawal_penalty}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      withdrawal_penalty: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  Disqualification
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 dark:text-gray-400">$</span>
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.dq_penalty}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      dq_penalty: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                          </div>
-
-                          {/* Buy-In & Payout Settings */}
-                          <div className="p-4 bg-gray-50 dark:bg-slate-600 rounded-xl space-y-4">
-                            <p className="font-semibold text-gray-800 dark:text-gray-100">Buy-In & Payout Split</p>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  Season Buy-In
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-gray-500 dark:text-gray-400">$</span>
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.buy_in_amount}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      buy_in_amount: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  1st Place Payout
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.payout_first_pct}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      payout_first_pct: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                  <span className="text-gray-500 dark:text-gray-400">%</span>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  2nd Place Payout
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.payout_second_pct}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      payout_second_pct: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                  <span className="text-gray-500 dark:text-gray-400">%</span>
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
-                                  3rd Place Payout
-                                </label>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    value={leagueSettings.payout_third_pct}
-                                    onChange={(e) => setLeagueSettings({
-                                      ...leagueSettings,
-                                      payout_third_pct: parseInt(e.target.value) || 0
-                                    })}
-                                    className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-500 rounded-lg focus:border-purple-500 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                                  />
-                                  <span className="text-gray-500 dark:text-gray-400">%</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <button
-                              onClick={() => handleUpdateLeagueSettings({
-                                no_pick_penalty: leagueSettings.no_pick_penalty,
-                                missed_cut_penalty: leagueSettings.missed_cut_penalty,
-                                withdrawal_penalty: leagueSettings.withdrawal_penalty,
-                                dq_penalty: leagueSettings.dq_penalty,
-                                buy_in_amount: leagueSettings.buy_in_amount,
-                                payout_first_pct: leagueSettings.payout_first_pct,
-                                payout_second_pct: leagueSettings.payout_second_pct,
-                                payout_third_pct: leagueSettings.payout_third_pct
-                              })}
-                              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors active:scale-95"
-                            >
-                              Save League Settings
-                            </button>
-                          </div>
-
-                          <p className="text-xs text-gray-500 dark:text-gray-400 italic">
-                            Changes take effect immediately for new picks and penalties.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Manage Tournament Results */}
-                    <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6 shadow-lg">
-                      <h3 className="font-bold text-lg flex items-center gap-2 text-gray-800 dark:text-gray-100 mb-4">
-                        <Trophy className="text-yellow-500" />
-                        Manage Tournament Results
-                      </h3>
-
-                      <div className="mb-4">
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                          Select Tournament to Edit
-                        </label>
-                      <select
-                        value={editTournamentId || ''}
-                        onChange={(e) => {
-                          const newId = e.target.value;
-                          setEditTournamentId(newId);
-                          if (newId) {
-                            loadTournamentPicks(newId);
-                          } else {
-                            setEditTournamentPicks([]);
-                            setEditResultsData({});
-                          }
-                        }}
-                        className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none text-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
-                      >
-                        <option value="">-- Select a tournament --</option>
-                        {tournaments
-                          .filter(t => {
-                            // Only show tournaments where picks are locked (tournament has started)
-                            const lockTime = t.picks_lock_time ? new Date(t.picks_lock_time) : null;
-                            return lockTime && new Date() >= lockTime;
-                          })
-                          .map(t => (
-                          <option key={t.id} value={t.id}>
-                            Week {t.week}: {t.name} {t.completed ? '✓' : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Edit Results Form */}
-                    {editTournamentId && (
-                      <div>
-                        {(() => {
-                          const selectedTournament = tournaments.find(t => t.id === editTournamentId);
-                          const now = new Date();
-                          const lockTime = selectedTournament?.picks_lock_time ? new Date(selectedTournament.picks_lock_time) : null;
-                          const isPicksLocked = lockTime && now >= lockTime;
-                          const isCurrentWeekTournament = selectedTournament?.week === currentWeek && !selectedTournament?.completed;
-
-                          return (
-                            <>
-                              <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 p-4 mb-4 rounded-r-xl">
-                                <p className="text-blue-800 dark:text-blue-300">
-                                  <strong>Editing:</strong> {selectedTournament?.name} (Week {selectedTournament?.week})
-                                </p>
-                                <p className="text-blue-700 dark:text-blue-400 text-sm mt-1">
-                                  {selectedTournament?.completed
-                                    ? 'This tournament is marked as completed. You can still edit results.'
-                                    : isCurrentWeekTournament && !isPicksLocked
-                                    ? '🔒 Picks are not yet locked. Player picks will be visible after the tournament starts.'
-                                    : 'This tournament is not yet completed.'}
-                                </p>
-                              </div>
-
-                              {isCurrentWeekTournament && !isPicksLocked ? (
-                                <div className="text-center py-12 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-300 dark:border-amber-700">
-                                  <Shield className="text-amber-500 dark:text-amber-400 mx-auto mb-4" size={48} />
-                                  <h3 className="text-lg font-bold text-amber-800 dark:text-amber-300 mb-2">Picks Not Yet Visible</h3>
-                                  <p className="text-amber-700 dark:text-amber-400">
-                                    Player picks for this tournament will be visible once picks lock.
-                                  </p>
-                                </div>
-                              ) : (
-                                <>
-                                  {loadingEditPicks ? (
-                                    <div className="text-center py-8">
-                                      <div className="w-10 h-10 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                      <p className="text-gray-600 dark:text-gray-400">Loading picks...</p>
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-4">
-                                      {editTournamentPicks.map(user => {
-                                        const userData = editResultsData[user.id] || {};
-                                        const hasGolfer = userData.golferName;
-
-                              return (
-                                <div key={user.id} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <div>
-                                      <p className="font-bold text-lg text-gray-800 dark:text-gray-100">{user.name}</p>
-                                      {hasGolfer ? (
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                                          Golfer: <span className="font-semibold text-gray-800 dark:text-gray-200">{userData.golferName}</span>
-                                        </p>
-                                      ) : (
-                                        <p className="text-sm text-red-600 dark:text-red-400 font-semibold">
-                                          ⚠️ No pick submitted
-                                        </p>
-                                      )}
-                                    </div>
-                                    {userData.winnings > 0 && (
-                                      <div className="text-right">
-                                        <span className="bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300 px-3 py-1 rounded-full text-sm font-semibold">
-                                          ${parseInt(userData.winnings).toLocaleString()}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                        Winnings ($)
-                                      </label>
-                                      <input
-                                        type="number"
-                                        placeholder="0"
-                                        value={userData.winnings || ''}
-                                        onChange={(e) => setEditResultsData({
-                                          ...editResultsData,
-                                          [user.id]: { ...userData, winnings: e.target.value }
-                                        })}
-                                        className="w-full p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
-                                      />
-                                    </div>
-
-                                    <div>
-                                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                                        Penalty
-                                      </label>
-                                      <select
-                                        value={userData.penalty || ''}
-                                        onChange={(e) => setEditResultsData({
-                                          ...editResultsData,
-                                          [user.id]: { ...userData, penalty: e.target.value }
-                                        })}
-                                        className="w-full p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
-                                      >
-                                        <option value="">No penalty</option>
-                                        <option value="no_pick">No Pick Submitted (${leagueSettings.no_pick_penalty})</option>
-                                        <option value="missed_cut">Missed Cut (${leagueSettings.missed_cut_penalty})</option>
-                                        <option value="withdrawal">Withdrawal (${leagueSettings.withdrawal_penalty})</option>
-                                        <option value="disqualification">Disqualification (${leagueSettings.dq_penalty})</option>
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    onClick={() => handleSaveEditResults(user.id)}
-                                    className="mt-3 w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-4 rounded-xl font-semibold shadow hover:shadow-lg transition-all"
-                                  >
-                                    Save Changes
-                                  </button>
-                                </div>
-                              );
-                            })}
-                                    </div>
-                                  )}
-                                </>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-
-                    {!editTournamentId && (
-                      <div className="text-center py-12 bg-gray-50 dark:bg-slate-700/50 rounded-xl border border-gray-200 dark:border-slate-600">
-                        <Trophy className="text-gray-400 dark:text-gray-500 mx-auto mb-4" size={48} />
-                        <p className="text-gray-600 dark:text-gray-400">Select a tournament above to view and edit results.</p>
-                      </div>
-                    )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CommissionerTab
+                currentLeague={currentLeague}
+                leagueSettings={leagueSettings}
+                tournaments={tournaments}
+                currentWeek={currentWeek}
+                editTournamentId={editTournamentId}
+                editTournamentPicks={editTournamentPicks}
+                editResultsData={editResultsData}
+                loadingEditPicks={loadingEditPicks}
+                showLeagueSettings={showLeagueSettings}
+                showNotification={showNotification}
+                setEditTournamentId={setEditTournamentId}
+                setEditResultsData={setEditResultsData}
+                setShowLeagueSettings={setShowLeagueSettings}
+                setLeagueSettings={setLeagueSettings}
+                setEditTournamentPicks={setEditTournamentPicks}
+                handleUpdateLeagueSettings={handleUpdateLeagueSettings}
+                handleSaveEditResults={handleSaveEditResults}
+                loadTournamentPicks={loadTournamentPicks}
+                getPenaltyAmount={getPenaltyAmount}
+              />
             )}
 
             {activeTab === 'standings' && (
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Standings</h2>
-                <div className="overflow-x-auto -mx-3 px-3 sm:-mx-6 sm:px-6 md:mx-0 md:px-0">
-                  <table className="w-full min-w-[480px]">
-                    <thead>
-                      <tr className="bg-gray-100 dark:bg-slate-700">
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tl-lg">#</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Player</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Won</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pen.</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm">Pick</th>
-                        <th className="py-2 sm:py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 dark:text-gray-300 text-xs sm:text-sm rounded-tr-lg"></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedStandings.map((player, idx) => (
-                        <React.Fragment key={player.id}>
-                          <tr
-                            className={`border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/20 font-semibold' : ''}`}
-                          >
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                              {idx === 0 ? (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <span className="text-base sm:text-lg">🥇</span>
-                                  <span className="hidden sm:inline font-bold text-yellow-600 dark:text-yellow-400">1</span>
-                                </span>
-                              ) : idx === 1 ? (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <span className="text-base sm:text-lg">🥈</span>
-                                  <span className="hidden sm:inline font-semibold text-gray-500 dark:text-gray-400">2</span>
-                                </span>
-                              ) : idx === 2 ? (
-                                <span className="inline-flex items-center gap-0.5">
-                                  <span className="text-base sm:text-lg">🥉</span>
-                                  <span className="hidden sm:inline font-semibold text-amber-700 dark:text-amber-500">3</span>
-                                </span>
-                              ) : (
-                                idx + 1
-                              )}
-                            </td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-xs sm:text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-red-600 dark:text-red-400 font-semibold text-xs sm:text-sm">
-                              {player.penalties > 0 ? `$${player.penalties}` : '-'}
-                            </td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-4 text-center text-xs sm:text-sm">
-                              {(() => {
-                                const now = new Date();
-                                const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                                const isLocked = lockTime && now >= lockTime;
-                                const isCurrentUser = player.id === currentUser?.id;
-
-                                // Current user can always see their own pick
-                                if (isCurrentUser) {
-                                  const pickName = player.currentPick?.golfer_name;
-                                  const hasRealPick = pickName && pickName !== 'No Pick';
-                                  return hasRealPick ? (
-                                    <div>
-                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{pickName}</div>
-                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
-                                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
-                                  );
-                                }
-
-                                // Other users - hide if NOT locked yet
-                                if (!isLocked) {
-                                  const otherPickName = player.currentPick?.golfer_name;
-                                  const otherHasReal = otherPickName && otherPickName !== 'No Pick';
-                                  return otherHasReal ? (
-                                    <span className="text-gray-500 dark:text-gray-400">🔒</span>
-                                  ) : (
-                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
-                                  );
-                                }
-
-                                // Locked - show everyone's picks
-                                {
-                                  const lockedPickName = player.currentPick?.golfer_name;
-                                  const lockedHasReal = lockedPickName && lockedPickName !== 'No Pick';
-                                  return lockedHasReal ? (
-                                    <div>
-                                      <div className="text-green-700 dark:text-green-400 truncate max-w-[80px] sm:max-w-none">{lockedPickName}</div>
-                                      {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && (
-                                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 hidden sm:block">Backup: {player.currentPick.backup_golfer_name}</div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>
-                                  );
-                                }
-                              })()}
-                            </td>
-                            <td className="py-2 sm:py-3 px-1 sm:px-2 text-center">
-                              <button
-                                onClick={() => toggleRowExpansion(player.id)}
-                                className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-0.5 mx-auto text-xs sm:text-sm transition-all active:scale-95"
-                              >
-                                {expandedRows[player.id] ? (
-                                  <>
-                                    <ChevronDown size={16} />
-                                    <span className="hidden sm:inline">Hide</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <ChevronRight size={16} />
-                                    <span className="hidden sm:inline">Details</span>
-                                  </>
-                                )}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Expanded weekly results row */}
-                          {expandedRows[player.id] && (
-                            <tr className="bg-gray-50 dark:bg-slate-700/50">
-                              <td colSpan="6" className="py-4 px-4">
-                                <div className="max-w-5xl mx-auto">
-                                  <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Week-by-Week Results for {player.name}</h4>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-200 dark:bg-slate-600">
-                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Week</th>
-                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Tournament</th>
-                                          <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Golfer</th>
-                                          {leagueSettings.backup_picks_enabled && (
-                                            <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Backup</th>
-                                          )}
-                                          <th className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">Winnings</th>
-                                          <th className="py-2 px-3 text-center text-gray-800 dark:text-gray-200">Penalty</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {player.picksByWeek.map((weekData, weekIdx) => {
-                                          // Check if this is the current week and if picks should be hidden
-                                          const isCurrentWeekRow = weekData.week === currentWeek;
-                                          const isViewingOwnPicks = player.id === currentUser?.id;
-                                          const now = new Date();
-                                          const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                                          const isLocked = lockTime && now >= lockTime;
-                                          const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
-
-                                          return (
-                                          <tr key={weekIdx} className="border-b border-gray-300 dark:border-slate-600">
-                                            <td className="py-2 px-3 font-semibold text-gray-800 dark:text-gray-200">{weekData.week}</td>
-                                            <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{weekData.tournamentName}</td>
-                                            <td className="py-2 px-3">
-                                              {shouldHidePick ? (
-                                                weekData.golfer ? (
-                                                  <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
-                                                ) : (
-                                                  <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
-                                                )
-                                              ) : weekData.golfer ? (
-                                                <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
-                                              ) : weekData.isPast ? (
-                                                <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
-                                              ) : (
-                                                <span className="text-gray-300 dark:text-gray-600">—</span>
-                                              )}
-                                            </td>
-                                            {leagueSettings.backup_picks_enabled && (
-                                              <td className="py-2 px-3">
-                                                {shouldHidePick ? (
-                                                  <span className="text-gray-300 dark:text-gray-600">-</span>
-                                                ) : weekData.backup ? (
-                                                  <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
-                                                ) : (
-                                                  <span className="text-gray-300 dark:text-gray-600">-</span>
-                                                )}
-                                              </td>
-                                            )}
-                                            <td className="py-2 px-3 text-right">
-                                              {weekData.winnings > 0 ? (
-                                                <span className="text-green-600 dark:text-green-400 font-semibold">${weekData.winnings.toLocaleString()}</span>
-                                              ) : (
-                                                <span className="text-gray-400 dark:text-gray-500">$0</span>
-                                              )}
-                                            </td>
-                                            <td className="py-2 px-3 text-center">
-                                              {weekData.penalty > 0 ? (
-                                                <span className="text-red-600 dark:text-red-400 font-semibold">
-                                                  ${weekData.penalty} ({weekData.penaltyReason?.replace('_', ' ')})
-                                                </span>
-                                              ) : (
-                                                <span className="text-gray-400 dark:text-gray-500">-</span>
-                                              )}
-                                            </td>
-                                          </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                      <tfoot>
-                                        <tr className="bg-gray-200 dark:bg-slate-600 font-bold">
-                                          <td colSpan={leagueSettings.backup_picks_enabled ? 4 : 3} className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">TOTALS:</td>
-                                          <td className="py-2 px-3 text-right text-green-700 dark:text-green-400">
-                                            ${player.winnings.toLocaleString()}
-                                          </td>
-                                          <td className="py-2 px-3 text-center text-red-600 dark:text-red-400">
-                                            {player.penalties > 0 ? `$${player.penalties}` : '-'}
-                                          </td>
-                                        </tr>
-                                      </tfoot>
-                                    </table>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="text-center mt-2 sm:hidden">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">← Swipe to see more →</p>
-                </div>
-              </div>
+              <StandingsTab
+                sortedStandings={sortedStandings}
+                currentUser={currentUser}
+                currentWeek={currentWeek}
+                currentTournament={currentTournament}
+                leagueSettings={leagueSettings}
+                expandedRows={expandedRows}
+                toggleRowExpansion={toggleRowExpansion}
+              />
             )}
 
             {activeTab === 'schedule' && (
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">Tournament Schedule</h2>
-                <div className="space-y-3">
-                  {tournaments.map((tournament) => (
-                    <div key={tournament.id}>
-                      <div
-                        onClick={() => tournament.completed && setExpandedScheduleTournament(
-                          expandedScheduleTournament === tournament.id ? null : tournament.id
-                        )}
-                        className={`p-3 sm:p-4 rounded-xl border transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
-                          tournament.completed ? 'cursor-pointer' : 'cursor-default'
-                        } ${
-                          tournament.week === currentWeek
-                            ? 'border-green-500 dark:border-green-400 bg-green-50 dark:bg-green-900/20 shadow-sm'
-                            : tournament.completed
-                            ? 'border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/50'
-                            : 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20'
-                        } ${expandedScheduleTournament === tournament.id ? 'rounded-b-none' : ''}`}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-bold text-base sm:text-lg text-gray-800 dark:text-gray-100">{tournament.name}</h3>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                                tournament.prize_pool
-                                  ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400'
-                                  : 'bg-gray-200 dark:bg-slate-600 text-gray-500 dark:text-gray-400'
-                              }`}>
-                                {formatPrizePool(tournament.prize_pool)}
-                              </span>
-                            </div>
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Week {tournament.week} - {new Date(tournament.tournament_date).toLocaleDateString()}</p>
-                            {(tournament.course || tournament.location) && (
-                              <p className="text-xs text-gray-500 dark:text-gray-500">
-                                {tournament.course}{tournament.course && tournament.location && ' • '}{tournament.location}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0 flex items-center gap-2">
-                            {tournament.week === currentWeek ? (
-                              <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-full font-semibold text-xs sm:text-sm inline-block shadow-lg animate-pulse-gentle">
-                                Current Week
-                              </span>
-                            ) : tournament.completed || tournament.week < currentWeek ? (
-                              <>
-                                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 text-sm">
-                                  <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
-                                  <span className="text-xs sm:text-sm">Completed</span>
-                                </span>
-                                <ChevronDown
-                                  size={20}
-                                  className={`text-gray-400 transition-transform ${expandedScheduleTournament === tournament.id ? 'rotate-180' : ''}`}
-                                />
-                              </>
-                            ) : (
-                              <span className="text-blue-600 dark:text-blue-400 font-semibold text-xs sm:text-sm">Upcoming</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded tournament results */}
-                      {expandedScheduleTournament === tournament.id && tournament.completed && (
-                        <div className="border border-t-0 border-gray-200 dark:border-slate-600 rounded-b-xl bg-white dark:bg-slate-800 p-4">
-                          <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Week {tournament.week} Results</h4>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-gray-200 dark:border-slate-600">
-                                  <th className="text-left py-2 px-2 text-gray-600 dark:text-gray-400">Player</th>
-                                  <th className="text-left py-2 px-2 text-gray-600 dark:text-gray-400">Pick</th>
-                                  <th className="text-right py-2 px-2 text-gray-600 dark:text-gray-400">Won</th>
-                                  <th className="text-center py-2 px-2 text-gray-600 dark:text-gray-400">Penalty</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {players
-                                  .map(player => {
-                                    const weekData = player.picksByWeek?.find(w => w.week === tournament.week);
-                                    return { ...player, weekData };
-                                  })
-                                  .sort((a, b) => (b.weekData?.winnings || 0) - (a.weekData?.winnings || 0))
-                                  .map(player => (
-                                    <tr key={player.id} className={`border-b border-gray-100 dark:border-slate-700 ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/30 font-semibold' : ''}`}>
-                                      <td className="py-2 px-2 text-gray-800 dark:text-gray-200">
-                                        {player.name}
-                                        {player.id === currentUser?.id && <span className="ml-1 text-green-600 dark:text-green-400 text-xs">(you)</span>}
-                                      </td>
-                                      <td className="py-2 px-2">
-                                        {player.weekData?.golfer ? (
-                                          <span className="text-green-700 dark:text-green-400">{player.weekData.golfer}</span>
-                                        ) : (
-                                          <span className="text-red-500 dark:text-red-400 text-xs">No pick</span>
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-2 text-right text-gray-800 dark:text-gray-200">
-                                        ${(player.weekData?.winnings || 0).toLocaleString()}
-                                      </td>
-                                      <td className="py-2 px-2 text-center">
-                                        {player.weekData?.penalty > 0 ? (
-                                          <span className="text-red-600 dark:text-red-400 text-xs">
-                                            ${player.weekData.penalty} ({player.weekData.penaltyReason?.replace('_', ' ') || 'penalty'})
-                                          </span>
-                                        ) : (
-                                          <span className="text-gray-400">-</span>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ScheduleTab
+                tournaments={tournaments}
+                currentWeek={currentWeek}
+                players={players}
+                currentUser={currentUser}
+                leagueSettings={leagueSettings}
+                expandedScheduleTournament={expandedScheduleTournament}
+                setExpandedScheduleTournament={setExpandedScheduleTournament}
+                formatPrizePool={formatPrizePool}
+              />
             )}
 
             {activeTab === 'admin' && (
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Info</h2>
-
-                <div className="space-y-6">
-                  {/* Prize Pool Calculator */}
-                  <div className="bg-white dark:bg-slate-700 border border-green-500 dark:border-green-400 rounded-xl p-6 shadow-lg">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                      <Trophy className="text-yellow-500" />
-                      Prize Pool & Payouts
-                    </h3>
-
-                    {(() => {
-                      const buyIn = leagueSettings.buy_in_amount ?? 50;
-                      const pctFirst = leagueSettings.payout_first_pct ?? 65;
-                      const pctSecond = leagueSettings.payout_second_pct ?? 25;
-                      const pctThird = leagueSettings.payout_third_pct ?? 10;
-                      const numPlayers = players.length;
-                      const totalPenalties = players.reduce((sum, p) => sum + (p.penalties || 0), 0);
-                      const totalPot = (numPlayers * buyIn) + totalPenalties;
-                      const firstPlace = Math.round(totalPot * pctFirst / 100);
-                      const secondPlace = Math.round(totalPot * pctSecond / 100);
-                      const thirdPlace = Math.round(totalPot * pctThird / 100);
-
-                      return (
-                        <div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                            <div className="bg-gray-50 dark:bg-slate-600 p-4 rounded-xl text-center">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Players</p>
-                              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{numPlayers}</p>
-                            </div>
-                            <div className="bg-gray-50 dark:bg-slate-600 p-4 rounded-xl text-center">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Buy-ins</p>
-                              <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">${numPlayers * buyIn}</p>
-                            </div>
-                            <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-xl text-center">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Penalties</p>
-                              <p className="text-2xl font-bold text-red-600 dark:text-red-400">${totalPenalties}</p>
-                            </div>
-                            <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-xl text-center border border-green-500 dark:border-green-400">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">Total Pot</p>
-                              <p className="text-2xl font-bold text-green-600 dark:text-green-400">${totalPot}</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-3 gap-4">
-                            <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 p-4 rounded-xl text-center">
-                              <div className="text-3xl mb-1">🥇</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">1st Place ({pctFirst}%)</p>
-                              <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">${firstPlace}</p>
-                            </div>
-                            <div className="bg-gray-100 dark:bg-slate-600 border border-gray-400 dark:border-slate-500 p-4 rounded-xl text-center">
-                              <div className="text-3xl mb-1">🥈</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">2nd Place ({pctSecond}%)</p>
-                              <p className="text-xl font-bold text-gray-600 dark:text-gray-300">${secondPlace}</p>
-                            </div>
-                            <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-400 dark:border-orange-600 p-4 rounded-xl text-center">
-                              <div className="text-3xl mb-1">🥉</div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400">3rd Place ({pctThird}%)</p>
-                              <p className="text-xl font-bold text-orange-600 dark:text-orange-400">${thirdPlace}</p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Golfer Management */}
-                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                      <Users className="text-green-600 dark:text-green-400" />
-                      Golfer Management
-                    </h3>
-
-                    <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                        <strong>Current Golfers:</strong> {availableGolfers.length} players available
-                      </p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Add new golfers who aren't in the master list (rookies, sponsor exemptions, etc.)
-                      </p>
-                    </div>
-
-                    {!showAddGolfer ? (
-                      <button
-                        onClick={() => setShowAddGolfer(true)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
-                      >
-                        <Users size={18} />
-                        Add New Golfer
-                      </button>
-                    ) : (
-                      <div className="border border-green-200 dark:border-green-800 rounded-xl p-4 bg-green-50 dark:bg-green-900/20">
-                        <h4 className="font-semibold mb-3 text-gray-800 dark:text-gray-200">Add New Golfer</h4>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <input
-                            type="text"
-                            value={newGolferName}
-                            onChange={(e) => setNewGolferName(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddGolfer()}
-                            placeholder="Enter golfer name (e.g., Tiger Woods)"
-                            className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                          />
-                          <div className="flex gap-2 sm:gap-3">
-                            <button
-                              onClick={handleAddGolfer}
-                              className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors active:scale-95"
-                            >
-                              Add
-                            </button>
-                            <button
-                              onClick={() => {
-                                setShowAddGolfer(false);
-                                setNewGolferName('');
-                              }}
-                              className="flex-1 sm:flex-none bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-500 transition-colors active:scale-95"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-2">
-                          Tip: Use proper capitalization (e.g., "Jon Rahm" not "jon rahm")
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Season Progress */}
-                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                      <Calendar className="text-blue-600 dark:text-blue-400" />
-                      Season Progress
-                    </h3>
-                    {(() => {
-                      const completedWeeks = tournaments.filter(t => t.completed).length;
-                      const totalWeeks = tournaments.length;
-                      const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
-
-                      return (
-                        <div>
-                          <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                            <span>{completedWeeks} of {totalWeeks} weeks completed</span>
-                            <span>{progressPercent}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-4 overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-green-500 to-emerald-500 h-4 rounded-full transition-all duration-500"
-                              style={{ width: `${progressPercent}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                            {totalWeeks - completedWeeks} weeks remaining
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* League Rules */}
-                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                      <Shield className="text-blue-600 dark:text-blue-400" />
-                      League Rules
-                    </h3>
-
-                    <div className="space-y-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                        <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Buy-In & Fees</h4>
-                        <ul className="text-sm text-blue-900 dark:text-blue-300 space-y-1">
-                          <li>• Season buy-in: <strong>${leagueSettings.buy_in_amount ?? 50}</strong></li>
-                          <li>• Penalties added to prize pool</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
-                        <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-2">Pick Deadlines</h4>
-                        <ul className="text-sm text-amber-900 dark:text-amber-300 space-y-1">
-                          <li>• Picks lock on Thursdays at 2:00 AM ET</li>
-                          <li>• Each golfer can only be used <strong>once per season</strong></li>
-                          {leagueSettings.backup_picks_enabled && (
-                            <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
-                          )}
-                          <li>• New week picks open Monday after current tournament ends</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
-                        <h4 className="font-semibold text-red-800 dark:text-red-300 mb-2">Penalties</h4>
-                        <ul className="text-sm text-red-900 dark:text-red-300 space-y-1">
-                          <li>• <strong>No Pick Submitted:</strong> ${leagueSettings.no_pick_penalty} penalty</li>
-                          <li>• <strong>Missed Cut:</strong> ${leagueSettings.missed_cut_penalty} penalty</li>
-                          <li>• <strong>Withdrawal:</strong> ${leagueSettings.withdrawal_penalty} penalty {!leagueSettings.backup_picks_enabled && '(pre-tournament or during)'}</li>
-                          <li>• <strong>Disqualification:</strong> ${leagueSettings.dq_penalty} penalty</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800">
-                        <h4 className="font-semibold text-green-800 dark:text-green-300 mb-2">Payout Structure</h4>
-                        <ul className="text-sm text-green-900 dark:text-green-300 space-y-1">
-                          <li>• <strong>1st Place:</strong> {leagueSettings.payout_first_pct ?? 65}% of total pot</li>
-                          <li>• <strong>2nd Place:</strong> {leagueSettings.payout_second_pct ?? 25}% of total pot</li>
-                          <li>• <strong>3rd Place:</strong> {leagueSettings.payout_third_pct ?? 10}% of total pot</li>
-                          <li>• Final standings based on total season winnings</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-800">
-                        <h4 className="font-semibold text-purple-800 dark:text-purple-300 mb-2">How Winnings Work</h4>
-                        <ul className="text-sm text-purple-900 dark:text-purple-300 space-y-1">
-                          <li>• Your golfer's official PGA Tour prize money counts as your weekly earnings</li>
-                          <li>• Season winner = highest total prize money accumulated</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* League Members */}
-                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                      <Users className="text-green-600 dark:text-green-400" />
-                      League Members ({players.length})
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {players.map(player => (
-                        <div key={player.id} className="bg-gray-50 dark:bg-slate-600 p-3 rounded-xl text-center">
-                          <p className="font-semibold text-gray-800 dark:text-gray-100">{player.name}</p>
-                          {player.penalties > 0 && (
-                            <p className="text-xs text-red-600 dark:text-red-400">Penalties: ${player.penalties}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Pick Status Overview */}
-                  <div className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-100">Week {currentWeek} Pick Status</h3>
-                    <div className="space-y-2">
-                      {players.map(player => {
-                        const now = new Date();
-                        const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
-                        const isLocked = lockTime && now >= lockTime;
-
-                        return (
-                          <div key={player.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-600 rounded-xl">
-                            <div>
-                              <p className="font-semibold text-gray-800 dark:text-gray-100">{player.name}</p>
-                            </div>
-                            <div className="text-right">
-                              {(() => {
-                                const infoPickName = player.currentPick?.golfer_name;
-                                const infoHasReal = infoPickName && infoPickName !== 'No Pick';
-                                if (infoHasReal) {
-                                  return isLocked ? (
-                                    <div>
-                                      <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
-                                      <span className="text-green-700 dark:text-green-400 font-semibold">Submitted</span>
-                                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                                        {infoPickName}
-                                        {leagueSettings.backup_picks_enabled && player.currentPick.backup_golfer_name && ` (Backup: ${player.currentPick.backup_golfer_name})`}
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <CheckCircle className="inline text-green-600 dark:text-green-400 mr-2" size={20} />
-                                      <span className="text-green-700 dark:text-green-400 font-semibold">Submitted (Hidden)</span>
-                                    </div>
-                                  );
-                                }
-                                return isLocked ? (
-                                  <div>
-                                    <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
-                                    <span className="text-red-700 dark:text-red-400 font-semibold">No Pick</span>
-                                  </div>
-                                ) : (
-                                  <div>
-                                    <XCircle className="inline text-red-600 dark:text-red-400 mr-2" size={20} />
-                                    <span className="text-red-700 dark:text-red-400 font-semibold">Pending</span>
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+              <LeagueInfoTab
+                leagueSettings={leagueSettings}
+                players={players}
+                currentUser={currentUser}
+                currentWeek={currentWeek}
+                currentTournament={currentTournament}
+                tournaments={tournaments}
+                availableGolfers={availableGolfers}
+                showAddGolfer={showAddGolfer}
+                newGolferName={newGolferName}
+                setShowAddGolfer={setShowAddGolfer}
+                setNewGolferName={setNewGolferName}
+                handleAddGolfer={handleAddGolfer}
+              />
+            )}          </div>
         </div>
       </div>
     </div>
