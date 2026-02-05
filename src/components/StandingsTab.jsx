@@ -1,41 +1,42 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-// Helper to render the current pick for a player
-function renderPick(player, currentUser, currentTournament, leagueSettings, { truncate = true, showBackup = true } = {}) {
+// Get the visible pick text for a player (returns plain string or status)
+function getPickDisplay(player, currentUser, currentTournament) {
   const now = new Date();
   const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
   const isLocked = lockTime && now >= lockTime;
   const isCurrentUser = player.id === currentUser?.id;
-
-  const renderPickContent = (pickName, showBackupLine) => {
-    const hasRealPick = pickName && pickName !== 'No Pick';
-    if (!hasRealPick) {
-      return <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>;
-    }
-    return (
-      <div>
-        <div className={`text-green-700 dark:text-green-400 ${truncate ? 'truncate max-w-[80px] sm:max-w-none' : ''}`}>{pickName}</div>
-        {showBackup && showBackupLine && leagueSettings.backup_picks_enabled && player.currentPick?.backup_golfer_name && (
-          <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
-        )}
-      </div>
-    );
-  };
+  const pickName = player.currentPick?.golfer_name;
+  const hasRealPick = pickName && pickName !== 'No Pick';
 
   if (isCurrentUser) {
-    return renderPickContent(player.currentPick?.golfer_name, true);
+    return hasRealPick ? { type: 'pick', name: pickName } : { type: 'none' };
   }
-
   if (!isLocked) {
-    const otherPickName = player.currentPick?.golfer_name;
-    const otherHasReal = otherPickName && otherPickName !== 'No Pick';
-    return otherHasReal
-      ? <span className="text-gray-500 dark:text-gray-400">🔒</span>
-      : <span className="text-red-500 dark:text-red-400 text-[10px] sm:text-sm">No pick</span>;
+    return hasRealPick ? { type: 'locked' } : { type: 'none' };
   }
+  return hasRealPick ? { type: 'pick', name: pickName } : { type: 'none' };
+}
 
-  return renderPickContent(player.currentPick?.golfer_name, true);
+// Render the current pick for the desktop table
+function renderDesktopPick(player, currentUser, currentTournament, leagueSettings) {
+  const display = getPickDisplay(player, currentUser, currentTournament);
+
+  if (display.type === 'none') {
+    return <span className="text-red-500 dark:text-red-400 text-sm">No pick</span>;
+  }
+  if (display.type === 'locked') {
+    return <span className="text-gray-500 dark:text-gray-400">🔒</span>;
+  }
+  return (
+    <div>
+      <div className="text-green-700 dark:text-green-400">{display.name}</div>
+      {leagueSettings.backup_picks_enabled && player.currentPick?.backup_golfer_name && (
+        <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
+      )}
+    </div>
+  );
 }
 
 // Render rank badge
@@ -172,12 +173,12 @@ const StandingsTab = React.memo(function StandingsTab({
                   isCurrentUser
                     ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                     : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
-                } p-2.5`}
+                } px-2.5 py-2`}
               >
-                {/* Top row: rank, name, expand icon */}
-                <div className="flex items-center justify-between mb-1">
+                {/* Row 1: rank, name, expand icon */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 w-6 flex-shrink-0 text-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 w-5 flex-shrink-0 text-center">
                       <RankBadge idx={idx} size="small" />
                     </span>
                     <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-gray-800 dark:text-gray-200`}>
@@ -188,23 +189,37 @@ const StandingsTab = React.memo(function StandingsTab({
                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </span>
                 </div>
-                {/* Bottom row: stats */}
-                <div className="flex items-center gap-3 ml-8 text-xs">
-                  <span className="text-gray-800 dark:text-gray-200">
-                    <span className="text-gray-500 dark:text-gray-400">Won </span>
-                    <span className="font-semibold">${player.winnings.toLocaleString()}</span>
-                  </span>
-                  {player.penalties > 0 && (
-                    <span className="text-red-600 dark:text-red-400">
-                      <span className="text-gray-500 dark:text-gray-400">Pen </span>
-                      <span className="font-semibold">${player.penalties}</span>
-                    </span>
-                  )}
-                  <span className="text-xs">
-                    <span className="text-gray-500 dark:text-gray-400">Pick </span>
-                    {renderPick(player, currentUser, currentTournament, leagueSettings, { truncate: false, showBackup: false })}
-                  </span>
-                </div>
+                {/* Row 2: stats in a fixed 3-column grid */}
+                {(() => {
+                  const pickDisplay = getPickDisplay(player, currentUser, currentTournament);
+                  return (
+                    <div className="grid grid-cols-3 gap-1 ml-7 mt-1 text-xs">
+                      <div>
+                        <span className="text-gray-400 dark:text-gray-500">Won</span>{' '}
+                        <span className="font-semibold text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</span>
+                      </div>
+                      <div>
+                        {player.penalties > 0 && (
+                          <>
+                            <span className="text-gray-400 dark:text-gray-500">Pen</span>{' '}
+                            <span className="font-semibold text-red-600 dark:text-red-400">${player.penalties}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="truncate text-right">
+                        {pickDisplay.type === 'pick' && (
+                          <span className="text-green-700 dark:text-green-400 font-medium">{pickDisplay.name}</span>
+                        )}
+                        {pickDisplay.type === 'locked' && (
+                          <span className="text-gray-400 dark:text-gray-500">🔒</span>
+                        )}
+                        {pickDisplay.type === 'none' && (
+                          <span className="text-red-500 dark:text-red-400">No pick</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </button>
 
               {/* Expanded details */}
@@ -256,7 +271,7 @@ const StandingsTab = React.memo(function StandingsTab({
                     {player.penalties > 0 ? `$${player.penalties}` : '-'}
                   </td>
                   <td className="py-3 px-4 text-center text-sm">
-                    {renderPick(player, currentUser, currentTournament, leagueSettings)}
+                    {renderDesktopPick(player, currentUser, currentTournament, leagueSettings)}
                   </td>
                   <td className="py-3 px-2 text-center">
                     <button
