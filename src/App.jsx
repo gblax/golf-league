@@ -656,31 +656,24 @@ const playersWithWinnings = (usersData || []).map(user => {
       .eq('user_id', currentUser.id)
       .eq('league_id', currentLeague.id);
     
-    console.log('All picks data:', picksData);
-    
     const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
     setUserPicks(allUserPicks);
-    
+
     const currentTournament = getCurrentTournament(tournamentsData);
-    console.log('Current tournament:', currentTournament);
-    
+
     const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
-    console.log('Current week pick found:', currentPick);
-    
+
     if (currentPick) {
       const primary = (currentPick.golfer_name && currentPick.golfer_name !== 'No Pick') ? currentPick.golfer_name : '';
       const backup = currentPick.backup_golfer_name || '';
-      
-      console.log('Setting primary:', primary, 'backup:', backup);
-      
+
       setSelectedPlayer(primary);
       setBackupPlayer(backup);
-      setCurrentWeekPick({ 
-        golfer: primary, 
-        backup: backup 
+      setCurrentWeekPick({
+        golfer: primary,
+        backup: backup
       });
     } else {
-      console.log('No pick found for current week - resetting');
       setSelectedPlayer('');
       setBackupPlayer('');
       setCurrentWeekPick({ golfer: '', backup: '' });
@@ -700,33 +693,24 @@ const loadUserData = async () => {
       .eq('user_id', currentUser.id)
       .eq('league_id', currentLeague.id);
     
-    console.log('All picks data:', picksData);
-    
     const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
     setUserPicks(allUserPicks);
-    
+
     const currentTournament = getCurrentTournament();
-    console.log('Current tournament:', currentTournament);
-    
+
     const currentPick = picksData?.find(p => p.tournament_id === currentTournament?.id);
-    console.log('Current week pick found:', currentPick);
-    
+
     if (currentPick) {
       const primary = (currentPick.golfer_name && currentPick.golfer_name !== 'No Pick') ? currentPick.golfer_name : '';
       const backup = currentPick.backup_golfer_name || '';
-      
-      console.log('Setting primary:', primary, 'backup:', backup);
-      
-      // Set all three states together
+
       setSelectedPlayer(primary);
       setBackupPlayer(backup);
-      setCurrentWeekPick({ 
-        golfer: primary, 
-        backup: backup 
+      setCurrentWeekPick({
+        golfer: primary,
+        backup: backup
       });
     } else {
-      console.log('No pick found for current week - resetting');
-      // Reset selections if no pick for current week
       setSelectedPlayer('');
       setBackupPlayer('');
       setCurrentWeekPick({ golfer: '', backup: '' });
@@ -960,7 +944,6 @@ const loadUserData = async () => {
       }
 
       showNotification('success', 'Password updated successfully!');
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
@@ -1457,6 +1440,7 @@ const handleSubmitPick = async () => {
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                   placeholder="Password"
                 />
@@ -1599,7 +1583,7 @@ const handleSubmitPick = async () => {
                   type="text"
                   value={joinInviteCode}
                   onChange={(e) => setJoinInviteCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleJoinLeague()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleJoinLeague()}
                   className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                   placeholder="e.g. a1b2c3d4"
                 />
@@ -1625,7 +1609,7 @@ const handleSubmitPick = async () => {
                   type="text"
                   value={newLeagueName}
                   onChange={(e) => setNewLeagueName(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleCreateLeague()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateLeague()}
                   className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                   placeholder="e.g. Weekend Warriors Golf"
                 />
@@ -2055,7 +2039,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <CheckCircle size={20} />
-              <span className="hidden sm:inline text-base">Pick</span>
+              <span className="text-[10px] sm:text-base">Pick</span>
             </button>
             <button
               onClick={() => setActiveTab('standings')}
@@ -2066,7 +2050,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <TrendingUp size={20} />
-              <span className="hidden sm:inline text-base">Standings</span>
+              <span className="text-[10px] sm:text-base">Standings</span>
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
@@ -2077,7 +2061,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <Calendar size={20} />
-              <span className="hidden sm:inline text-base">Schedule</span>
+              <span className="text-[10px] sm:text-base">Schedule</span>
             </button>
             <button
               onClick={() => setActiveTab('admin')}
@@ -2088,19 +2072,21 @@ const handleSubmitPick = async () => {
               }`}
             >
               <Users size={20} />
-              <span className="hidden sm:inline text-base">League Info</span>
+              <span className="text-[10px] sm:text-base">League</span>
             </button>
-            <button
-              onClick={() => setActiveTab('results')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                activeTab === 'results'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <Shield size={20} />
-              <span className="hidden sm:inline text-base">Commissioner</span>
-            </button>
+            {userRole === 'commissioner' && (
+              <button
+                onClick={() => setActiveTab('results')}
+                className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
+                  activeTab === 'results'
+                    ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                }`}
+              >
+                <Shield size={20} />
+                <span className="text-[10px] sm:text-base">Admin</span>
+              </button>
+            )}
           </div>
 
           {/* Tab Content */}
@@ -3218,7 +3204,7 @@ const handleSubmitPick = async () => {
                             type="text"
                             value={newGolferName}
                             onChange={(e) => setNewGolferName(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddGolfer()}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddGolfer()}
                             placeholder="Enter golfer name (e.g., Tiger Woods)"
                             className="flex-1 p-2 border-2 border-gray-200 dark:border-slate-600 rounded-lg focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                           />
