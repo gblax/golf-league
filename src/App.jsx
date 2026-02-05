@@ -3297,7 +3297,7 @@ const handleSubmitPick = async () => {
                       <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-200 dark:border-amber-800">
                         <h4 className="font-semibold text-amber-800 dark:text-amber-300 mb-2">Pick Deadlines</h4>
                         <ul className="text-sm text-amber-900 dark:text-amber-300 space-y-1">
-                          <li>• Picks lock when the tournament begins (typically Thursday morning)</li>
+                          <li>• Picks lock on Thursdays at 2:00 AM ET</li>
                           <li>• Each golfer can only be used <strong>once per season</strong></li>
                           {leagueSettings.backup_picks_enabled && (
                             <li>• Backup picks activate automatically if primary withdraws before tournament start</li>
