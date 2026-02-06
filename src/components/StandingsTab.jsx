@@ -125,7 +125,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
               )}
               {weekData.penalty > 0 && weekData.penaltyReason && (
                 <div className="text-[10px] text-red-500 dark:text-red-400 mt-1">
-                  Penalty: {weekData.penaltyReason.replace('_', ' ')}
+                  Penalty: {weekData.penaltyReason.replaceAll('_', ' ')}
                 </div>
               )}
             </div>
@@ -362,7 +362,7 @@ const StandingsTab = React.memo(function StandingsTab({
                                   <td className="py-2 px-3 text-center">
                                     {weekData.penalty > 0 ? (
                                       <span className="text-red-600 dark:text-red-400 font-semibold">
-                                        ${weekData.penalty} ({weekData.penaltyReason?.replace('_', ' ')})
+                                        ${weekData.penalty} ({weekData.penaltyReason?.replaceAll('_', ' ')})
                                       </span>
                                     ) : (
                                       <span className="text-gray-400 dark:text-gray-500">-</span>

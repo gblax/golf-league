@@ -323,14 +323,29 @@ def match_golfer_name(pick_name: str, leaderboard_results: list[dict]) -> dict |
         if pick_name_lower == result_name_lower:
             return result
 
-        # Partial match (last name)
-        pick_parts = pick_name_lower.split()
-        result_parts = result_name_lower.split()
+    # Partial match: require both first and last name to match
+    # (last-name-only matching causes false positives for common surnames like Kim, Lee, Smith)
+    pick_parts = pick_name_lower.split()
+    if len(pick_parts) >= 2:
+        pick_first = pick_parts[0]
+        pick_last = pick_parts[-1]
+        for result in leaderboard_results:
+            result_parts = result["player_name"].lower().strip().split()
+            if len(result_parts) >= 2:
+                result_first = result_parts[0]
+                result_last = result_parts[-1]
+                if pick_last == result_last and pick_first == result_first:
+                    return result
 
-        if pick_parts and result_parts:
-            # Match on last name
-            if pick_parts[-1] == result_parts[-1]:
-                return result
+    # Last resort: match on last name only if there's exactly one match
+    if pick_parts:
+        pick_last = pick_parts[-1]
+        last_name_matches = [
+            r for r in leaderboard_results
+            if r["player_name"].lower().strip().split()[-1] == pick_last
+        ]
+        if len(last_name_matches) == 1:
+            return last_name_matches[0]
 
     return None
 

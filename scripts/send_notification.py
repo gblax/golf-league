@@ -10,7 +10,7 @@ from pywebpush import webpush, WebPushException
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
 VAPID_PRIVATE_KEY = os.environ["VAPID_PRIVATE_KEY"]
 VAPID_PUBLIC_KEY = os.environ["VAPID_PUBLIC_KEY"]
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com")

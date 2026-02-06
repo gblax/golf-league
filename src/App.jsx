@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw, Menu } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import PicksTab from './components/PicksTab';
@@ -274,10 +274,17 @@ const App = () => {
 
   // Toast notification state
   const [notification, setNotification] = useState(null);
+  const notificationTimerRef = useRef(null);
 
   const showNotification = (type, message) => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current);
+    }
     setNotification({ type, message });
-    setTimeout(() => setNotification(null), 4000);
+    notificationTimerRef.current = setTimeout(() => {
+      setNotification(null);
+      notificationTimerRef.current = null;
+    }, 4000);
   };
 
   // Dark mode state - initialize from localStorage or system preference
@@ -433,8 +440,6 @@ const App = () => {
             selectLeague(savedLeague);
           } else if (leagues.length === 1) {
             selectLeague(leagues[0]);
-          } else if (leagues.length > 0) {
-            setShowLeagueSelect(true);
           } else {
             setShowLeagueSelect(true);
           }
@@ -715,7 +720,8 @@ const playersWithWinnings = (usersData || []).map(user => {
     return activeTournament || list[list.length - 1];
   };
 
-  const currentWeek = getCurrentTournament()?.week || 1;
+  const currentTournamentMemo = useMemo(() => getCurrentTournament(), [tournaments]);
+  const currentWeek = currentTournamentMemo?.week || 1;
 
   const handleLogin = async () => {
     if (!loginEmail.trim() || !loginPassword) {
@@ -1294,10 +1300,10 @@ const handleSubmitPick = async () => {
     [availableForPick, backupSearchTerm, selectedPlayer]);
 
   const sortedStandings = useMemo(() =>
-    [...players].sort((a, b) => b.winnings - a.winnings),
+    [...players].sort((a, b) => b.winnings - a.winnings || a.name.localeCompare(b.name)),
     [players]);
 
-  const currentTournament = useMemo(() => getCurrentTournament(), [tournaments]);
+  const currentTournament = currentTournamentMemo;
 
   if (loading) {
     return (
