@@ -85,7 +85,7 @@ const PicksTab = React.memo(function PicksTab({
       <div className="mb-4 relative searchable-dropdown">
         <label className="label flex items-center gap-1.5">
           <CheckCircle className="text-emerald-500" size={14} />
-          Primary Golfer
+          {leagueSettings.backup_picks_enabled ? 'Primary Golfer' : 'Select Golfer'}
         </label>
         <div className="relative">
           <input
