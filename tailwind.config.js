@@ -7,47 +7,43 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        golf: {
-          50: '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
-        }
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       boxShadow: {
-        'golf': '0 4px 14px 0 rgba(34, 197, 94, 0.15)',
-        'golf-lg': '0 10px 40px 0 rgba(34, 197, 94, 0.2)',
+        'soft': '0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)',
+        'card': '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
+        'elevated': '0 4px 12px 0 rgb(0 0 0 / 0.08)',
+        'modal': '0 20px 60px -12px rgb(0 0 0 / 0.25)',
       },
       animation: {
-        'pulse-gentle': 'pulse-gentle 2s ease-in-out infinite',
-        'fade-in': 'fade-in 0.3s ease-out',
-        'modal-fade-in': 'modal-fade-in 0.2s ease-out',
-        'scale-in': 'scale-in 0.2s ease-out',
+        'fade-in': 'fade-in 0.2s ease-out',
+        'fade-in-up': 'fade-in-up 0.2s ease-out',
+        'modal-fade-in': 'modal-fade-in 0.15s ease-out',
+        'scale-in': 'scale-in 0.15s ease-out',
+        'slide-down': 'slide-down 0.2s ease-out',
       },
       keyframes: {
-        'pulse-gentle': {
-          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
-          '50%': { opacity: '0.85', transform: 'scale(1.02)' },
-        },
         'fade-in': {
-          '0%': { opacity: '0', transform: 'translate(-50%, -20px)' },
-          '100%': { opacity: '1', transform: 'translate(-50%, 0)' },
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         'modal-fade-in': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
         'scale-in': {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
-        }
+        },
+        'slide-down': {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       }
     },
   },

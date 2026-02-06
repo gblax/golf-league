@@ -2,14 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-margin: 0;
-padding: 0;
-box-sizing: border-box;
+@layer base {
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  /* Tabular nums for financial data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-body {
-font-family: 'Inter', system-ui, -apple-system, sans-serif;
--webkit-font-smoothing: antialiased;
--moz-osx-font-smoothing: grayscale;
+@layer components {
+  /* Consistent input styling */
+  .input {
+    @apply w-full px-3.5 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl
+           bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
+           placeholder-slate-400 dark:placeholder-slate-500
+           focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500
+           dark:focus:ring-emerald-400/20 dark:focus:border-emerald-400
+           transition-colors duration-150;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold
+           text-white bg-emerald-600 hover:bg-emerald-700
+           dark:bg-emerald-500 dark:hover:bg-emerald-600
+           rounded-xl transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Ghost/secondary button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium
+           text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800
+           hover:bg-slate-200 dark:hover:bg-slate-700
+           rounded-xl transition-colors duration-150;
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold
+           text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Card surfaces */
+  .card {
+    @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800
+           rounded-2xl shadow-card transition-colors duration-150;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm
+           flex items-center justify-center z-50 p-4 sm:p-6 animate-modal-fade-in;
+  }
+
+  .modal-panel {
+    @apply bg-white dark:bg-slate-900 rounded-2xl shadow-modal
+           max-w-md w-full max-h-[90vh] overflow-y-auto
+           border border-slate-200 dark:border-slate-800 animate-scale-in;
+  }
+
+  /* Form label */
+  .label {
+    @apply block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide;
+  }
 }

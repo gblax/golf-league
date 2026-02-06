@@ -1318,10 +1318,10 @@ const handleSubmitPick = async () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center transition-colors duration-300">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin"></div>
-          <div className="text-2xl font-bold text-green-700 dark:text-green-400">Loading...</div>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center transition-colors duration-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-[3px] border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading...</div>
         </div>
       </div>
     );
@@ -1329,37 +1329,39 @@ const handleSubmitPick = async () => {
 
   if (showResetPassword) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
-            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
           }`}>
-            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
-            <span className="font-medium">{notification.message}</span>
+            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
+            <span className="text-sm font-medium">{notification.message}</span>
           </div>
         )}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+        <div className="card p-8 max-w-md w-full">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-4">
               <Trophy className="text-white" size={40} />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Set New Password</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Enter your new password below</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Set New Password</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">Enter your new password below</p>
           </div>
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+              <label className="label">New Password</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                className="input"
                 placeholder="New password (min 6 characters)"
               />
             </div>
             <button
               onClick={handleResetPassword}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+              className="w-full btn-primary w-full py-3"
             >
               Update Password
             </button>
@@ -1371,70 +1373,72 @@ const handleSubmitPick = async () => {
 
   if (showLogin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         {/* Dark mode toggle for login page */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-4 right-4 p-3 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:shadow-xl transition-all duration-200 text-gray-600 dark:text-yellow-400"
+          className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
           aria-label="Toggle dark mode"
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
-            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
           }`}>
-            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
-            <span className="font-medium">{notification.message}</span>
+            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
+            <span className="text-sm font-medium">{notification.message}</span>
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+        <div className="card p-8 max-w-md w-full">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-4">
               <Trophy className="text-white" size={40} />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">{showForgotPassword ? 'Reset Password' : isSignup ? 'Create Account' : 'Welcome Back'}</p>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Golf One and Done</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-2">{showForgotPassword ? 'Reset Password' : isSignup ? 'Create Account' : 'Welcome Back'}</p>
           </div>
 
           <div className="space-y-5">
             {isSignup && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Name</label>
+                <label className="label">Name</label>
                 <input
                   type="text"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  className="input"
                   placeholder="Your name"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email</label>
+              <label className="label">Email</label>
               <input
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (showForgotPassword ? handleForgotPassword() : handleLogin())}
-                className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                className="input"
                 placeholder="your@email.com"
               />
             </div>
 
             {!showForgotPassword && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Password</label>
+                <label className="label">Password</label>
                 <input
                   type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  className="input"
                   placeholder="Password"
                 />
               </div>
@@ -1444,13 +1448,13 @@ const handleSubmitPick = async () => {
               <>
                 <button
                   onClick={handleForgotPassword}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                  className="w-full btn-primary w-full py-3"
                 >
                   Send Reset Email
                 </button>
                 <button
                   onClick={() => setShowForgotPassword(false)}
-                  className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                  className="w-full text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium transition-colors duration-150"
                 >
                   Back to sign in
                 </button>
@@ -1460,7 +1464,7 @@ const handleSubmitPick = async () => {
                 <button
                   onClick={handleLogin}
                   disabled={loginLoading}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+                  className="btn-primary w-full py-3"
                 >
                   {loginLoading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -1475,7 +1479,7 @@ const handleSubmitPick = async () => {
                 {!isSignup && (
                   <button
                     onClick={() => setShowForgotPassword(true)}
-                    className="w-full text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 text-sm font-medium transition-colors"
+                    className="w-full text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm font-medium transition-colors duration-150"
                   >
                     Forgot password?
                   </button>
@@ -1483,7 +1487,7 @@ const handleSubmitPick = async () => {
 
                 <button
                   onClick={() => setIsSignup(!isSignup)}
-                  className="w-full text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-sm font-medium transition-colors"
+                  className="w-full text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium transition-colors duration-150"
                 >
                   {isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
                 </button>
@@ -1498,35 +1502,37 @@ const handleSubmitPick = async () => {
   // League selection/creation screen
   if (showLeagueSelect || !currentLeague) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-4 right-4 p-3 rounded-full bg-white dark:bg-slate-700 shadow-lg hover:shadow-xl transition-all duration-200 text-gray-600 dark:text-yellow-400"
+          className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
           aria-label="Toggle dark mode"
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 ${
-            notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+            notification.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
           }`}>
-            {notification.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
-            <span className="font-medium">{notification.message}</span>
+            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
+            <span className="text-sm font-medium">{notification.message}</span>
           </div>
         )}
 
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-md w-full border border-gray-100 dark:border-slate-700 transition-colors duration-300">
+        <div className="card p-8 max-w-md w-full">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-3">
               <Trophy className="text-white" size={32} />
             </div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">Golf One and Done</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">Welcome, {currentUser?.name}</p>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Golf One and Done</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Welcome, {currentUser?.name}</p>
           </div>
 
           {/* League selection tabs */}
-          <div className="flex border-b border-gray-200 dark:border-slate-600 mb-6">
+          <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
             {userLeagues.length > 0 && (
               <button
                 onClick={() => setLeagueAction('select')}
@@ -1556,7 +1562,7 @@ const handleSubmitPick = async () => {
                 <button
                   key={league.id}
                   onClick={() => selectLeague(league)}
-                  className="w-full p-4 bg-gray-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/20 border-2 border-gray-200 dark:border-slate-600 hover:border-green-400 dark:hover:border-green-500 rounded-xl text-left transition-all"
+                  className="w-full p-4 bg-gray-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/20 border-2 border-slate-200 dark:border-slate-700 hover:border-green-400 dark:hover:border-green-500 rounded-xl text-left transition-all"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -1579,19 +1585,19 @@ const handleSubmitPick = async () => {
                 Enter the invite code from your league commissioner to join an existing league.
               </p>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Invite Code</label>
+                <label className="label">Invite Code</label>
                 <input
                   type="text"
                   value={joinInviteCode}
                   onChange={(e) => setJoinInviteCode(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoinLeague()}
-                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  className="input"
                   placeholder="e.g. a1b2c3d4"
                 />
               </div>
               <button
                 onClick={handleJoinLeague}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                className="w-full btn-primary w-full py-3"
               >
                 Join League
               </button>
@@ -1605,27 +1611,27 @@ const handleSubmitPick = async () => {
                 Create a new league and invite your friends with a unique invite code.
               </p>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">League Name</label>
+                <label className="label">League Name</label>
                 <input
                   type="text"
                   value={newLeagueName}
                   onChange={(e) => setNewLeagueName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateLeague()}
-                  className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
+                  className="input"
                   placeholder="e.g. Weekend Warriors Golf"
                 />
               </div>
               <button
                 onClick={handleCreateLeague}
                 disabled={creatingLeague}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full btn-primary w-full py-3"
               >
                 {creatingLeague ? 'Creating...' : 'Create League'}
               </button>
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-slate-600">
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -1643,153 +1649,108 @@ const handleSubmitPick = async () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 dark:from-slate-900 dark:to-slate-800 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
       {notification && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-fade-in ${
+        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
           notification.type === 'success'
-            ? 'bg-green-600 text-white'
-            : 'bg-red-600 text-white'
+            ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+            : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
         }`}>
           {notification.type === 'success' ? (
-            <CheckCircle size={20} />
+            <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           ) : (
-            <XCircle size={20} />
+            <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
           )}
-          <span className="font-medium">{notification.message}</span>
+          <span className="text-sm font-medium">{notification.message}</span>
           <button
             onClick={() => setNotification(null)}
-            className="ml-2 hover:opacity-70 transition-opacity"
+            className="ml-auto shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
-            ×
+            <XCircle size={16} />
           </button>
         </div>
       )}
       <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-slate-900/50 p-4 sm:p-8 mb-4 sm:mb-6 border border-gray-100 dark:border-slate-700 transition-colors duration-300">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="w-full sm:w-auto">
-              <h1 className="text-2xl sm:text-4xl font-bold flex items-center gap-2 sm:gap-3">
-                <div className="p-2 bg-gradient-to-br from-green-400 to-emerald-600 rounded-xl shadow-lg">
-                  <Trophy className="text-white" size={28} />
+        <div className="card p-4 sm:p-6 mb-4 sm:mb-5">
+          <div className="flex items-start sm:items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 bg-emerald-600 dark:bg-emerald-500 rounded-lg shrink-0">
+                  <Trophy className="text-white" size={18} />
                 </div>
-                <span className="leading-tight bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent">{currentLeague?.name || 'Golf One and Done'}</span>
-              </h1>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mt-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 font-medium">Week {currentWeek} - {currentTournament?.name}</p>
-                  <span className="text-xs sm:text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2.5 py-1 rounded-full font-bold border border-green-200 dark:border-green-800">
-                    {formatPrizePool(currentTournament?.prize_pool)}
-                  </span>
-                </div>
+                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">{currentLeague?.name || 'Golf One and Done'}</h1>
+              </div>
+              <div className="flex items-center gap-2 sm:gap-3 mt-2 flex-wrap">
+                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Wk {currentWeek} · {currentTournament?.name}</span>
+                <span className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  {formatPrizePool(currentTournament?.prize_pool)}
+                </span>
                 {timeUntilLock && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <>
                     {timeUntilLock === 'Locked' ? (
-                      <span className="text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800">
-                        🔒 Locked
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                        Locked
                       </span>
                     ) : (
-                      <span className={`text-xs sm:text-sm px-3 py-1.5 rounded-full font-semibold w-fit border ${lockUrgent ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
-                        ⏰ {timeUntilLock} until lock
+                      <span className={`text-xs font-semibold tabular-nums px-2 py-0.5 rounded-md border ${lockUrgent ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
+                        {timeUntilLock}
                       </span>
                     )}
                     {lockTimeLabel && (
-                      <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">{lockTimeLabel}</span>
+                      <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-500">{lockTimeLabel}</span>
                     )}
-                  </div>
+                  </>
                 )}
               </div>
             </div>
-            <div className="w-full sm:w-auto flex items-start justify-between sm:block">
-              <div className="text-left sm:text-right">
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Playing as</p>
-                <p className="text-lg sm:text-xl font-bold text-green-700 dark:text-green-400">{currentUser?.name}</p>
-                <div className="relative mt-2 profile-menu">
+            <div className="shrink-0 flex items-center gap-2">
+              <div className="text-right hidden sm:block mr-2">
+                <p className="text-xs text-slate-400 dark:text-slate-500">Playing as</p>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">{currentUser?.name}</p>
+              </div>
+                <div className="relative profile-menu">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 hover:border-green-300 dark:hover:border-green-600"
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors duration-150"
                     aria-haspopup="true"
                     aria-expanded={showProfileMenu}
+                    aria-label="Menu"
                   >
-                    <Menu size={14} />
-                    Settings
-                    <ChevronDown size={12} className={`transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`} />
+                    <Menu size={18} />
                   </button>
                   {showProfileMenu && (
                     <>
-                      {/* Backdrop with centered card modal - mobile only */}
+                      {/* Backdrop - mobile */}
                       <div
-                        className="sm:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40 flex items-center justify-center animate-modal-fade-in"
+                        className="sm:hidden fixed inset-0 bg-black/40 z-40 animate-modal-fade-in"
                         onClick={() => setShowProfileMenu(false)}
-                      >
-                        <div
-                          className="w-[90%] max-w-xs bg-white dark:bg-slate-700 rounded-2xl shadow-xl overflow-hidden animate-scale-in"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="py-2">
+                      />
+                      {/* Menu dropdown */}
+                      <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto top-auto sm:top-full bottom-4 sm:bottom-auto sm:right-0 sm:mt-2 w-auto sm:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-xl shadow-modal sm:shadow-elevated z-50 overflow-hidden animate-scale-in">
+                        <div className="p-1.5 sm:p-1">
+                          <p className="sm:hidden px-3 pt-2 pb-1 text-xs font-medium text-slate-400 dark:text-slate-500">{currentUser?.name}</p>
+                          {[
+                            { icon: Users, label: 'Account', action: () => { openAccountSettings(); setShowProfileMenu(false); } },
+                            { icon: Bell, label: 'Notifications', action: () => { setShowSettings(!showSettings); setShowProfileMenu(false); } },
+                            { icon: ChevronRight, label: userLeagues.length > 1 ? 'Switch League' : 'Join / Create League', action: () => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); } },
+                          ].map(item => (
                             <button
-                              onClick={() => { openAccountSettings(); setShowProfileMenu(false); }}
-                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
+                              key={item.label}
+                              onClick={item.action}
+                              className="w-full text-left px-3 py-2.5 sm:py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg flex items-center gap-2.5 transition-colors duration-150"
                             >
-                              <Users size={18} />
-                              Account
+                              <item.icon size={16} className="text-slate-400" />
+                              {item.label}
                             </button>
-                            <button
-                              onClick={() => { setShowSettings(!showSettings); setShowProfileMenu(false); }}
-                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
-                            >
-                              <Bell size={18} />
-                              Notifications
-                            </button>
-                            <button
-                              onClick={() => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); }}
-                              className="w-full text-left px-5 py-3.5 text-base text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-3 transition-colors"
-                            >
-                              <ChevronRight size={18} />
-                              {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
-                            </button>
-                            <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
-                            <button
-                              onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
-                              className="w-full text-left px-5 py-3.5 text-base text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 flex items-center gap-3 transition-colors"
-                            >
-                              <LogOut size={18} />
-                              Sign Out
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      {/* Desktop dropdown */}
-                      <div className="hidden sm:block absolute right-0 top-full mt-1 w-52 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl shadow-lg z-50 overflow-hidden">
-                        <div className="py-1">
-                          <button
-                            onClick={() => { openAccountSettings(); setShowProfileMenu(false); }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
-                          >
-                            <Users size={14} />
-                            Account
-                          </button>
-                          <button
-                            onClick={() => { setShowSettings(!showSettings); setShowProfileMenu(false); }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
-                          >
-                            <Bell size={14} />
-                            Notifications
-                          </button>
-                          <button
-                            onClick={() => { setCurrentLeague(null); setShowLeagueSelect(true); setShowProfileMenu(false); }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-600 active:bg-gray-100 dark:active:bg-slate-500 flex items-center gap-2 transition-colors"
-                          >
-                            <ChevronRight size={14} />
-                            {userLeagues.length > 1 ? 'Switch League' : 'Join / Create League'}
-                          </button>
-                          <div className="border-t border-gray-200 dark:border-slate-600 my-1" />
+                          ))}
+                          <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
                           <button
                             onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
-                            className="w-full text-left px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 active:bg-red-100 dark:active:bg-red-900/40 flex items-center gap-2 transition-colors"
+                            className="w-full text-left px-3 py-2.5 sm:py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg flex items-center gap-2.5 transition-colors duration-150"
                           >
-                            <LogOut size={14} />
+                            <LogOut size={16} />
                             Sign Out
                           </button>
                         </div>
@@ -1797,41 +1758,37 @@ const handleSubmitPick = async () => {
                     </>
                   )}
                 </div>
-              </div>
-              {/* Refresh and dark mode toggles */}
-              <div className="flex gap-2 ml-auto sm:ml-0 sm:absolute sm:top-4 sm:right-4">
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-gray-400 transition-all duration-200 disabled:opacity-50"
-                  aria-label="Refresh app"
-                >
-                  <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
-                </button>
-                <button
-                  onClick={() => setDarkMode(!darkMode)}
-                  className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-600 dark:text-yellow-400 transition-all duration-200"
-                  aria-label="Toggle dark mode"
-                >
-                  {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-              </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors duration-150 disabled:opacity-50"
+                aria-label="Refresh"
+              >
+                <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+              </button>
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition-colors duration-150"
+                aria-label="Toggle dark mode"
+              >
+                {darkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
             </div>
           </div>
 
           {/* Notification Settings Modal */}
           {showSettings && (
-            <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-700 transition-colors">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                      <Bell className="text-green-600 dark:text-green-400" size={28} />
+            <div className="modal-overlay">
+              <div className="modal-panel">
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Bell className="text-emerald-600 dark:text-emerald-400" size={20} />
                       Notifications
                     </h2>
                     <button
                       onClick={() => setShowSettings(false)}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
                       aria-label="Close notification settings"
                     >
                       <XCircle size={28} />
@@ -1854,12 +1811,12 @@ const handleSubmitPick = async () => {
                           <button
                             onClick={handlePushUnsubscribe}
                             disabled={pushLoading}
-                            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all disabled:opacity-50"
+                            className="btn-danger"
                           >
                             {pushLoading ? 'Updating...' : 'Disable All'}
                           </button>
                         </div>
-                        <div className="border-t border-gray-200 dark:border-slate-600 pt-4 space-y-4">
+                        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
@@ -1903,7 +1860,7 @@ const handleSubmitPick = async () => {
                         <button
                           onClick={handlePushSubscribe}
                           disabled={pushLoading}
-                          className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold shadow-lg transition-all disabled:opacity-50"
+                          className="btn-primary px-4 py-2"
                         >
                           {pushLoading ? 'Enabling...' : 'Enable'}
                         </button>
@@ -1911,10 +1868,10 @@ const handleSubmitPick = async () => {
                     )}
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                     <button
                       onClick={() => setShowSettings(false)}
-                      className="w-full bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 px-6 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+                      className="btn-secondary w-full py-2.5"
                     >
                       Close
                     </button>
@@ -1926,52 +1883,52 @@ const handleSubmitPick = async () => {
 
           {/* Account Settings Modal */}
           {showAccountSettings && (
-            <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-slate-700 transition-colors">
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-                      <Users className="text-green-600 dark:text-green-400" size={28} />
+            <div className="modal-overlay">
+              <div className="modal-panel max-w-lg">
+                <div className="p-5 sm:p-6">
+                  <div className="flex items-center justify-between mb-5">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Users className="text-emerald-600 dark:text-emerald-400" size={20} />
                       Account Settings
                     </h2>
                     <button
                       onClick={() => setShowAccountSettings(false)}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
                     >
                       <XCircle size={28} />
                     </button>
                   </div>
 
                   {/* Profile Information Section */}
-                  <div className="mb-8 pb-6 border-b border-gray-200 dark:border-slate-700">
-                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Profile Information</h3>
+                  <div className="mb-8 pb-6 border-b border-slate-200 dark:border-slate-800">
+                    <h3 className="font-semibold text-base mb-4 text-slate-900 dark:text-white">Profile Information</h3>
 
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Name</label>
+                        <label className="label">Name</label>
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                          className="input"
                           placeholder="Your name"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Email Address</label>
+                        <label className="label">Email Address</label>
                         <input
                           type="email"
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                          className="input"
                           placeholder="your@email.com"
                         />
                       </div>
 
                       <button
                         onClick={handleUpdateProfile}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                        className="btn-primary"
                       >
                         Save Profile Changes
                       </button>
@@ -1980,44 +1937,44 @@ const handleSubmitPick = async () => {
 
                   {/* Change Password Section */}
                   <div>
-                    <h3 className="font-bold text-lg mb-4 text-gray-800 dark:text-gray-200">Change Password</h3>
+                    <h3 className="font-semibold text-base mb-4 text-slate-900 dark:text-white">Change Password</h3>
 
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">New Password</label>
+                        <label className="label">New Password</label>
                         <input
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                          className="input"
                           placeholder="Enter new password (min 6 characters)"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
+                        <label className="label">Confirm New Password</label>
                         <input
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full p-3 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white transition-colors"
+                          className="input"
                           placeholder="Confirm new password"
                         />
                       </div>
 
                       <button
                         onClick={handleChangePassword}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all"
+                        className="btn-secondary text-slate-900 dark:text-white"
                       >
                         Update Password
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-slate-700">
+                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
                     <button
                       onClick={() => setShowAccountSettings(false)}
-                      className="w-full bg-gray-200 dark:bg-slate-700 text-gray-700 dark:text-gray-300 py-2.5 px-6 rounded-xl font-semibold hover:bg-gray-300 dark:hover:bg-slate-600 transition-colors"
+                      className="btn-secondary w-full py-2.5"
                     >
                       Close
                     </button>
@@ -2029,69 +1986,32 @@ const handleSubmitPick = async () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-slate-900/50 mb-6 border border-gray-100 dark:border-slate-700 overflow-hidden transition-colors duration-300">
-          <div className="flex border-b border-gray-200 dark:border-slate-700">
-            <button
-              onClick={() => setActiveTab('picks')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                activeTab === 'picks'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <CheckCircle size={20} />
-              <span className="text-xs sm:text-base">Pick</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('standings')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                activeTab === 'standings'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <TrendingUp size={20} />
-              <span className="text-xs sm:text-base">Standings</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('schedule')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                activeTab === 'schedule'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <Calendar size={20} />
-              <span className="text-xs sm:text-base">Schedule</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                activeTab === 'admin'
-                  ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
-              }`}
-            >
-              <Users size={20} />
-              <span className="text-xs sm:text-base">League</span>
-            </button>
-            {userRole === 'commissioner' && (
+        <div className="card mb-4 sm:mb-5 overflow-hidden">
+          <div className="flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+            {[
+              { id: 'picks', icon: CheckCircle, label: 'Pick' },
+              { id: 'standings', icon: TrendingUp, label: 'Standings' },
+              { id: 'schedule', icon: Calendar, label: 'Schedule' },
+              { id: 'admin', icon: Users, label: 'League' },
+              ...(userRole === 'commissioner' ? [{ id: 'results', icon: Shield, label: 'Admin' }] : []),
+            ].map(tab => (
               <button
-                onClick={() => setActiveTab('results')}
-                className={`flex-1 py-4 px-2 sm:px-6 font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition-all duration-200 active:scale-95 ${
-                  activeTab === 'results'
-                    ? 'border-b-4 border-green-500 text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/20'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 ${
+                  activeTab === tab.id
+                    ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
               >
-                <Shield size={20} />
-                <span className="text-xs sm:text-base">Admin</span>
+                <tab.icon size={18} />
+                <span>{tab.label}</span>
               </button>
-            )}
+            ))}
           </div>
 
           {/* Tab Content */}
-          <div className="p-3 sm:p-6">
+          <div className="p-3 sm:p-5">
             {activeTab === 'picks' && (
               <PicksTab
                 currentWeek={currentWeek}

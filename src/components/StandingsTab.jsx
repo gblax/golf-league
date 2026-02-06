@@ -27,13 +27,13 @@ function renderDesktopPick(player, currentUser, currentTournament, leagueSetting
     return <span className="text-red-500 dark:text-red-400 text-sm">No pick</span>;
   }
   if (display.type === 'locked') {
-    return <span className="text-gray-500 dark:text-gray-400">🔒</span>;
+    return <span className="text-slate-400 dark:text-slate-500 text-sm">Hidden</span>;
   }
   return (
     <div>
-      <div className="text-green-700 dark:text-green-400">{display.name}</div>
+      <div className="text-emerald-700 dark:text-emerald-400 font-medium">{display.name}</div>
       {leagueSettings.backup_picks_enabled && player.currentPick?.backup_golfer_name && (
-        <div className="text-xs text-gray-500 dark:text-gray-400">Backup: {player.currentPick.backup_golfer_name}</div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">Backup: {player.currentPick.backup_golfer_name}</div>
       )}
     </div>
   );
@@ -41,40 +41,25 @@ function renderDesktopPick(player, currentUser, currentTournament, leagueSetting
 
 // Render rank badge
 function RankBadge({ idx, size = 'default' }) {
-  const emojiSize = size === 'small' ? 'text-sm' : 'text-base sm:text-lg';
+  const base = size === 'small' ? 'w-5 h-5 text-[10px]' : 'w-6 h-6 text-xs';
   if (idx === 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        <span className={emojiSize}>🥇</span>
-        {size !== 'small' && <span className="hidden sm:inline font-bold text-yellow-600 dark:text-yellow-400">1</span>}
-      </span>
-    );
+    return <span className={`${base} inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-bold`}>1</span>;
   }
   if (idx === 1) {
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        <span className={emojiSize}>🥈</span>
-        {size !== 'small' && <span className="hidden sm:inline font-semibold text-gray-500 dark:text-gray-400">2</span>}
-      </span>
-    );
+    return <span className={`${base} inline-flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold`}>2</span>;
   }
   if (idx === 2) {
-    return (
-      <span className="inline-flex items-center gap-0.5">
-        <span className={emojiSize}>🥉</span>
-        {size !== 'small' && <span className="hidden sm:inline font-semibold text-amber-700 dark:text-amber-500">3</span>}
-      </span>
-    );
+    return <span className={`${base} inline-flex items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-400 font-bold`}>3</span>;
   }
-  return <span>{idx + 1}</span>;
+  return <span className={`${base} inline-flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold`}>{idx + 1}</span>;
 }
 
 // Mobile expanded details - card-based layout
 function MobileExpandedDetails({ player, currentUser, currentWeek, currentTournament, leagueSettings }) {
   return (
-    <div className="px-2 pb-3 pt-1">
-      <h4 className="font-bold text-gray-800 dark:text-gray-200 text-xs mb-2">Week-by-Week Results</h4>
-      <div className="space-y-2">
+    <div className="px-3 pb-3 pt-2">
+      <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Week-by-Week</p>
+      <div className="space-y-1.5">
         {player.picksByWeek.map((weekData, weekIdx) => {
           const isCurrentWeekRow = weekData.week === currentWeek;
           const isViewingOwnPicks = player.id === currentUser?.id;
@@ -84,42 +69,42 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
           const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
 
           return (
-            <div key={weekIdx} className="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-600 p-2.5">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400">Wk {weekData.week}</span>
-                <div className="flex items-center gap-2">
+            <div key={weekIdx} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase">Wk {weekData.week}</span>
+                <div className="flex items-center gap-2 tabular-nums">
                   {weekData.winnings > 0 ? (
-                    <span className="text-green-600 dark:text-green-400 font-semibold text-xs">${weekData.winnings.toLocaleString()}</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">${weekData.winnings.toLocaleString()}</span>
                   ) : (
-                    <span className="text-gray-400 dark:text-gray-500 text-xs">$0</span>
+                    <span className="text-slate-300 dark:text-slate-600 text-xs">$0</span>
                   )}
                   {weekData.penalty > 0 && (
-                    <span className="text-red-600 dark:text-red-400 font-semibold text-xs">
+                    <span className="text-red-500 dark:text-red-400 font-semibold text-xs">
                       -${weekData.penalty}
                     </span>
                   )}
                 </div>
               </div>
-              <div className="text-xs text-gray-700 dark:text-gray-300 mb-1">{weekData.tournamentName}</div>
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-gray-500 dark:text-gray-400">Pick:</span>
+              <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">{weekData.tournamentName}</div>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-slate-400 dark:text-slate-500">Pick:</span>
                 {shouldHidePick ? (
                   weekData.golfer ? (
-                    <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
+                    <span className="text-slate-400 dark:text-slate-500">Hidden</span>
                   ) : (
                     <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                   )
                 ) : weekData.golfer ? (
-                  <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
+                  <span className="text-emerald-700 dark:text-emerald-400 font-medium">{weekData.golfer}</span>
                 ) : weekData.isPast ? (
                   <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                 ) : (
-                  <span className="text-gray-300 dark:text-gray-600">—</span>
+                  <span className="text-slate-300 dark:text-slate-600">&mdash;</span>
                 )}
               </div>
               {leagueSettings.backup_picks_enabled && !shouldHidePick && weekData.backup && (
-                <div className="flex items-center gap-2 text-xs mt-0.5">
-                  <span className="text-gray-500 dark:text-gray-400">Backup:</span>
+                <div className="flex items-center gap-1.5 text-xs mt-0.5">
+                  <span className="text-slate-400 dark:text-slate-500">Backup:</span>
                   <span className="text-amber-600 dark:text-amber-400">{weekData.backup}</span>
                 </div>
               )}
@@ -133,12 +118,12 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
         })}
       </div>
       {/* Totals */}
-      <div className="mt-2 bg-gray-200 dark:bg-slate-600 rounded-lg p-2.5 flex items-center justify-between">
-        <span className="font-bold text-xs text-gray-800 dark:text-gray-200">TOTALS</span>
-        <div className="flex items-center gap-3">
-          <span className="text-green-700 dark:text-green-400 font-bold text-xs">${player.winnings.toLocaleString()}</span>
-          <span className="text-red-600 dark:text-red-400 font-bold text-xs">
-            {player.penalties > 0 ? `$${player.penalties}` : '-'}
+      <div className="mt-2 bg-slate-100 dark:bg-slate-700 rounded-lg p-2.5 flex items-center justify-between">
+        <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Totals</span>
+        <div className="flex items-center gap-3 tabular-nums">
+          <span className="text-emerald-700 dark:text-emerald-400 font-bold text-xs">${player.winnings.toLocaleString()}</span>
+          <span className="text-red-500 dark:text-red-400 font-bold text-xs">
+            {player.penalties > 0 ? `-$${player.penalties}` : '-'}
           </span>
         </div>
       </div>
@@ -156,8 +141,8 @@ const StandingsTab = React.memo(function StandingsTab({
   toggleRowExpansion,
 }) {
   return (
-    <div>
-      <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4">League Standings</h2>
+    <div className="max-w-4xl mx-auto">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Standings</h2>
 
       {/* ===== Mobile card layout (visible < sm) ===== */}
       <div className="sm:hidden space-y-1.5">
@@ -169,23 +154,23 @@ const StandingsTab = React.memo(function StandingsTab({
             <div key={player.id}>
               <button
                 onClick={() => toggleRowExpansion(player.id)}
-                className={`w-full text-left rounded-lg border transition-colors active:scale-[0.99] ${
+                className={`w-full text-left rounded-xl border transition-colors ${
                   isCurrentUser
-                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                    : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700'
-                } px-2.5 py-2`}
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                } ${isExpanded ? 'rounded-b-none' : ''} px-3 py-2.5`}
               >
                 {/* Row 1: rank, name, expand icon */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs text-gray-500 dark:text-gray-400 w-5 flex-shrink-0 text-center">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="flex-shrink-0">
                       <RankBadge idx={idx} size="small" />
                     </span>
-                    <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-gray-800 dark:text-gray-200`}>
+                    <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-slate-900 dark:text-white`}>
                       {player.name}
                     </span>
                   </div>
-                  <span className="text-green-600 dark:text-green-400 flex-shrink-0 ml-2">
+                  <span className="text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </span>
                 </div>
@@ -193,25 +178,25 @@ const StandingsTab = React.memo(function StandingsTab({
                 {(() => {
                   const pickDisplay = getPickDisplay(player, currentUser, currentTournament);
                   return (
-                    <div className="grid grid-cols-3 gap-1 ml-7 mt-1 text-xs">
-                      <div>
-                        <span className="text-gray-400 dark:text-gray-500">Won</span>{' '}
-                        <span className="font-semibold text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</span>
+                    <div className="grid grid-cols-3 gap-1 ml-8 mt-1 text-xs">
+                      <div className="tabular-nums">
+                        <span className="text-slate-400 dark:text-slate-500">Won</span>{' '}
+                        <span className="font-semibold text-slate-900 dark:text-white">${player.winnings.toLocaleString()}</span>
                       </div>
-                      <div>
+                      <div className="tabular-nums">
                         {player.penalties > 0 && (
                           <>
-                            <span className="text-gray-400 dark:text-gray-500">Pen</span>{' '}
-                            <span className="font-semibold text-red-600 dark:text-red-400">${player.penalties}</span>
+                            <span className="text-slate-400 dark:text-slate-500">Pen</span>{' '}
+                            <span className="font-semibold text-red-500 dark:text-red-400">${player.penalties}</span>
                           </>
                         )}
                       </div>
                       <div className="truncate text-right">
                         {pickDisplay.type === 'pick' && (
-                          <span className="text-green-700 dark:text-green-400 font-medium">{pickDisplay.name}</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">{pickDisplay.name}</span>
                         )}
                         {pickDisplay.type === 'locked' && (
-                          <span className="text-gray-400 dark:text-gray-500">🔒</span>
+                          <span className="text-slate-400 dark:text-slate-500">Hidden</span>
                         )}
                         {pickDisplay.type === 'none' && (
                           <span className="text-red-500 dark:text-red-400">No pick</span>
@@ -224,10 +209,10 @@ const StandingsTab = React.memo(function StandingsTab({
 
               {/* Expanded details */}
               {isExpanded && (
-                <div className={`rounded-b-lg border border-t-0 ${
+                <div className={`rounded-b-xl border border-t-0 ${
                   isCurrentUser
-                    ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10'
-                    : 'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-700/50'
+                    ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20'
+                    : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50'
                 }`}>
                   <MobileExpandedDetails
                     player={player}
@@ -244,73 +229,75 @@ const StandingsTab = React.memo(function StandingsTab({
       </div>
 
       {/* ===== Desktop table layout (visible sm+) ===== */}
-      <div className="hidden sm:block overflow-x-auto">
+      <div className="hidden sm:block overflow-x-auto card">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-100 dark:bg-slate-700">
-              <th className="py-3 px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tl-lg">#</th>
-              <th className="py-3 px-4 text-left font-semibold text-gray-700 dark:text-gray-300 text-sm">Player</th>
-              <th className="py-3 px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">Won</th>
-              <th className="py-3 px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">Pen.</th>
-              <th className="py-3 px-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm">Pick</th>
-              <th className="py-3 px-2 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm rounded-tr-lg"></th>
+            <tr className="border-b border-slate-200 dark:border-slate-800">
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">#</th>
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Player</th>
+              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Won</th>
+              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pen.</th>
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pick</th>
+              <th className="py-3 px-2 text-center text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide"></th>
             </tr>
           </thead>
           <tbody>
             {sortedStandings.map((player, idx) => (
               <React.Fragment key={player.id}>
                 <tr
-                  className={`border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${player.id === currentUser?.id ? 'bg-green-50 dark:bg-green-900/20 font-semibold' : ''}`}
+                  className={`border-b border-slate-100 dark:border-slate-800 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+                    player.id === currentUser?.id ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : idx % 2 === 1 ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''
+                  }`}
                 >
-                  <td className="py-3 px-4 text-sm text-gray-800 dark:text-gray-200">
+                  <td className="py-3 px-4">
                     <RankBadge idx={idx} />
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-800 dark:text-gray-200">{player.name}</td>
-                  <td className="py-3 px-4 text-center text-sm text-gray-800 dark:text-gray-200">${player.winnings.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-center text-red-600 dark:text-red-400 font-semibold text-sm">
-                    {player.penalties > 0 ? `$${player.penalties}` : '-'}
+                  <td className={`py-3 px-4 text-sm text-slate-900 dark:text-white ${player.id === currentUser?.id ? 'font-bold' : 'font-medium'}`}>
+                    {player.name}
                   </td>
-                  <td className="py-3 px-4 text-center text-sm">
+                  <td className="py-3 px-4 text-right text-sm tabular-nums font-semibold text-slate-900 dark:text-white">
+                    ${player.winnings.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 text-right text-sm tabular-nums">
+                    {player.penalties > 0 ? (
+                      <span className="text-red-500 dark:text-red-400 font-semibold">${player.penalties}</span>
+                    ) : (
+                      <span className="text-slate-300 dark:text-slate-600">-</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-sm">
                     {renderDesktopPick(player, currentUser, currentTournament, leagueSettings)}
                   </td>
                   <td className="py-3 px-2 text-center">
                     <button
                       onClick={() => toggleRowExpansion(player.id)}
-                      className="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 flex items-center gap-1 mx-auto text-sm transition-all active:scale-95"
+                      className="text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      {expandedRows[player.id] ? (
-                        <>
-                          <ChevronDown size={16} />
-                          <span>Hide</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronRight size={16} />
-                          <span>Details</span>
-                        </>
-                      )}
+                      {expandedRows[player.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
                   </td>
                 </tr>
 
                 {/* Expanded weekly results row */}
                 {expandedRows[player.id] && (
-                  <tr className="bg-gray-50 dark:bg-slate-700/50">
+                  <tr className="bg-slate-50 dark:bg-slate-900/50">
                     <td colSpan="6" className="py-4 px-4">
                       <div className="max-w-5xl mx-auto">
-                        <h4 className="font-bold text-gray-800 dark:text-gray-200 mb-3">Week-by-Week Results for {player.name}</h4>
+                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
+                          Week-by-Week &mdash; {player.name}
+                        </p>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
-                              <tr className="bg-gray-200 dark:bg-slate-600">
-                                <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Week</th>
-                                <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Tournament</th>
-                                <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Golfer</th>
+                              <tr className="border-b border-slate-200 dark:border-slate-700">
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Wk</th>
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Tournament</th>
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Golfer</th>
                                 {leagueSettings.backup_picks_enabled && (
-                                  <th className="py-2 px-3 text-left text-gray-800 dark:text-gray-200">Backup</th>
+                                  <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Backup</th>
                                 )}
-                                <th className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">Winnings</th>
-                                <th className="py-2 px-3 text-center text-gray-800 dark:text-gray-200">Penalty</th>
+                                <th className="py-2 px-3 text-right text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Won</th>
+                                <th className="py-2 px-3 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Penalty</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -323,49 +310,49 @@ const StandingsTab = React.memo(function StandingsTab({
                                 const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
 
                                 return (
-                                <tr key={weekIdx} className="border-b border-gray-300 dark:border-slate-600">
-                                  <td className="py-2 px-3 font-semibold text-gray-800 dark:text-gray-200">{weekData.week}</td>
-                                  <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{weekData.tournamentName}</td>
-                                  <td className="py-2 px-3">
+                                <tr key={weekIdx} className={`border-b border-slate-100 dark:border-slate-800 ${weekIdx % 2 === 1 ? 'bg-slate-100/50 dark:bg-slate-800/30' : ''}`}>
+                                  <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white text-xs">{weekData.week}</td>
+                                  <td className="py-2 px-3 text-slate-600 dark:text-slate-300 text-xs">{weekData.tournamentName}</td>
+                                  <td className="py-2 px-3 text-xs">
                                     {shouldHidePick ? (
                                       weekData.golfer ? (
-                                        <span className="text-gray-500 dark:text-gray-400">🔒 Hidden</span>
+                                        <span className="text-slate-400 dark:text-slate-500">Hidden</span>
                                       ) : (
                                         <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                                       )
                                     ) : weekData.golfer ? (
-                                      <span className="text-green-700 dark:text-green-400 font-medium">{weekData.golfer}</span>
+                                      <span className="text-emerald-700 dark:text-emerald-400 font-medium">{weekData.golfer}</span>
                                     ) : weekData.isPast ? (
                                       <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                                     ) : (
-                                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                                      <span className="text-slate-300 dark:text-slate-600">&mdash;</span>
                                     )}
                                   </td>
                                   {leagueSettings.backup_picks_enabled && (
-                                    <td className="py-2 px-3">
+                                    <td className="py-2 px-3 text-xs">
                                       {shouldHidePick ? (
-                                        <span className="text-gray-300 dark:text-gray-600">-</span>
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
                                       ) : weekData.backup ? (
-                                        <span className="text-amber-600 dark:text-amber-400 text-xs">{weekData.backup}</span>
+                                        <span className="text-amber-600 dark:text-amber-400">{weekData.backup}</span>
                                       ) : (
-                                        <span className="text-gray-300 dark:text-gray-600">-</span>
+                                        <span className="text-slate-300 dark:text-slate-600">-</span>
                                       )}
                                     </td>
                                   )}
-                                  <td className="py-2 px-3 text-right">
+                                  <td className="py-2 px-3 text-right tabular-nums text-xs">
                                     {weekData.winnings > 0 ? (
-                                      <span className="text-green-600 dark:text-green-400 font-semibold">${weekData.winnings.toLocaleString()}</span>
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">${weekData.winnings.toLocaleString()}</span>
                                     ) : (
-                                      <span className="text-gray-400 dark:text-gray-500">$0</span>
+                                      <span className="text-slate-300 dark:text-slate-600">$0</span>
                                     )}
                                   </td>
-                                  <td className="py-2 px-3 text-center">
+                                  <td className="py-2 px-3 text-center text-xs">
                                     {weekData.penalty > 0 ? (
-                                      <span className="text-red-600 dark:text-red-400 font-semibold">
+                                      <span className="text-red-500 dark:text-red-400 font-semibold">
                                         ${weekData.penalty} ({weekData.penaltyReason?.replaceAll('_', ' ')})
                                       </span>
                                     ) : (
-                                      <span className="text-gray-400 dark:text-gray-500">-</span>
+                                      <span className="text-slate-300 dark:text-slate-600">-</span>
                                     )}
                                   </td>
                                 </tr>
@@ -373,12 +360,12 @@ const StandingsTab = React.memo(function StandingsTab({
                               })}
                             </tbody>
                             <tfoot>
-                              <tr className="bg-gray-200 dark:bg-slate-600 font-bold">
-                                <td colSpan={leagueSettings.backup_picks_enabled ? 4 : 3} className="py-2 px-3 text-right text-gray-800 dark:text-gray-200">TOTALS:</td>
-                                <td className="py-2 px-3 text-right text-green-700 dark:text-green-400">
+                              <tr className="bg-slate-100 dark:bg-slate-800 font-bold">
+                                <td colSpan={leagueSettings.backup_picks_enabled ? 4 : 3} className="py-2 px-3 text-right text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">Totals</td>
+                                <td className="py-2 px-3 text-right text-emerald-700 dark:text-emerald-400 tabular-nums text-xs">
                                   ${player.winnings.toLocaleString()}
                                 </td>
-                                <td className="py-2 px-3 text-center text-red-600 dark:text-red-400">
+                                <td className="py-2 px-3 text-center text-red-500 dark:text-red-400 tabular-nums text-xs">
                                   {player.penalties > 0 ? `$${player.penalties}` : '-'}
                                 </td>
                               </tr>
