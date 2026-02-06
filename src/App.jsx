@@ -36,6 +36,7 @@ const App = () => {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
   // League state
   const [currentLeague, setCurrentLeague] = useState(null);
@@ -72,6 +73,7 @@ const App = () => {
   const [userPicks, setUserPicks] = useState([]);
   const [currentWeekPick, setCurrentWeekPick] = useState({ golfer: '', backup: '' });
   const [expandedScheduleTournament, setExpandedScheduleTournament] = useState(null);
+  const [submittingPick, setSubmittingPick] = useState(false);
 
   // League settings state
   const [leagueSettings, setLeagueSettings] = useState({
@@ -349,14 +351,14 @@ const App = () => {
     try {
       const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        setNotification({ message: 'Push notifications not configured', type: 'error' });
+        showNotification('error', 'Push notifications not configured');
         setPushLoading(false);
         return;
       }
       const permission = await Notification.requestPermission();
       setPushPermission(permission);
       if (permission !== 'granted') {
-        setNotification({ message: 'Notification permission denied', type: 'error' });
+        showNotification('error', 'Notification permission denied');
         setPushLoading(false);
         return;
       }
@@ -374,10 +376,10 @@ const App = () => {
       }, { onConflict: 'user_id,endpoint' });
       if (error) throw error;
       setPushSubscribed(true);
-      setNotification({ message: 'Push notifications enabled!', type: 'success' });
+      showNotification('success', 'Push notifications enabled!');
     } catch (err) {
       console.error('Push subscribe error:', err);
-      setNotification({ message: 'Failed to enable notifications', type: 'error' });
+      showNotification('error', 'Failed to enable notifications');
     }
     setPushLoading(false);
   };
@@ -392,10 +394,10 @@ const App = () => {
         await sub.unsubscribe();
       }
       setPushSubscribed(false);
-      setNotification({ message: 'Push notifications disabled', type: 'success' });
+      showNotification('success', 'Push notifications disabled');
     } catch (err) {
       console.error('Push unsubscribe error:', err);
-      setNotification({ message: 'Failed to disable notifications', type: 'error' });
+      showNotification('error', 'Failed to disable notifications');
     }
     setPushLoading(false);
   };
@@ -732,6 +734,8 @@ const playersWithWinnings = (usersData || []).map(user => {
       showNotification('error', 'Name is required');
       return;
     }
+    if (loginLoading) return;
+    setLoginLoading(true);
     try {
       if (isSignup) {
         // Supabase Auth signup
@@ -810,6 +814,8 @@ const playersWithWinnings = (usersData || []).map(user => {
       }
     } catch (error) {
       showNotification('error', 'Login error: ' + error.message);
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -1232,23 +1238,26 @@ const handleSubmitPick = async () => {
       showNotification('error', 'Please select a primary golfer');
       return;
     }
-    
+
     if (backupPlayer && backupPlayer === selectedPlayer) {
       showNotification('error', 'Backup golfer must be different from primary pick');
       return;
     }
-  
+
     const currentTournament = getCurrentTournament();
-    
+
     // Check if picks are locked
     const now = new Date();
     const lockTime = new Date(currentTournament.picks_lock_time);
-    
+
     if (now >= lockTime) {
       showNotification('error', 'Picks are locked! The tournament has already started.');
       return;
     }
-    
+
+    if (submittingPick) return;
+    setSubmittingPick(true);
+
     try {
       const { data, error } = await supabase
         .from('picks')
@@ -1260,16 +1269,18 @@ const handleSubmitPick = async () => {
           backup_golfer_name: leagueSettings.backup_picks_enabled ? (backupPlayer || null) : null,
           winnings: 0
         }, { onConflict: 'user_id,tournament_id,league_id' });
-      
+
       if (error) {
         showNotification('error', 'Error submitting pick: ' + error.message);
         return;
       }
-      
+
       showNotification('success', `Pick submitted: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (Backup: ${backupPlayer})` : ''}`);
       loadData();
     } catch (error) {
       showNotification('error', error.message);
+    } finally {
+      setSubmittingPick(false);
     }
   };
 
@@ -1396,6 +1407,7 @@ const handleSubmitPick = async () => {
                   type="text"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                   className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                   placeholder="Your name"
                 />
@@ -1408,6 +1420,7 @@ const handleSubmitPick = async () => {
                 type="email"
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (showForgotPassword ? handleForgotPassword() : handleLogin())}
                 className="w-full p-3.5 border-2 border-gray-200 dark:border-slate-600 rounded-xl focus:border-green-500 dark:focus:border-green-400 focus:outline-none bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors"
                 placeholder="your@email.com"
               />
@@ -1446,9 +1459,17 @@ const handleSubmitPick = async () => {
               <>
                 <button
                   onClick={handleLogin}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
+                  disabled={loginLoading}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  {isSignup ? 'Create Account' : 'Sign In'}
+                  {loginLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      {isSignup ? 'Creating Account...' : 'Signing In...'}
+                    </span>
+                  ) : (
+                    isSignup ? 'Create Account' : 'Sign In'
+                  )}
                 </button>
 
                 {!isSignup && (
@@ -1674,7 +1695,7 @@ const handleSubmitPick = async () => {
                       </span>
                     )}
                     {lockTimeLabel && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">{lockTimeLabel}</span>
+                      <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">{lockTimeLabel}</span>
                     )}
                   </div>
                 )}
@@ -2019,7 +2040,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <CheckCircle size={20} />
-              <span className="text-[10px] sm:text-base">Pick</span>
+              <span className="text-xs sm:text-base">Pick</span>
             </button>
             <button
               onClick={() => setActiveTab('standings')}
@@ -2030,7 +2051,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <TrendingUp size={20} />
-              <span className="text-[10px] sm:text-base">Standings</span>
+              <span className="text-xs sm:text-base">Standings</span>
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
@@ -2041,7 +2062,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <Calendar size={20} />
-              <span className="text-[10px] sm:text-base">Schedule</span>
+              <span className="text-xs sm:text-base">Schedule</span>
             </button>
             <button
               onClick={() => setActiveTab('admin')}
@@ -2052,7 +2073,7 @@ const handleSubmitPick = async () => {
               }`}
             >
               <Users size={20} />
-              <span className="text-[10px] sm:text-base">League</span>
+              <span className="text-xs sm:text-base">League</span>
             </button>
             {userRole === 'commissioner' && (
               <button
@@ -2064,7 +2085,7 @@ const handleSubmitPick = async () => {
                 }`}
               >
                 <Shield size={20} />
-                <span className="text-[10px] sm:text-base">Admin</span>
+                <span className="text-xs sm:text-base">Admin</span>
               </button>
             )}
           </div>
@@ -2096,6 +2117,7 @@ const handleSubmitPick = async () => {
                 setShowPrimaryDropdown={setShowPrimaryDropdown}
                 setShowBackupDropdown={setShowBackupDropdown}
                 handleSubmitPick={handleSubmitPick}
+                submittingPick={submittingPick}
               />
             )}
 

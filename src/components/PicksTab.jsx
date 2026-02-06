@@ -25,6 +25,7 @@ const PicksTab = React.memo(function PicksTab({
   setShowPrimaryDropdown,
   setShowBackupDropdown,
   handleSubmitPick,
+  submittingPick,
 }) {
   if (picksLoading) {
     return (
@@ -237,10 +238,15 @@ const PicksTab = React.memo(function PicksTab({
 
             <button
               onClick={handleSubmitPick}
-              disabled={!selectedPlayer || isLocked}
+              disabled={!selectedPlayer || isLocked || submittingPick}
               className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white py-3.5 px-6 rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:from-gray-400 disabled:to-gray-500 dark:disabled:from-slate-600 dark:disabled:to-slate-700 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:scale-95 disabled:transform-none disabled:active:scale-100 transition-all duration-150"
             >
-              {isLocked ? 'Picks Locked' : 'Submit Pick'}
+              {isLocked ? 'Picks Locked' : submittingPick ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Submitting...
+                </span>
+              ) : 'Submit Pick'}
             </button>
 
             {lockTime && !isLocked && (
