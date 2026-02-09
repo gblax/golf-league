@@ -60,7 +60,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
     <div className="px-3 pb-3 pt-2">
       <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Week-by-Week</p>
       <div className="space-y-1.5">
-        {player.picksByWeek.map((weekData, weekIdx) => {
+        {player.picksByWeek.filter(w => w.week <= currentWeek + 1).map((weekData, weekIdx) => {
           const isCurrentWeekRow = weekData.week === currentWeek;
           const isViewingOwnPicks = player.id === currentUser?.id;
           const now = new Date();
@@ -301,7 +301,7 @@ const StandingsTab = React.memo(function StandingsTab({
                               </tr>
                             </thead>
                             <tbody>
-                              {player.picksByWeek.map((weekData, weekIdx) => {
+                              {player.picksByWeek.filter(w => w.week <= currentWeek + 1).map((weekData, weekIdx) => {
                                 const isCurrentWeekRow = weekData.week === currentWeek;
                                 const isViewingOwnPicks = player.id === currentUser?.id;
                                 const now = new Date();
