@@ -106,6 +106,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
+                  maxLength={50}
                   value={newGolferName}
                   onChange={(e) => setNewGolferName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddGolfer()}

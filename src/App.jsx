@@ -61,7 +61,7 @@ const App = () => {
   const [timeUntilLock, setTimeUntilLock] = useState('');
   const [lockUrgent, setLockUrgent] = useState(false);
   const [lockTimeLabel, setLockTimeLabel] = useState('');
-  
+
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [resultsData, setResultsData] = useState({});
@@ -954,6 +954,10 @@ const playersWithWinnings = (usersData || []).map(user => {
       showNotification('error', 'Please enter a golfer name');
       return;
     }
+    if (newGolferName.trim().length > 50) {
+      showNotification('error', 'Golfer name must be 50 characters or less');
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -979,6 +983,13 @@ const playersWithWinnings = (usersData || []).map(user => {
   };
 
   const handleUpdateLeagueSettings = async (newSettings) => {
+    // Validate payout percentages don't exceed 100%
+    const payoutTotal = (newSettings.payout_first_pct || 0) + (newSettings.payout_second_pct || 0) + (newSettings.payout_third_pct || 0);
+    if (payoutTotal > 100) {
+      showNotification('error', `Payout percentages total ${payoutTotal}% — must not exceed 100%`);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('league_settings')

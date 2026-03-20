@@ -86,10 +86,11 @@ const CommissionerTab = React.memo(function CommissionerTab({
                         <span className="text-xs text-slate-400">$</span>
                         <input
                           type="number"
+                          min="0"
                           value={leagueSettings[key]}
                           onChange={(e) => setLeagueSettings({
                             ...leagueSettings,
-                            [key]: parseInt(e.target.value) || 0
+                            [key]: Math.max(0, parseInt(e.target.value) || 0)
                           })}
                           className="input"
                         />
@@ -109,10 +110,11 @@ const CommissionerTab = React.memo(function CommissionerTab({
                       <span className="text-xs text-slate-400">$</span>
                       <input
                         type="number"
+                        min="0"
                         value={leagueSettings.buy_in_amount}
                         onChange={(e) => setLeagueSettings({
                           ...leagueSettings,
-                          buy_in_amount: parseInt(e.target.value) || 0
+                          buy_in_amount: Math.max(0, parseInt(e.target.value) || 0)
                         })}
                         className="input"
                       />
@@ -128,10 +130,12 @@ const CommissionerTab = React.memo(function CommissionerTab({
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
+                          min="0"
+                          max="100"
                           value={leagueSettings[key]}
                           onChange={(e) => setLeagueSettings({
                             ...leagueSettings,
-                            [key]: parseInt(e.target.value) || 0
+                            [key]: Math.min(100, Math.max(0, parseInt(e.target.value) || 0))
                           })}
                           className="input"
                         />
@@ -142,8 +146,26 @@ const CommissionerTab = React.memo(function CommissionerTab({
                 </div>
               </div>
 
+              {(() => {
+                const total = (leagueSettings.payout_first_pct || 0) + (leagueSettings.payout_second_pct || 0) + (leagueSettings.payout_third_pct || 0);
+                if (total !== 100) {
+                  return (
+                    <p className={`text-xs font-medium px-3 py-2 rounded-lg ${total > 100 ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400' : 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400'}`}>
+                      Payout split totals {total}% — {total > 100 ? 'must not exceed 100%' : 'should equal 100%'}
+                    </p>
+                  );
+                }
+                return null;
+              })()}
+
               <button
-                onClick={() => handleUpdateLeagueSettings({
+                onClick={() => {
+                  const total = (leagueSettings.payout_first_pct || 0) + (leagueSettings.payout_second_pct || 0) + (leagueSettings.payout_third_pct || 0);
+                  if (total > 100) {
+                    showNotification('error', `Payout percentages total ${total}% — must not exceed 100%`);
+                    return;
+                  }
+                  handleUpdateLeagueSettings({
                   no_pick_penalty: leagueSettings.no_pick_penalty,
                   missed_cut_penalty: leagueSettings.missed_cut_penalty,
                   withdrawal_penalty: leagueSettings.withdrawal_penalty,
@@ -152,7 +174,8 @@ const CommissionerTab = React.memo(function CommissionerTab({
                   payout_first_pct: leagueSettings.payout_first_pct,
                   payout_second_pct: leagueSettings.payout_second_pct,
                   payout_third_pct: leagueSettings.payout_third_pct
-                })}
+                });
+                }}
                 className="btn-primary w-full sm:w-auto"
               >
                 Save Settings
@@ -275,6 +298,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                                       <label className="label">Winnings ($)</label>
                                       <input
                                         type="number"
+                                        min="0"
                                         placeholder="0"
                                         value={userData.winnings || ''}
                                         onChange={(e) => setEditResultsData({
