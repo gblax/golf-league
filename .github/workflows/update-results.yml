@@ -18,6 +18,11 @@ on:
         required: false
         default: 'true'
         type: boolean
+      force:
+        description: 'Force apply even if catastrophic match-rate failure'
+        required: false
+        default: 'false'
+        type: boolean
 
 jobs:
   update-results:
@@ -63,10 +68,14 @@ jobs:
           VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
         run: |
           cd scripts
-          if [ "${{ inputs.dry_run }}" == "true" ]; then
-            python update_results.py
-          elif [ "${{ inputs.mark_complete }}" == "true" ]; then
-            python update_results.py --apply --complete
-          else
-            python update_results.py --apply
+          FLAGS=""
+          if [ "${{ inputs.dry_run }}" != "true" ]; then
+            FLAGS="--apply"
+            if [ "${{ inputs.mark_complete }}" == "true" ]; then
+              FLAGS="$FLAGS --complete"
+            fi
+            if [ "${{ inputs.force }}" == "true" ]; then
+              FLAGS="$FLAGS --force"
+            fi
           fi
+          python update_results.py $FLAGS

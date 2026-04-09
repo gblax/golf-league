@@ -8,6 +8,10 @@ Processes picks across all leagues, applying each league's own penalty settings.
 
 import os
 import json
+import re
+import unicodedata
+from difflib import SequenceMatcher
+
 import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
@@ -23,6 +27,36 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 ESPN_LEADERBOARD_URL = "https://www.espn.com/golf/leaderboard"
+GEMINI_MODEL = "gemini-2.0-flash"
+
+# Name-suffix tokens stripped from the end of a normalized name.
+_NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
+# Punctuation replaced with a single space during normalization. Covers
+# periods, commas, ASCII/typographic quotes, backticks, hyphens, and en/em dashes.
+_PUNCT_TO_SPACE = re.compile(r"[\.\,\'\"\`\u2018\u2019\u201C\u201D\-\u2013\u2014]")
+
+
+def normalize_name(name: str) -> str:
+    """
+    Normalize a personal or tournament name for robust comparison.
+
+    Steps:
+      1. Unicode NFD decompose and drop combining marks (strips accents).
+      2. Lowercase.
+      3. Replace punctuation (., ,, ', ", `, -, en/em dash) with spaces.
+      4. Collapse whitespace to single spaces.
+      5. Strip trailing name suffixes (jr, sr, ii, iii, iv, v).
+    """
+    if not name:
+        return ""
+    decomposed = unicodedata.normalize("NFD", name)
+    stripped_accents = "".join(c for c in decomposed if not unicodedata.combining(c))
+    lowered = stripped_accents.lower()
+    despaced = _PUNCT_TO_SPACE.sub(" ", lowered)
+    tokens = despaced.split()
+    while tokens and tokens[-1] in _NAME_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens)
 
 
 def scrape_espn_leaderboard() -> str:
@@ -57,10 +91,10 @@ def parse_with_gemini(raw_text: str) -> dict:
     """Use Gemini to parse the raw leaderboard text into structured JSON."""
     import time
 
-    print("Parsing with Gemini...")
+    print(f"Parsing with Gemini (model: {GEMINI_MODEL})...")
 
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel("gemini-3-flash-preview")
+    model = genai.GenerativeModel(GEMINI_MODEL)
 
     prompt = f"""Parse this ESPN golf leaderboard text and extract tournament info and player results as JSON.
 
@@ -141,9 +175,18 @@ Leaderboard text:
         players = result.get("players", [])
         print(f"Tournament: {tournament_name}")
         print(f"Parsed {len(players)} players from leaderboard")
+        if not players:
+            raise ValueError(
+                f"Gemini returned 0 players for tournament '{tournament_name}'. "
+                f"This usually means the ESPN page layout changed or the model "
+                f"returned a malformed response. Raw response (truncated): "
+                f"{response_text[:500]}"
+            )
         return {"tournament_name": tournament_name, "players": players}
     except json.JSONDecodeError as e:
         print(f"Error parsing Gemini response: {e}")
+        print(f"Scraped text length: {len(raw_text)} chars")
+        print(f"Scraped text (first 300 chars): {raw_text[:300]}")
         print(f"Response was: {response_text[:500]}")
         raise
 
@@ -159,38 +202,40 @@ def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict
     """
     Find a tournament in the database by matching the ESPN tournament name.
     Tournaments are shared across all leagues.
+    Uses normalize_name() for accent/punctuation-insensitive comparison.
     """
-    # Get all tournaments
     response = supabase.table("tournaments").select("*").order("week", desc=True).execute()
 
     if not response.data:
         return None
 
-    espn_name_lower = espn_tournament_name.lower().strip()
+    espn_norm = normalize_name(espn_tournament_name)
+    espn_tokens = set(espn_norm.split())
 
-    # Try exact match first
-    for tournament in response.data:
-        db_name_lower = tournament.get("name", "").lower().strip()
-        if espn_name_lower == db_name_lower:
-            return tournament
+    # Normalize each tournament once; reused across all tiers.
+    candidates = [
+        (normalize_name(t.get("name", "")), t)
+        for t in response.data
+    ]
 
-    # Try partial match (ESPN name contains DB name or vice versa)
-    for tournament in response.data:
-        db_name_lower = tournament.get("name", "").lower().strip()
-        if espn_name_lower in db_name_lower or db_name_lower in espn_name_lower:
-            return tournament
+    # Tier 1: exact normalized match.
+    for db_norm, t in candidates:
+        if db_norm and db_norm == espn_norm:
+            print(f"  [tournament] exact normalized match: '{t.get('name')}'")
+            return t
 
-    # Try matching key words
-    espn_words = set(espn_name_lower.split())
-    for tournament in response.data:
-        db_name_lower = tournament.get("name", "").lower().strip()
-        db_words = set(db_name_lower.split())
-        # If they share at least 2 significant words, consider it a match
-        common_words = espn_words & db_words
-        # Filter out common words like "the", "open", etc.
-        significant_common = [w for w in common_words if len(w) > 3]
-        if len(significant_common) >= 1:
-            return tournament
+    # Tier 2: substring match in either direction.
+    for db_norm, t in candidates:
+        if db_norm and (espn_norm in db_norm or db_norm in espn_norm):
+            print(f"  [tournament] substring match: '{t.get('name')}'")
+            return t
+
+    # Tier 3: significant-token intersection (>3 chars excludes "the", "open", etc.).
+    for db_norm, t in candidates:
+        significant_common = [w for w in (espn_tokens & set(db_norm.split())) if len(w) > 3]
+        if significant_common:
+            print(f"  [tournament] keyword match on {significant_common}: '{t.get('name')}'")
+            return t
 
     return None
 
@@ -312,41 +357,83 @@ def mark_tournament_completed(supabase: Client, tournament_id: str):
     supabase.table("tournaments").update({"completed": True}).eq("id", tournament_id).execute()
 
 
-def match_golfer_name(pick_name: str, leaderboard_results: list[dict]) -> dict | None:
-    """Find a golfer in the leaderboard results by name matching."""
-    pick_name_lower = pick_name.lower().strip()
+# Fuzzy-match threshold for SequenceMatcher.ratio() on normalized full strings.
+# Tuned high to avoid false positives on common surnames (Kim, Lee, Smith).
+FUZZY_MATCH_THRESHOLD = 0.92
 
-    for result in leaderboard_results:
-        result_name_lower = result["player_name"].lower().strip()
 
-        # Exact match
-        if pick_name_lower == result_name_lower:
-            return result
+def normalize_leaderboard(leaderboard_results: list[dict]) -> list[tuple[str, dict]]:
+    """Pre-normalize leaderboard entries once so match_golfer_name can be
+    called in a hot loop without repeating the work per pick."""
+    return [
+        (normalize_name(r.get("player_name", "")), r)
+        for r in leaderboard_results
+    ]
 
-    # Partial match: require both first and last name to match
-    # (last-name-only matching causes false positives for common surnames like Kim, Lee, Smith)
-    pick_parts = pick_name_lower.split()
-    if len(pick_parts) >= 2:
-        pick_first = pick_parts[0]
-        pick_last = pick_parts[-1]
-        for result in leaderboard_results:
-            result_parts = result["player_name"].lower().strip().split()
-            if len(result_parts) >= 2:
-                result_first = result_parts[0]
-                result_last = result_parts[-1]
-                if pick_last == result_last and pick_first == result_first:
-                    return result
 
-    # Last resort: match on last name only if there's exactly one match
-    if pick_parts:
-        pick_last = pick_parts[-1]
-        last_name_matches = [
-            r for r in leaderboard_results
-            if r["player_name"].lower().strip().split()[-1] == pick_last
-        ]
-        if len(last_name_matches) == 1:
-            return last_name_matches[0]
+def match_golfer_name(
+    pick_name: str,
+    leaderboard_results: list[dict],
+    normalized: list[tuple[str, dict]] | None = None,
+) -> dict | None:
+    """
+    Find a golfer in the leaderboard results by robust name matching.
 
+    Tiers (all on normalized strings):
+      1. Exact normalized match.
+      2. First+last token match, with subset tolerance for middle names
+         (handles "Viktor Hovland" ↔ "Viktor J Hovland").
+      3. difflib.SequenceMatcher ratio >= FUZZY_MATCH_THRESHOLD, keeping only
+         a unique strictly-best winner so common surnames can't collide.
+
+    Callers that match many picks against the same leaderboard should
+    precompute `normalized` via normalize_leaderboard() and pass it in.
+    """
+    pick_norm = normalize_name(pick_name)
+    if not pick_norm:
+        return None
+    pick_tokens = pick_norm.split()
+    pick_set = set(pick_tokens)
+
+    if normalized is None:
+        normalized = normalize_leaderboard(leaderboard_results)
+
+    # Tier 1: exact normalized match.
+    for n, r in normalized:
+        if n and n == pick_norm:
+            return r
+
+    # Tier 2: first+last match, with middle-name / middle-initial tolerance.
+    if len(pick_tokens) >= 2:
+        pick_first, pick_last = pick_tokens[0], pick_tokens[-1]
+        hits = []
+        for n, r in normalized:
+            result_tokens = n.split()
+            if len(result_tokens) < 2:
+                continue
+            result_first, result_last = result_tokens[0], result_tokens[-1]
+            result_set = set(result_tokens)
+            if result_first == pick_first and result_last == pick_last:
+                hits.append(r)
+            elif (pick_set.issubset(result_set) or result_set.issubset(pick_set)) and (
+                result_first == pick_first or result_last == pick_last
+            ):
+                hits.append(r)
+        if len(hits) == 1:
+            return hits[0]
+
+    # Tier 3: fuzzy ratio on normalized full strings, with a unique winner.
+    scored = [
+        (SequenceMatcher(None, pick_norm, n).ratio(), r)
+        for n, r in normalized
+        if n
+    ]
+    scored = [s for s in scored if s[0] >= FUZZY_MATCH_THRESHOLD]
+    if not scored:
+        return None
+    scored.sort(key=lambda x: x[0], reverse=True)
+    if len(scored) == 1 or scored[0][0] > scored[1][0]:
+        return scored[0][1]
     return None
 
 
@@ -361,7 +448,13 @@ def calculate_penalty(status: str, position: str, league_settings: dict) -> tupl
     return 0, None
 
 
-def update_results(dry_run: bool = True, mark_complete: bool = False):
+# If fewer than this fraction of real picks (i.e. not "No Pick") resolve to a
+# leaderboard entry, the scheduled run refuses to write updates or mark the
+# tournament complete. Override via --force.
+CATASTROPHIC_MATCH_THRESHOLD = 0.5
+
+
+def update_results(dry_run: bool = True, mark_complete: bool = False, force: bool = False):
     """Main function to update tournament results across all leagues."""
     print("=" * 50)
     print("Golf League Results Updater")
@@ -381,17 +474,30 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
     espn_tournament_name = parsed_data["tournament_name"]
     leaderboard_results = parsed_data["players"]
 
-    print(f"\nESPN Tournament: {espn_tournament_name}")
+    print(f"\n[tournament] ESPN raw name:  '{espn_tournament_name}'")
+    print(f"[tournament] ESPN normalized: '{normalize_name(espn_tournament_name)}'")
 
     # Find matching tournament in database by name
     tournament = find_tournament_by_name(supabase, espn_tournament_name)
 
     if not tournament:
-        print(f"Could not find tournament '{espn_tournament_name}' in database!")
+        print(f"\nCould not find tournament '{espn_tournament_name}' in database!")
         print("Please make sure the tournament name in your database matches ESPN.")
+        # Dump DB tournament names (normalized) to aid diagnosis.
+        try:
+            all_tournaments = supabase.table("tournaments").select("name,week").order("week", desc=True).limit(10).execute()
+            print("Recent DB tournaments (normalized):")
+            for t in (all_tournaments.data or []):
+                print(f"  - week {t.get('week')}: '{t.get('name')}' -> '{normalize_name(t.get('name', ''))}'")
+        except Exception as exc:
+            print(f"  (failed to list tournaments: {exc})")
         return
 
-    print(f"Matched to: {tournament['name']} (Week {tournament['week']})")
+    print(f"[tournament] DB name:         '{tournament['name']}' (Week {tournament['week']})")
+    print(f"[tournament] DB normalized:   '{normalize_name(tournament['name'])}'")
+
+    # Pre-normalize the leaderboard once so per-pick matching is O(L) instead of O(L*P).
+    normalized_leaderboard = normalize_leaderboard(leaderboard_results)
 
     # Get all picks for this tournament across all leagues
     picks = get_picks_for_tournament(supabase, tournament["id"])
@@ -407,6 +513,9 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
 
     # Match picks to results and update
     updates = []
+    matched_count = 0
+    unmatched_count = 0
+    unmatched_names: list[str] = []
 
     for league_id, league_picks in picks_by_league.items():
         league_settings = all_league_settings.get(league_id, DEFAULT_LEAGUE_SETTINGS)
@@ -454,9 +563,10 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
                     })
                 continue
 
-            result = match_golfer_name(golfer_name, leaderboard_results)
+            result = match_golfer_name(golfer_name, leaderboard_results, normalized=normalized_leaderboard)
 
             if result:
+                matched_count += 1
                 winnings = result.get("winnings", 0) or 0
 
                 # Check if commissioner already entered a penalty manually
@@ -489,6 +599,8 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
                     "preserved": existing_penalty > 0 and existing_reason is not None
                 })
             else:
+                unmatched_count += 1
+                unmatched_names.append(golfer_name)
                 print(f"  {user_name}: {golfer_name} -> NOT FOUND on leaderboard")
                 updates.append({
                     "pick_id": pick["id"],
@@ -515,6 +627,30 @@ def update_results(dry_run: bool = True, mark_complete: bool = False):
         if update.get("error"):
             status += f" [ERROR: {update['error']}]"
         print(f"  {update['user']}: {update.get('golfer', 'No pick')} = {status}")
+
+    # Match-rate report + catastrophic-failure safety gate.
+    total_real_picks = matched_count + unmatched_count
+    match_rate = (matched_count / total_real_picks) if total_real_picks else 1.0
+    print("\n" + "=" * 50)
+    print(f"Match rate: {matched_count}/{total_real_picks} ({match_rate:.0%})")
+    print("=" * 50)
+
+    if unmatched_names:
+        print(f"\nUnmatched picks ({len(unmatched_names)}):")
+        for name in unmatched_names:
+            print(f"  - '{name}' (normalized: '{normalize_name(name)}')")
+        print("\nLeaderboard sample (first 20, normalized):")
+        for r in leaderboard_results[:20]:
+            raw = r.get("player_name", "")
+            print(f"  - '{raw}' -> '{normalize_name(raw)}'")
+
+    if total_real_picks > 0 and match_rate < CATASTROPHIC_MATCH_THRESHOLD and not force:
+        print("\n" + "!" * 60)
+        print(f"CATASTROPHIC MATCH FAILURE: only {match_rate:.0%} of picks matched.")
+        print("Refusing to apply updates or mark tournament completed.")
+        print("Inspect the diagnostics above, then re-run with --force to override.")
+        print("!" * 60)
+        return
 
     if dry_run:
         print("\n[DRY RUN] No changes made to database.")
@@ -558,10 +694,12 @@ if __name__ == "__main__":
 
     dry_run = "--apply" not in sys.argv
     mark_complete = "--complete" in sys.argv
+    force = "--force" in sys.argv
 
     if dry_run:
         print("Running in DRY RUN mode (no database changes)")
         print("Use --apply flag to actually update the database")
-        print("Use --apply --complete to also mark tournament as completed\n")
+        print("Use --apply --complete to also mark tournament as completed")
+        print("Use --force to override the catastrophic-match-rate safety gate\n")
 
-    update_results(dry_run=dry_run, mark_complete=mark_complete)
+    update_results(dry_run=dry_run, mark_complete=mark_complete, force=force)
