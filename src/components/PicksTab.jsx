@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCircle, Shield, X } from 'lucide-react';
 
 const PicksTab = React.memo(function PicksTab({
@@ -27,6 +27,91 @@ const PicksTab = React.memo(function PicksTab({
   handleSubmitPick,
   submittingPick,
 }) {
+  const [primaryHighlightIndex, setPrimaryHighlightIndex] = useState(0);
+  const [backupHighlightIndex, setBackupHighlightIndex] = useState(0);
+  const primaryListRef = useRef(null);
+  const backupListRef = useRef(null);
+
+  // Reset highlight when the filtered list changes so we never point past the end.
+  useEffect(() => {
+    setPrimaryHighlightIndex(0);
+  }, [filteredPrimaryGolfers]);
+
+  useEffect(() => {
+    setBackupHighlightIndex(0);
+  }, [filteredBackupGolfers]);
+
+  // Keep the highlighted option scrolled into view as the user arrows through it.
+  useEffect(() => {
+    const list = primaryListRef.current;
+    if (!list) return;
+    const el = list.querySelector(`#primary-golfer-option-${primaryHighlightIndex}`);
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }, [primaryHighlightIndex, showPrimaryDropdown]);
+
+  useEffect(() => {
+    const list = backupListRef.current;
+    if (!list) return;
+    const el = list.querySelector(`#backup-golfer-option-${backupHighlightIndex}`);
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }, [backupHighlightIndex, showBackupDropdown]);
+
+  const handlePrimaryKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      if (!showPrimaryDropdown) setShowPrimaryDropdown(true);
+      if (filteredPrimaryGolfers.length === 0) return;
+      e.preventDefault();
+      setPrimaryHighlightIndex((i) => (i + 1) % filteredPrimaryGolfers.length);
+    } else if (e.key === 'ArrowUp') {
+      if (filteredPrimaryGolfers.length === 0) return;
+      e.preventDefault();
+      setPrimaryHighlightIndex((i) =>
+        i <= 0 ? filteredPrimaryGolfers.length - 1 : i - 1,
+      );
+    } else if (e.key === 'Enter') {
+      if (showPrimaryDropdown && primarySearchTerm && filteredPrimaryGolfers.length > 0) {
+        e.preventDefault();
+        const golfer = filteredPrimaryGolfers[primaryHighlightIndex] || filteredPrimaryGolfers[0];
+        setSelectedPlayer(golfer);
+        setPrimarySearchTerm('');
+        setShowPrimaryDropdown(false);
+      }
+    } else if (e.key === 'Escape') {
+      if (showPrimaryDropdown) {
+        e.preventDefault();
+        setShowPrimaryDropdown(false);
+      }
+    }
+  };
+
+  const handleBackupKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      if (!showBackupDropdown) setShowBackupDropdown(true);
+      if (filteredBackupGolfers.length === 0) return;
+      e.preventDefault();
+      setBackupHighlightIndex((i) => (i + 1) % filteredBackupGolfers.length);
+    } else if (e.key === 'ArrowUp') {
+      if (filteredBackupGolfers.length === 0) return;
+      e.preventDefault();
+      setBackupHighlightIndex((i) =>
+        i <= 0 ? filteredBackupGolfers.length - 1 : i - 1,
+      );
+    } else if (e.key === 'Enter') {
+      if (showBackupDropdown && backupSearchTerm && filteredBackupGolfers.length > 0) {
+        e.preventDefault();
+        const golfer = filteredBackupGolfers[backupHighlightIndex] || filteredBackupGolfers[0];
+        setBackupPlayer(golfer);
+        setBackupSearchTerm('');
+        setShowBackupDropdown(false);
+      }
+    } else if (e.key === 'Escape') {
+      if (showBackupDropdown) {
+        e.preventDefault();
+        setShowBackupDropdown(false);
+      }
+    }
+  };
+
   if (picksLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
@@ -95,8 +180,25 @@ const PicksTab = React.memo(function PicksTab({
               setPrimarySearchTerm(e.target.value);
               setSelectedPlayer('');
               setShowPrimaryDropdown(true);
+              setPrimaryHighlightIndex(0);
             }}
             onFocus={() => setShowPrimaryDropdown(true)}
+            onKeyDown={handlePrimaryKeyDown}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="words"
+            spellCheck={false}
+            inputMode="search"
+            enterKeyHint="search"
+            role="combobox"
+            aria-expanded={showPrimaryDropdown && !!primarySearchTerm}
+            aria-controls="primary-golfer-listbox"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              showPrimaryDropdown && filteredPrimaryGolfers.length > 0
+                ? `primary-golfer-option-${primaryHighlightIndex}`
+                : undefined
+            }
             placeholder="Search golfers..."
             className="input"
           />
@@ -109,21 +211,37 @@ const PicksTab = React.memo(function PicksTab({
             </button>
           )}
           {showPrimaryDropdown && primarySearchTerm && (
-            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-elevated max-h-60 overflow-y-auto animate-fade-in">
+            <div
+              ref={primaryListRef}
+              id="primary-golfer-listbox"
+              role="listbox"
+              className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-elevated max-h-60 overflow-y-auto animate-fade-in"
+            >
               {filteredPrimaryGolfers.length > 0 ? (
-                filteredPrimaryGolfers.map((golfer, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setSelectedPlayer(golfer);
-                      setPrimarySearchTerm('');
-                      setShowPrimaryDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 last:border-b-0 transition-colors duration-100"
-                  >
-                    {golfer}
-                  </button>
-                ))
+                filteredPrimaryGolfers.map((golfer, idx) => {
+                  const isHighlighted = idx === primaryHighlightIndex;
+                  return (
+                    <button
+                      key={idx}
+                      id={`primary-golfer-option-${idx}`}
+                      role="option"
+                      aria-selected={isHighlighted}
+                      onMouseEnter={() => setPrimaryHighlightIndex(idx)}
+                      onClick={() => {
+                        setSelectedPlayer(golfer);
+                        setPrimarySearchTerm('');
+                        setShowPrimaryDropdown(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 last:border-b-0 transition-colors duration-100 ${
+                        isHighlighted
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {golfer}
+                    </button>
+                  );
+                })
               ) : (
                 <p className="px-3 py-2 text-sm text-slate-400 italic">No golfers found</p>
               )}
@@ -147,8 +265,25 @@ const PicksTab = React.memo(function PicksTab({
                 setBackupSearchTerm(e.target.value);
                 setBackupPlayer('');
                 setShowBackupDropdown(true);
+                setBackupHighlightIndex(0);
               }}
               onFocus={() => setShowBackupDropdown(true)}
+              onKeyDown={handleBackupKeyDown}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="words"
+              spellCheck={false}
+              inputMode="search"
+              enterKeyHint="search"
+              role="combobox"
+              aria-expanded={showBackupDropdown && !!backupSearchTerm}
+              aria-controls="backup-golfer-listbox"
+              aria-autocomplete="list"
+              aria-activedescendant={
+                showBackupDropdown && filteredBackupGolfers.length > 0
+                  ? `backup-golfer-option-${backupHighlightIndex}`
+                  : undefined
+              }
               placeholder="Search golfers..."
               className="input"
             />
@@ -161,21 +296,37 @@ const PicksTab = React.memo(function PicksTab({
               </button>
             )}
             {showBackupDropdown && backupSearchTerm && (
-              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-elevated max-h-60 overflow-y-auto animate-fade-in">
+              <div
+                ref={backupListRef}
+                id="backup-golfer-listbox"
+                role="listbox"
+                className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-elevated max-h-60 overflow-y-auto animate-fade-in"
+              >
                 {filteredBackupGolfers.length > 0 ? (
-                  filteredBackupGolfers.map((golfer, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        setBackupPlayer(golfer);
-                        setBackupSearchTerm('');
-                        setShowBackupDropdown(false);
-                      }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 last:border-b-0 transition-colors duration-100"
-                    >
-                      {golfer}
-                    </button>
-                  ))
+                  filteredBackupGolfers.map((golfer, idx) => {
+                    const isHighlighted = idx === backupHighlightIndex;
+                    return (
+                      <button
+                        key={idx}
+                        id={`backup-golfer-option-${idx}`}
+                        role="option"
+                        aria-selected={isHighlighted}
+                        onMouseEnter={() => setBackupHighlightIndex(idx)}
+                        onClick={() => {
+                          setBackupPlayer(golfer);
+                          setBackupSearchTerm('');
+                          setShowBackupDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 last:border-b-0 transition-colors duration-100 ${
+                          isHighlighted
+                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {golfer}
+                      </button>
+                    );
+                  })
                 ) : (
                   <p className="px-3 py-2 text-sm text-slate-400 italic">No golfers found</p>
                 )}

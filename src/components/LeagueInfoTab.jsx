@@ -110,6 +110,11 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                   value={newGolferName}
                   onChange={(e) => setNewGolferName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddGolfer()}
+                  autoComplete="off"
+                  autoCapitalize="words"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="done"
                   placeholder="e.g., Tiger Woods"
                   className="input flex-1"
                 />

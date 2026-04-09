@@ -1342,7 +1342,7 @@ const handleSubmitPick = async () => {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1366,6 +1366,9 @@ const handleSubmitPick = async () => {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleResetPassword()}
+                autoComplete="new-password"
+                enterKeyHint="go"
                 className="input"
                 placeholder="New password (min 6 characters)"
               />
@@ -1388,14 +1391,14 @@ const handleSubmitPick = async () => {
         {/* Dark mode toggle for login page */}
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
+          className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
           aria-label="Toggle dark mode"
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1423,6 +1426,9 @@ const handleSubmitPick = async () => {
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  enterKeyHint="next"
                   className="input"
                   placeholder="Your name"
                 />
@@ -1436,6 +1442,12 @@ const handleSubmitPick = async () => {
                 value={loginEmail}
                 onChange={(e) => setLoginEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (showForgotPassword ? handleForgotPassword() : handleLogin())}
+                autoComplete="email"
+                inputMode="email"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint={showForgotPassword ? 'go' : 'next'}
                 className="input"
                 placeholder="your@email.com"
               />
@@ -1449,6 +1461,8 @@ const handleSubmitPick = async () => {
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  autoComplete={isSignup ? 'new-password' : 'current-password'}
+                  enterKeyHint="go"
                   className="input"
                   placeholder="Password"
                 />
@@ -1516,14 +1530,14 @@ const handleSubmitPick = async () => {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         <button
           onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
+          className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
           aria-label="Toggle dark mode"
         >
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
         {notification && (
-          <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1602,6 +1616,11 @@ const handleSubmitPick = async () => {
                   value={joinInviteCode}
                   onChange={(e) => setJoinInviteCode(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoinLeague()}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="go"
                   className="input"
                   placeholder="e.g. a1b2c3d4"
                 />
@@ -1628,6 +1647,9 @@ const handleSubmitPick = async () => {
                   value={newLeagueName}
                   onChange={(e) => setNewLeagueName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateLeague()}
+                  autoComplete="off"
+                  autoCapitalize="words"
+                  enterKeyHint="go"
                   className="input"
                   placeholder="e.g. Weekend Warriors Golf"
                 />
@@ -1663,7 +1685,7 @@ const handleSubmitPick = async () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
       {notification && (
-        <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+        <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
           notification.type === 'success'
             ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
             : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1739,7 +1761,7 @@ const handleSubmitPick = async () => {
                         onClick={() => setShowProfileMenu(false)}
                       />
                       {/* Menu dropdown */}
-                      <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto top-auto sm:top-full bottom-4 sm:bottom-auto sm:right-0 sm:mt-2 w-auto sm:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-xl shadow-modal sm:shadow-elevated z-50 overflow-hidden animate-scale-in">
+                      <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto top-auto sm:top-full bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:right-0 sm:mt-2 w-auto sm:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-xl shadow-modal sm:shadow-elevated z-50 overflow-hidden animate-scale-in">
                         <div className="p-1.5 sm:p-1">
                           <p className="sm:hidden px-3 pt-2 pb-1 text-xs font-medium text-slate-400 dark:text-slate-500">{currentUser?.name}</p>
                           {[
@@ -1921,6 +1943,9 @@ const handleSubmitPick = async () => {
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
+                          autoComplete="name"
+                          autoCapitalize="words"
+                          enterKeyHint="next"
                           className="input"
                           placeholder="Your name"
                         />
@@ -1932,6 +1957,12 @@ const handleSubmitPick = async () => {
                           type="email"
                           value={editEmail}
                           onChange={(e) => setEditEmail(e.target.value)}
+                          autoComplete="email"
+                          inputMode="email"
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          spellCheck={false}
+                          enterKeyHint="done"
                           className="input"
                           placeholder="your@email.com"
                         />
@@ -1957,6 +1988,8 @@ const handleSubmitPick = async () => {
                           type="password"
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
+                          autoComplete="new-password"
+                          enterKeyHint="next"
                           className="input"
                           placeholder="Enter new password (min 6 characters)"
                         />
@@ -1968,6 +2001,9 @@ const handleSubmitPick = async () => {
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleChangePassword()}
+                          autoComplete="new-password"
+                          enterKeyHint="done"
                           className="input"
                           placeholder="Confirm new password"
                         />

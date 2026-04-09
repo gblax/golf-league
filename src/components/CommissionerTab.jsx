@@ -87,6 +87,8 @@ const CommissionerTab = React.memo(function CommissionerTab({
                         <input
                           type="number"
                           min="0"
+                          inputMode="numeric"
+                          enterKeyHint="done"
                           value={leagueSettings[key]}
                           onChange={(e) => setLeagueSettings({
                             ...leagueSettings,
@@ -111,6 +113,8 @@ const CommissionerTab = React.memo(function CommissionerTab({
                       <input
                         type="number"
                         min="0"
+                        inputMode="numeric"
+                        enterKeyHint="done"
                         value={leagueSettings.buy_in_amount}
                         onChange={(e) => setLeagueSettings({
                           ...leagueSettings,
@@ -132,6 +136,8 @@ const CommissionerTab = React.memo(function CommissionerTab({
                           type="number"
                           min="0"
                           max="100"
+                          inputMode="numeric"
+                          enterKeyHint="done"
                           value={leagueSettings[key]}
                           onChange={(e) => setLeagueSettings({
                             ...leagueSettings,
@@ -299,6 +305,8 @@ const CommissionerTab = React.memo(function CommissionerTab({
                                       <input
                                         type="number"
                                         min="0"
+                                        inputMode="decimal"
+                                        enterKeyHint="done"
                                         placeholder="0"
                                         value={userData.winnings || ''}
                                         onChange={(e) => setEditResultsData({
