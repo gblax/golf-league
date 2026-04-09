@@ -23,9 +23,12 @@
 }
 
 @layer components {
-  /* Consistent input styling */
+  /* Consistent input styling.
+     text-base on mobile (16px) prevents iOS Safari from auto-zooming the
+     viewport when a field is focused; text-sm (14px) restores the compact
+     look on tablet/desktop where the zoom behavior doesn't apply. */
   .input {
-    @apply w-full px-3.5 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-xl
+    @apply w-full px-3.5 py-2.5 text-base md:text-sm border border-slate-200 dark:border-slate-700 rounded-xl
            bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
            placeholder-slate-400 dark:placeholder-slate-500
            focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500
