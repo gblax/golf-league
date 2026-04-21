@@ -115,7 +115,7 @@ Leaderboard text:
 """
 
     # Retry with exponential backoff for rate limits
-    max_retries = 3
+    max_retries = 5
     response_text = None
 
     for attempt in range(max_retries):
@@ -147,9 +147,14 @@ Leaderboard text:
 
         except Exception as e:
             if "429" in str(e) or "ResourceExhausted" in str(e):
-                wait_time = 30 * (attempt + 1)  # 30s, 60s, 90s
-                print(f"Rate limited. Waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
-                time.sleep(wait_time)
+                # Exponential backoff: 60s, 120s, 240s, 480s, 900s
+                wait_times = [60, 120, 240, 480, 900]
+                wait_time = wait_times[attempt]
+                if attempt < max_retries - 1:
+                    print(f"Rate limited (429 ResourceExhausted). Waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"Rate limited after {max_retries} attempts (waited {sum(wait_times[:attempt])}s total). Giving up.")
             elif "response.text" in str(e) or "Invalid operation" in str(e):
                 print(f"Empty response from Gemini. Retrying in 10s...")
                 time.sleep(10)
