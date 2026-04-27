@@ -19,6 +19,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
   setEditTournamentPicks,
   handleUpdateLeagueSettings,
   handleSaveEditResults,
+  handleMarkTournamentComplete,
   loadTournamentPicks,
   getPenaltyAmount,
 }) {
@@ -254,6 +255,14 @@ const CommissionerTab = React.memo(function CommissionerTab({
                           ? 'Picks are not yet locked.'
                           : 'Not yet completed.'}
                       </p>
+                      {!selectedTournament?.completed && isPicksLocked && (
+                        <button
+                          onClick={() => handleMarkTournamentComplete(selectedTournament.id)}
+                          className="btn-primary mt-3 w-full sm:w-auto"
+                        >
+                          Mark as Complete
+                        </button>
+                      )}
                     </div>
 
                     {isCurrentWeekTournament && !isPicksLocked ? (

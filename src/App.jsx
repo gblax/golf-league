@@ -1180,6 +1180,35 @@ const handleSaveResults = async (playerId) => {
     }
   };
 
+  const handleMarkTournamentComplete = async (tournamentId) => {
+    const tournament = tournaments.find(t => t.id === tournamentId);
+    if (!tournament) {
+      showNotification('error', 'Tournament not found');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Mark "${tournament.name}" (Week ${tournament.week}) as complete?\n\n` +
+      `Use this only when the automated results script didn't mark it complete. ` +
+      `Make sure all picks have winnings/penalties entered first.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ completed: true })
+        .eq('id', tournamentId);
+
+      if (error) throw error;
+
+      showNotification('success', `Tournament marked as complete`);
+      loadData();
+    } catch (error) {
+      showNotification('error', 'Error marking tournament complete: ' + error.message);
+    }
+  };
+
   const handleSaveEditResults = async (userId) => {
     const tournament = tournaments.find(t => t.id === editTournamentId);
     const userData = editResultsData[userId];
@@ -2107,6 +2136,7 @@ const handleSubmitPick = async () => {
                 setEditTournamentPicks={setEditTournamentPicks}
                 handleUpdateLeagueSettings={handleUpdateLeagueSettings}
                 handleSaveEditResults={handleSaveEditResults}
+                handleMarkTournamentComplete={handleMarkTournamentComplete}
                 loadTournamentPicks={loadTournamentPicks}
                 getPenaltyAmount={getPenaltyAmount}
               />
