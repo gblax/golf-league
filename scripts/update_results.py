@@ -27,6 +27,11 @@ SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 ESPN_LEADERBOARD_URL = "https://www.espn.com/golf/leaderboard"
+# ESPN's JSON API endpoint, used by their own apps. Not bot-gated and returns
+# structured data, unlike the public web page which now sits behind a
+# CDN/Akamai bot challenge that returns HTTP 202 with an empty body for
+# unauthenticated requests.
+ESPN_API_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard"
 GEMINI_MODEL = "gemini-2.0-flash"
 
 # Name-suffix tokens stripped from the end of a normalized name.
@@ -59,16 +64,70 @@ def normalize_name(name: str) -> str:
     return " ".join(tokens)
 
 
+# Browser-like headers. ESPN's CDN now bot-challenges requests that don't
+# look like a real browser and returns HTTP 202 with an empty body.
+_BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Sec-Ch-Ua": '"Chromium";v="120", "Not(A:Brand";v="24", "Google Chrome";v="120"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"macOS"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
+}
+
+_API_HEADERS = {
+    "User-Agent": _BROWSER_HEADERS["User-Agent"],
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Origin": "https://www.espn.com",
+    "Referer": "https://www.espn.com/",
+}
+
+
 def scrape_espn_leaderboard() -> str:
-    """Scrape the ESPN golf leaderboard page and return raw text."""
-    print("Scraping ESPN leaderboard...")
+    """Fetch the current PGA Tour leaderboard.
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
+    Strategy: try ESPN's structured JSON API first (not bot-gated, returns
+    clean data). Fall back to the public HTML page only if the API is
+    unavailable. Both failures raise loudly with diagnostics so the script
+    never silently feeds an empty payload to Gemini.
+    """
+    # --- Primary: ESPN's JSON API ---
+    print(f"Fetching ESPN leaderboard JSON API: {ESPN_API_URL}")
+    try:
+        api_resp = requests.get(ESPN_API_URL, headers=_API_HEADERS, timeout=30)
+        api_resp.raise_for_status()
+        body = api_resp.text
+        print(f"  [api] HTTP {api_resp.status_code}, {len(body)} chars")
+        if len(body) >= 1000 and body.lstrip().startswith("{"):
+            # Validate it actually parsed and looks like a leaderboard payload.
+            try:
+                payload = json.loads(body)
+                if payload.get("events") or payload.get("leaderboard") or payload.get("competitions"):
+                    print("  [api] looks like a valid leaderboard payload")
+                    return body
+                else:
+                    print(f"  [api] JSON parsed but no events/leaderboard keys; falling back. Top-level keys: {list(payload.keys())[:10]}")
+            except json.JSONDecodeError as e:
+                print(f"  [api] JSON parse failed: {e}; falling back")
+        else:
+            print("  [api] response too short or not JSON; falling back")
+    except Exception as exc:
+        print(f"  [api] request failed: {exc}; falling back to HTML")
 
-    response = requests.get(ESPN_LEADERBOARD_URL, headers=headers)
+    # --- Fallback: HTML page with full browser headers ---
+    print(f"Scraping ESPN leaderboard HTML: {ESPN_LEADERBOARD_URL}")
+    response = requests.get(ESPN_LEADERBOARD_URL, headers=_BROWSER_HEADERS, timeout=30)
     response.raise_for_status()
+    print(f"  [html] HTTP {response.status_code}, {len(response.text)} chars")
 
     soup = BeautifulSoup(response.text, "html.parser")
     for element in soup(["script", "style", "nav", "footer", "header"]):
@@ -76,27 +135,22 @@ def scrape_espn_leaderboard() -> str:
     text = soup.get_text(separator="\n", strip=True)
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     cleaned_text = "\n".join(lines)
-    print(f"Scraped {len(cleaned_text)} characters of text")
+    print(f"  [html] visible text: {len(cleaned_text)} chars")
 
-    # ESPN's leaderboard is increasingly a single-page-app shell where the
-    # actual leaderboard data lives in JSON embedded in <script> tags — and
-    # html.parser drops <script> contents from get_text(). If the visible
-    # text is too short to be a real leaderboard, fall back to passing the
-    # raw HTML through. Gemini parses HTML fine.
+    # If visible text is empty (SPA shell), pass raw HTML to Gemini — it
+    # handles HTML and any embedded JSON survives this path.
     if len(cleaned_text) < 1000:
-        print("  [scrape] visible text too short; falling back to raw HTML")
+        print("  [html] visible text too short; falling back to raw HTML")
         cleaned_text = response.text
-        print(f"  [scrape] raw body has {len(cleaned_text)} characters")
 
     # Hard sanity gate. Without this, an empty scrape silently turns into a
     # Gemini hallucination from training data, which then fails matching and
     # only shows up as a 0% catastrophic-match failure with no clear cause.
     if len(cleaned_text) < 1000:
         raise ValueError(
-            f"ESPN leaderboard scrape returned only {len(cleaned_text)} chars after fallback "
-            f"(HTTP {response.status_code}, raw body length {len(response.text)}). "
-            f"Refusing to call Gemini with an empty leaderboard. "
-            f"Raw body sample: {response.text[:500]!r}"
+            f"ESPN leaderboard fetch failed on BOTH the JSON API and HTML page. "
+            f"Last HTML response: HTTP {response.status_code}, body length "
+            f"{len(response.text)}. Raw body sample: {response.text[:500]!r}"
         )
 
     return cleaned_text
