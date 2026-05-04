@@ -1,6 +1,5 @@
 import React from 'react';
 import { CheckCircle, ChevronDown, Trophy } from 'lucide-react';
-import { computeWeeklyWinners } from '../utils/winners';
 
 const ScheduleTab = React.memo(function ScheduleTab({
   tournaments,
@@ -12,8 +11,6 @@ const ScheduleTab = React.memo(function ScheduleTab({
   setExpandedScheduleTournament,
   formatPrizePool,
 }) {
-  const weeklyWinners = React.useMemo(() => computeWeeklyWinners(players), [players]);
-
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Schedule</h2>
@@ -22,7 +19,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
           const isCurrent = tournament.week === currentWeek;
           const isCompleted = tournament.completed || tournament.week < currentWeek;
           const isExpanded = expandedScheduleTournament === tournament.id;
-          const winner = weeklyWinners[tournament.week];
+          const winnerGolfer = tournament.winner_golfer_name || null;
 
           return (
             <div key={tournament.id}>
@@ -60,16 +57,18 @@ const ScheduleTab = React.memo(function ScheduleTab({
                         {tournament.course}{tournament.course && tournament.location && ' · '}{tournament.location}
                       </p>
                     )}
-                    {isCompleted && winner && (
+                    {isCompleted && (
                       <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                         <Trophy size={11} className="fill-amber-400/40" />
-                        <span className="truncate">
-                          {winner.winnerNames.length > 1 ? 'Tied: ' : ''}
-                          {winner.winnerNames.join(', ')}
-                          <span className="text-slate-400 dark:text-slate-500 font-normal">
-                            {' '}&middot; ${winner.amount.toLocaleString()}
+                        {winnerGolfer ? (
+                          <span className="truncate">
+                            Won by <span className="font-semibold">{winnerGolfer}</span>
                           </span>
-                        </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500 font-normal italic">
+                            Winner not yet recorded
+                          </span>
+                        )}
                       </p>
                     )}
                   </div>
@@ -120,10 +119,10 @@ const ScheduleTab = React.memo(function ScheduleTab({
                           })
                           .sort((a, b) => (b.weekData?.winnings || 0) - (a.weekData?.winnings || 0))
                           .map((player, idx) => {
-                            const isWinner = winner?.winnerIds?.has(player.id);
+                            const pickedWinner = !!winnerGolfer && player.weekData?.golfer === winnerGolfer;
                             return (
                             <tr key={player.id} className={`border-b border-slate-100 dark:border-slate-800 ${
-                              isWinner
+                              pickedWinner
                                 ? 'bg-amber-50 dark:bg-amber-950/20'
                                 : player.id === currentUser?.id
                                   ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
@@ -131,11 +130,11 @@ const ScheduleTab = React.memo(function ScheduleTab({
                             }`}>
                               <td className="py-2 px-2 text-xs text-slate-900 dark:text-white font-medium">
                                 <span className="inline-flex items-center gap-1">
-                                  {isWinner && (
+                                  {pickedWinner && (
                                     <Trophy
                                       size={12}
                                       className="text-amber-600 dark:text-amber-400 fill-amber-400/40"
-                                      aria-label={winner.winnerIds.size > 1 ? 'Tied for winner of week' : 'Winner of week'}
+                                      aria-label={`Picked the tournament winner: ${winnerGolfer}`}
                                     />
                                   )}
                                   {player.name}

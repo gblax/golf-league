@@ -9,16 +9,21 @@ const CommissionerTab = React.memo(function CommissionerTab({
   editTournamentId,
   editTournamentPicks,
   editResultsData,
+  editTournamentWinner,
+  savingTournamentWinner,
+  availableGolfers,
   loadingEditPicks,
   showLeagueSettings,
   showNotification,
   setEditTournamentId,
   setEditResultsData,
+  setEditTournamentWinner,
   setShowLeagueSettings,
   setLeagueSettings,
   setEditTournamentPicks,
   handleUpdateLeagueSettings,
   handleSaveEditResults,
+  handleSaveTournamentWinner,
   handleMarkTournamentComplete,
   loadTournamentPicks,
   getPenaltyAmount,
@@ -264,6 +269,58 @@ const CommissionerTab = React.memo(function CommissionerTab({
                         </button>
                       )}
                     </div>
+
+                    {/* Tournament Winner */}
+                    {(() => {
+                      const datalistId = `winner-golfers-${editTournamentId}`;
+                      const pickGolfers = (editTournamentPicks || [])
+                        .map(p => p.pick?.golfer_name)
+                        .filter(g => g && g !== 'No Pick');
+                      const suggestionSet = new Set([...(availableGolfers || []), ...pickGolfers]);
+                      const suggestions = Array.from(suggestionSet).sort((a, b) => a.localeCompare(b));
+                      const trimmed = (editTournamentWinner || '').trim();
+                      const original = selectedTournament?.winner_golfer_name || '';
+                      const isDirty = trimmed !== original.trim();
+
+                      return (
+                        <div className="mb-4 p-3 border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 rounded-xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Trophy className="text-amber-500" size={14} />
+                            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Tournament Winner (Golfer)</p>
+                          </div>
+                          <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-2">
+                            The PGA golfer who actually won this tournament.
+                          </p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              list={datalistId}
+                              value={editTournamentWinner || ''}
+                              onChange={(e) => setEditTournamentWinner(e.target.value)}
+                              placeholder="e.g. Scottie Scheffler"
+                              className="input flex-1"
+                            />
+                            <datalist id={datalistId}>
+                              {suggestions.map(name => (
+                                <option key={name} value={name} />
+                              ))}
+                            </datalist>
+                            <button
+                              onClick={() => handleSaveTournamentWinner(editTournamentId, editTournamentWinner)}
+                              disabled={savingTournamentWinner || !isDirty}
+                              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {savingTournamentWinner ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                          {original && !trimmed && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1.5">
+                              Saving an empty value will clear the winner.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {isCurrentWeekTournament && !isPicksLocked ? (
                       <div className="text-center py-10 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-800">

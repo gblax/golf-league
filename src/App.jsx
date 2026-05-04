@@ -68,6 +68,8 @@ const App = () => {
   const [editTournamentId, setEditTournamentId] = useState(null);
   const [editTournamentPicks, setEditTournamentPicks] = useState([]);
   const [editResultsData, setEditResultsData] = useState({});
+  const [editTournamentWinner, setEditTournamentWinner] = useState('');
+  const [savingTournamentWinner, setSavingTournamentWinner] = useState(false);
   const [loadingEditPicks, setLoadingEditPicks] = useState(false);
   const [availableGolfers, setAvailableGolfers] = useState([]);
   const [userPicks, setUserPicks] = useState([]);
@@ -624,15 +626,19 @@ const playersWithWinnings = (usersData || []).map(user => {
     const pick = leaguePicks.find(p => p.tournament_id === tournament.id);
     const lockTime = tournament.picks_lock_time ? new Date(tournament.picks_lock_time) : null;
     const isPast = lockTime ? new Date() >= lockTime : tournament.completed;
+    const golfer = (pick?.golfer_name && pick.golfer_name !== 'No Pick') ? pick.golfer_name : null;
+    const winnerGolfer = tournament.winner_golfer_name || null;
     return {
       week: tournament.week,
       tournamentName: tournament.name,
-      golfer: (pick?.golfer_name && pick.golfer_name !== 'No Pick') ? pick.golfer_name : null,
+      golfer,
       backup: pick?.backup_golfer_name || null,
       winnings: pick?.winnings || 0,
       penalty: pick?.penalty_amount || 0,
       penaltyReason: pick?.penalty_reason || null,
-      isPast
+      isPast,
+      tournamentWinner: winnerGolfer,
+      pickedWinner: !!golfer && !!winnerGolfer && golfer === winnerGolfer,
     };
   });
 
@@ -1103,9 +1109,12 @@ const handleSaveResults = async (playerId) => {
     if (!tournamentId) {
       setEditTournamentPicks([]);
       setEditResultsData({});
+      setEditTournamentWinner('');
       return;
     }
 
+    const selected = tournaments.find(t => t.id === tournamentId);
+    setEditTournamentWinner(selected?.winner_golfer_name || '');
     setLoadingEditPicks(true);
     try {
       // Get all picks for this tournament (scoped to league)
@@ -1206,6 +1215,24 @@ const handleSaveResults = async (playerId) => {
       loadData();
     } catch (error) {
       showNotification('error', 'Error marking tournament complete: ' + error.message);
+    }
+  };
+
+  const handleSaveTournamentWinner = async (tournamentId, name) => {
+    const trimmed = (name || '').trim();
+    setSavingTournamentWinner(true);
+    try {
+      const { error } = await supabase
+        .from('tournaments')
+        .update({ winner_golfer_name: trimmed || null })
+        .eq('id', tournamentId);
+      if (error) throw error;
+      showNotification('success', trimmed ? 'Winning golfer saved' : 'Winning golfer cleared');
+      loadData();
+    } catch (error) {
+      showNotification('error', 'Error saving winning golfer: ' + error.message);
+    } finally {
+      setSavingTournamentWinner(false);
     }
   };
 
@@ -2126,16 +2153,21 @@ const handleSubmitPick = async () => {
                 editTournamentId={editTournamentId}
                 editTournamentPicks={editTournamentPicks}
                 editResultsData={editResultsData}
+                editTournamentWinner={editTournamentWinner}
+                savingTournamentWinner={savingTournamentWinner}
+                availableGolfers={availableGolfers}
                 loadingEditPicks={loadingEditPicks}
                 showLeagueSettings={showLeagueSettings}
                 showNotification={showNotification}
                 setEditTournamentId={setEditTournamentId}
                 setEditResultsData={setEditResultsData}
+                setEditTournamentWinner={setEditTournamentWinner}
                 setShowLeagueSettings={setShowLeagueSettings}
                 setLeagueSettings={setLeagueSettings}
                 setEditTournamentPicks={setEditTournamentPicks}
                 handleUpdateLeagueSettings={handleUpdateLeagueSettings}
                 handleSaveEditResults={handleSaveEditResults}
+                handleSaveTournamentWinner={handleSaveTournamentWinner}
                 handleMarkTournamentComplete={handleMarkTournamentComplete}
                 loadTournamentPicks={loadTournamentPicks}
                 getPenaltyAmount={getPenaltyAmount}
