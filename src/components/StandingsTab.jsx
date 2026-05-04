@@ -1,5 +1,6 @@
 import React from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { computeWeeklyWinners, computeWinCounts } from '../utils/winners';
 
 // Get the visible pick text for a player (returns plain string or status)
 function getPickDisplay(player, currentUser, currentTournament) {
@@ -54,8 +55,23 @@ function RankBadge({ idx, size = 'default' }) {
   return <span className={`${base} inline-flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold`}>{idx + 1}</span>;
 }
 
+// Small trophy badge marking the winner of a given week.
+function WinnerBadge({ size = 'default', tieCount = 1 }) {
+  const px = size === 'small' ? 10 : 12;
+  const label = tieCount > 1 ? `Tied for winner of week (${tieCount} players)` : 'Winner of week';
+  return (
+    <span
+      title={label}
+      aria-label={label}
+      className="inline-flex items-center justify-center text-amber-600 dark:text-amber-400"
+    >
+      <Trophy size={px} className="fill-amber-400/40" />
+    </span>
+  );
+}
+
 // Mobile expanded details - card-based layout
-function MobileExpandedDetails({ player, currentUser, currentWeek, currentTournament, leagueSettings }) {
+function MobileExpandedDetails({ player, currentUser, currentWeek, currentTournament, leagueSettings, weeklyWinners }) {
   return (
     <div className="px-3 pb-3 pt-2">
       <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Week-by-Week</p>
@@ -67,11 +83,20 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
           const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
           const isLocked = lockTime && now >= lockTime;
           const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
+          const weekWinner = weeklyWinners?.[weekData.week];
+          const isWinnerRow = weekWinner?.winnerIds?.has(player.id);
 
           return (
-            <div key={weekIdx} className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-2.5">
+            <div key={weekIdx} className={`rounded-lg border p-2.5 ${
+              isWinnerRow
+                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/60'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+            }`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase">Wk {weekData.week}</span>
+                <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase">
+                  Wk {weekData.week}
+                  {isWinnerRow && <WinnerBadge size="small" tieCount={weekWinner.winnerIds.size} />}
+                </span>
                 <div className="flex items-center gap-2 tabular-nums">
                   {weekData.winnings > 0 ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-xs">${weekData.winnings.toLocaleString()}</span>
@@ -140,6 +165,9 @@ const StandingsTab = React.memo(function StandingsTab({
   expandedRows,
   toggleRowExpansion,
 }) {
+  const weeklyWinners = React.useMemo(() => computeWeeklyWinners(sortedStandings), [sortedStandings]);
+  const winCounts = React.useMemo(() => computeWinCounts(weeklyWinners), [weeklyWinners]);
+
   return (
     <div className="max-w-4xl mx-auto">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Standings</h2>
@@ -169,6 +197,15 @@ const StandingsTab = React.memo(function StandingsTab({
                     <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-slate-900 dark:text-white`}>
                       {player.name}
                     </span>
+                    {winCounts[player.id] > 0 && (
+                      <span
+                        title={`${winCounts[player.id]} weekly ${winCounts[player.id] === 1 ? 'win' : 'wins'}`}
+                        className="flex-shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                      >
+                        <Trophy size={10} className="fill-amber-400/40" />
+                        {winCounts[player.id]}
+                      </span>
+                    )}
                   </div>
                   <span className="text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -220,6 +257,7 @@ const StandingsTab = React.memo(function StandingsTab({
                     currentWeek={currentWeek}
                     currentTournament={currentTournament}
                     leagueSettings={leagueSettings}
+                    weeklyWinners={weeklyWinners}
                   />
                 </div>
               )}
@@ -253,7 +291,18 @@ const StandingsTab = React.memo(function StandingsTab({
                     <RankBadge idx={idx} />
                   </td>
                   <td className={`py-3 px-4 text-sm text-slate-900 dark:text-white ${player.id === currentUser?.id ? 'font-bold' : 'font-medium'}`}>
-                    {player.name}
+                    <span className="inline-flex items-center gap-2">
+                      {player.name}
+                      {winCounts[player.id] > 0 && (
+                        <span
+                          title={`${winCounts[player.id]} weekly ${winCounts[player.id] === 1 ? 'win' : 'wins'}`}
+                          className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                        >
+                          <Trophy size={10} className="fill-amber-400/40" />
+                          {winCounts[player.id]}
+                        </span>
+                      )}
+                    </span>
                   </td>
                   <td className="py-3 px-4 text-right text-sm tabular-nums font-semibold text-slate-900 dark:text-white">
                     ${player.winnings.toLocaleString()}
@@ -308,10 +357,21 @@ const StandingsTab = React.memo(function StandingsTab({
                                 const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
                                 const isLocked = lockTime && now >= lockTime;
                                 const shouldHidePick = isCurrentWeekRow && !isViewingOwnPicks && !isLocked;
+                                const weekWinner = weeklyWinners?.[weekData.week];
+                                const isWinnerRow = weekWinner?.winnerIds?.has(player.id);
 
                                 return (
-                                <tr key={weekIdx} className={`border-b border-slate-100 dark:border-slate-800 ${weekIdx % 2 === 1 ? 'bg-slate-100/50 dark:bg-slate-800/30' : ''}`}>
-                                  <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white text-xs">{weekData.week}</td>
+                                <tr key={weekIdx} className={`border-b border-slate-100 dark:border-slate-800 ${
+                                  isWinnerRow
+                                    ? 'bg-amber-50 dark:bg-amber-950/20'
+                                    : weekIdx % 2 === 1 ? 'bg-slate-100/50 dark:bg-slate-800/30' : ''
+                                }`}>
+                                  <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white text-xs">
+                                    <span className="inline-flex items-center gap-1">
+                                      {weekData.week}
+                                      {isWinnerRow && <WinnerBadge size="small" tieCount={weekWinner.winnerIds.size} />}
+                                    </span>
+                                  </td>
                                   <td className="py-2 px-3 text-slate-600 dark:text-slate-300 text-xs">{weekData.tournamentName}</td>
                                   <td className="py-2 px-3 text-xs">
                                     {shouldHidePick ? (

@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle, ChevronDown } from 'lucide-react';
+import { CheckCircle, ChevronDown, Trophy } from 'lucide-react';
+import { computeWeeklyWinners } from '../utils/winners';
 
 const ScheduleTab = React.memo(function ScheduleTab({
   tournaments,
@@ -11,6 +12,8 @@ const ScheduleTab = React.memo(function ScheduleTab({
   setExpandedScheduleTournament,
   formatPrizePool,
 }) {
+  const weeklyWinners = React.useMemo(() => computeWeeklyWinners(players), [players]);
+
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Schedule</h2>
@@ -19,6 +22,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
           const isCurrent = tournament.week === currentWeek;
           const isCompleted = tournament.completed || tournament.week < currentWeek;
           const isExpanded = expandedScheduleTournament === tournament.id;
+          const winner = weeklyWinners[tournament.week];
 
           return (
             <div key={tournament.id}>
@@ -54,6 +58,18 @@ const ScheduleTab = React.memo(function ScheduleTab({
                     {(tournament.course || tournament.location) && (
                       <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
                         {tournament.course}{tournament.course && tournament.location && ' · '}{tournament.location}
+                      </p>
+                    )}
+                    {isCompleted && winner && (
+                      <p className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                        <Trophy size={11} className="fill-amber-400/40" />
+                        <span className="truncate">
+                          {winner.winnerNames.length > 1 ? 'Tied: ' : ''}
+                          {winner.winnerNames.join(', ')}
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">
+                            {' '}&middot; ${winner.amount.toLocaleString()}
+                          </span>
+                        </span>
                       </p>
                     )}
                   </div>
@@ -103,13 +119,28 @@ const ScheduleTab = React.memo(function ScheduleTab({
                             return { ...player, weekData };
                           })
                           .sort((a, b) => (b.weekData?.winnings || 0) - (a.weekData?.winnings || 0))
-                          .map((player, idx) => (
+                          .map((player, idx) => {
+                            const isWinner = winner?.winnerIds?.has(player.id);
+                            return (
                             <tr key={player.id} className={`border-b border-slate-100 dark:border-slate-800 ${
-                              player.id === currentUser?.id ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : idx % 2 === 1 ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''
+                              isWinner
+                                ? 'bg-amber-50 dark:bg-amber-950/20'
+                                : player.id === currentUser?.id
+                                  ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
+                                  : idx % 2 === 1 ? 'bg-slate-50/50 dark:bg-slate-900/30' : ''
                             }`}>
                               <td className="py-2 px-2 text-xs text-slate-900 dark:text-white font-medium">
-                                {player.name}
-                                {player.id === currentUser?.id && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
+                                <span className="inline-flex items-center gap-1">
+                                  {isWinner && (
+                                    <Trophy
+                                      size={12}
+                                      className="text-amber-600 dark:text-amber-400 fill-amber-400/40"
+                                      aria-label={winner.winnerIds.size > 1 ? 'Tied for winner of week' : 'Winner of week'}
+                                    />
+                                  )}
+                                  {player.name}
+                                  {player.id === currentUser?.id && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
+                                </span>
                               </td>
                               <td className="py-2 px-2 text-xs">
                                 {player.weekData?.golfer ? (
@@ -131,7 +162,8 @@ const ScheduleTab = React.memo(function ScheduleTab({
                                 )}
                               </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                       </tbody>
                     </table>
                   </div>
