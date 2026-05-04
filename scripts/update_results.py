@@ -2,8 +2,11 @@
 """
 Golf League Results Updater
 
-Scrapes ESPN PGA leaderboard, uses Gemini to parse it, and updates Supabase.
+Fetches ESPN's PGA leaderboard JSON API and updates Supabase.
 Processes picks across all leagues, applying each league's own penalty settings.
+
+If ESPN's schema drifts or a tournament can't be matched, the commissioner
+can override results manually through CommissionerTab in the web app.
 """
 
 import os
@@ -13,8 +16,6 @@ import unicodedata
 from difflib import SequenceMatcher
 
 import requests
-from bs4 import BeautifulSoup
-import google.generativeai as genai
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -24,15 +25,11 @@ load_dotenv()
 # Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-ESPN_LEADERBOARD_URL = "https://www.espn.com/golf/leaderboard"
-# ESPN's JSON API endpoint, used by their own apps. Not bot-gated and returns
-# structured data, unlike the public web page which now sits behind a
-# CDN/Akamai bot challenge that returns HTTP 202 with an empty body for
-# unauthenticated requests.
+# ESPN's JSON API endpoint, used by their own apps. Returns structured data
+# directly — no LLM parsing needed. The public HTML page sits behind a
+# CDN/Akamai bot challenge so we don't bother with an HTML fallback.
 ESPN_API_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard"
-GEMINI_MODEL = "gemini-2.0-flash"
 
 # Name-suffix tokens stripped from the end of a normalized name.
 _NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
@@ -64,27 +61,8 @@ def normalize_name(name: str) -> str:
     return " ".join(tokens)
 
 
-# Browser-like headers. ESPN's CDN now bot-challenges requests that don't
-# look like a real browser and returns HTTP 202 with an empty body.
-_BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "Sec-Ch-Ua": '"Chromium";v="120", "Not(A:Brand";v="24", "Google Chrome";v="120"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"macOS"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-}
-
 _API_HEADERS = {
-    "User-Agent": _BROWSER_HEADERS["User-Agent"],
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
     "Accept-Language": "en-US,en;q=0.9",
     "Origin": "https://www.espn.com",
@@ -92,179 +70,220 @@ _API_HEADERS = {
 }
 
 
-def scrape_espn_leaderboard() -> str:
-    """Fetch the current PGA Tour leaderboard.
+def fetch_espn_leaderboard_json() -> dict:
+    """Fetch the current PGA Tour leaderboard from ESPN's JSON API.
 
-    Strategy: try ESPN's structured JSON API first (not bot-gated, returns
-    clean data). Fall back to the public HTML page only if the API is
-    unavailable. Both failures raise loudly with diagnostics so the script
-    never silently feeds an empty payload to Gemini.
+    Raises loudly if the response is missing, too short, malformed, or
+    doesn't look like a leaderboard payload. The caller (and the
+    catastrophic-match-rate gate) treats any failure here as a signal to
+    fall back to manual entry in the commissioner UI.
     """
-    # --- Primary: ESPN's JSON API ---
     print(f"Fetching ESPN leaderboard JSON API: {ESPN_API_URL}")
-    try:
-        api_resp = requests.get(ESPN_API_URL, headers=_API_HEADERS, timeout=30)
-        api_resp.raise_for_status()
-        body = api_resp.text
-        print(f"  [api] HTTP {api_resp.status_code}, {len(body)} chars")
-        if len(body) >= 1000 and body.lstrip().startswith("{"):
-            # Validate it actually parsed and looks like a leaderboard payload.
-            try:
-                payload = json.loads(body)
-                if payload.get("events") or payload.get("leaderboard") or payload.get("competitions"):
-                    print("  [api] looks like a valid leaderboard payload")
-                    return body
-                else:
-                    print(f"  [api] JSON parsed but no events/leaderboard keys; falling back. Top-level keys: {list(payload.keys())[:10]}")
-            except json.JSONDecodeError as e:
-                print(f"  [api] JSON parse failed: {e}; falling back")
-        else:
-            print("  [api] response too short or not JSON; falling back")
-    except Exception as exc:
-        print(f"  [api] request failed: {exc}; falling back to HTML")
+    resp = requests.get(ESPN_API_URL, headers=_API_HEADERS, timeout=30)
+    resp.raise_for_status()
+    body = resp.text
+    print(f"  [api] HTTP {resp.status_code}, {len(body)} chars")
 
-    # --- Fallback: HTML page with full browser headers ---
-    print(f"Scraping ESPN leaderboard HTML: {ESPN_LEADERBOARD_URL}")
-    response = requests.get(ESPN_LEADERBOARD_URL, headers=_BROWSER_HEADERS, timeout=30)
-    response.raise_for_status()
-    print(f"  [html] HTTP {response.status_code}, {len(response.text)} chars")
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    for element in soup(["script", "style", "nav", "footer", "header"]):
-        element.decompose()
-    text = soup.get_text(separator="\n", strip=True)
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
-    cleaned_text = "\n".join(lines)
-    print(f"  [html] visible text: {len(cleaned_text)} chars")
-
-    # If visible text is empty (SPA shell), pass raw HTML to Gemini — it
-    # handles HTML and any embedded JSON survives this path.
-    if len(cleaned_text) < 1000:
-        print("  [html] visible text too short; falling back to raw HTML")
-        cleaned_text = response.text
-
-    # Hard sanity gate. Without this, an empty scrape silently turns into a
-    # Gemini hallucination from training data, which then fails matching and
-    # only shows up as a 0% catastrophic-match failure with no clear cause.
-    if len(cleaned_text) < 1000:
+    if len(body) < 1000 or not body.lstrip().startswith("{"):
         raise ValueError(
-            f"ESPN leaderboard fetch failed on BOTH the JSON API and HTML page. "
-            f"Last HTML response: HTTP {response.status_code}, body length "
-            f"{len(response.text)}. Raw body sample: {response.text[:500]!r}"
+            f"ESPN JSON API returned an unexpected response. "
+            f"HTTP {resp.status_code}, body length {len(body)}. "
+            f"Sample: {body[:500]!r}"
         )
 
-    return cleaned_text
-
-
-def parse_with_gemini(raw_text: str) -> dict:
-    """Use Gemini to parse the raw leaderboard text into structured JSON."""
-    import time
-
-    print(f"Parsing with Gemini (model: {GEMINI_MODEL})...")
-
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel(GEMINI_MODEL)
-
-    prompt = f"""Parse this ESPN golf leaderboard page and extract tournament info and player results as JSON.
-
-The input may be plain text OR raw HTML/JSON from ESPN's single-page-app shell — leaderboard data is often embedded inside <script> tags as JSON. Look at all of it.
-
-Return a JSON object with these fields:
-- tournament_name: string (the name of the tournament, e.g., "The American Express", "Farmers Insurance Open")
-- players: array of objects with:
-  - player_name: string (golfer's full name)
-  - position: string (e.g., "1", "T2", "CUT", "WD")
-  - score: string (e.g., "-12", "E", "+3")
-  - winnings: number (prize money in dollars, 0 if not listed or if they missed cut)
-  - status: string ("active", "cut", "withdrawn", "disqualified")
-
-Only extract data that actually appears in the input. If the input contains no leaderboard data, return {{"tournament_name": "Unknown", "players": []}} — DO NOT invent players or tournaments from prior knowledge.
-Return ONLY the JSON object, no markdown or explanation.
-
-Leaderboard page:
-{raw_text[:40000]}
-"""
-
-    # Retry with exponential backoff for rate limits
-    max_retries = 5
-    response_text = None
-
-    for attempt in range(max_retries):
-        try:
-            response = model.generate_content(prompt)
-
-            # Check if response has valid content
-            if not response.candidates:
-                print(f"No candidates in response. Retrying...")
-                time.sleep(10)
-                continue
-
-            candidate = response.candidates[0]
-            if candidate.finish_reason != 1:  # 1 = STOP (normal)
-                print(f"Response blocked or incomplete. Finish reason: {candidate.finish_reason}")
-                if hasattr(candidate, 'safety_ratings'):
-                    print(f"Safety ratings: {candidate.safety_ratings}")
-                time.sleep(10)
-                continue
-
-            # Try to get text from parts
-            if candidate.content and candidate.content.parts:
-                response_text = candidate.content.parts[0].text.strip()
-                break
-            else:
-                print("No content parts in response. Retrying...")
-                time.sleep(10)
-                continue
-
-        except Exception as e:
-            if "429" in str(e) or "ResourceExhausted" in str(e):
-                # Exponential backoff: 60s, 120s, 240s, 480s, 900s
-                wait_times = [60, 120, 240, 480, 900]
-                wait_time = wait_times[attempt]
-                if attempt < max_retries - 1:
-                    print(f"Rate limited (429 ResourceExhausted). Waiting {wait_time}s before retry {attempt + 2}/{max_retries}...")
-                    time.sleep(wait_time)
-                else:
-                    print(f"Rate limited after {max_retries} attempts (waited {sum(wait_times[:attempt])}s total). Giving up.")
-            elif "response.text" in str(e) or "Invalid operation" in str(e):
-                print(f"Empty response from Gemini. Retrying in 10s...")
-                time.sleep(10)
-            else:
-                raise
-
-            if attempt == max_retries - 1:
-                raise
-
-    if not response_text:
-        raise ValueError("Failed to get valid response from Gemini after retries")
-
-    # Clean up response if it has markdown code blocks
-    if response_text.startswith("```"):
-        response_text = response_text.split("```")[1]
-        if response_text.startswith("json"):
-            response_text = response_text[4:]
-        response_text = response_text.strip()
-
     try:
-        result = json.loads(response_text)
-        tournament_name = result.get("tournament_name", "Unknown")
-        players = result.get("players", [])
-        print(f"Tournament: {tournament_name}")
-        print(f"Parsed {len(players)} players from leaderboard")
-        if not players:
-            raise ValueError(
-                f"Gemini returned 0 players for tournament '{tournament_name}'. "
-                f"This usually means the ESPN page layout changed or the model "
-                f"returned a malformed response. Raw response (truncated): "
-                f"{response_text[:500]}"
-            )
-        return {"tournament_name": tournament_name, "players": players}
-    except json.JSONDecodeError as e:
-        print(f"Error parsing Gemini response: {e}")
-        print(f"Scraped text length: {len(raw_text)} chars")
-        print(f"Scraped text (first 300 chars): {raw_text[:300]}")
-        print(f"Response was: {response_text[:500]}")
-        raise
+        payload = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"ESPN JSON API returned invalid JSON: {exc}") from exc
+
+    if not (payload.get("events") or payload.get("leaderboard") or payload.get("competitions")):
+        raise ValueError(
+            f"ESPN JSON parsed but doesn't look like a leaderboard payload. "
+            f"Top-level keys: {list(payload.keys())[:10]}"
+        )
+
+    return payload
+
+
+# Substrings that identify a prize-money stat on competitor.statistics[].
+# Matched against `name` and `abbreviation` (case-insensitive) because the
+# exact label has shifted across endpoints/seasons (`earnings`, `EARN`,
+# `winnings`, etc.).
+_EARNINGS_KEYWORDS = ("earn", "winning", "money", "prize", "purse")
+
+# Position strings that mean the player isn't earning money. The
+# downstream calculate_penalty() also keys off these strings, so the
+# parser propagates them verbatim.
+_INACTIVE_POSITIONS = {"CUT", "WD", "DQ", "MDF"}
+
+
+def _parse_money(raw) -> float:
+    """Coerce ESPN's earnings field into a float. Accepts numbers or
+    strings like '$1,234,567' or '1234567.00'. Returns 0 on failure."""
+    if raw is None:
+        return 0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    s = str(raw).strip().replace("$", "").replace(",", "")
+    if not s or s in {"-", "--", "E"}:
+        return 0
+    try:
+        return float(s)
+    except ValueError:
+        return 0
+
+
+def _competitor_winnings(competitor: dict) -> float:
+    """Pull prize money out of an ESPN competitor record.
+
+    ESPN exposes earnings inconsistently across seasons/endpoints. Try
+    the most common locations in priority order and return the first
+    non-zero match. Returns 0 if nothing usable is found.
+    """
+    # 1. Top-level convenience field.
+    direct = _parse_money(competitor.get("earnings"))
+    if direct:
+        return direct
+
+    # 2. statistics[] with a name/abbreviation like earnings/EARN/winnings.
+    for stat in competitor.get("statistics") or []:
+        label = (str(stat.get("name", "")) + " " + str(stat.get("abbreviation", ""))).lower()
+        if any(kw in label for kw in _EARNINGS_KEYWORDS):
+            val = _parse_money(stat.get("value"))
+            if val:
+                return val
+            val = _parse_money(stat.get("displayValue"))
+            if val:
+                return val
+
+    return 0
+
+
+def _competitor_position(competitor: dict) -> str:
+    """Extract the displayed leaderboard position (e.g. '1', 'T2',
+    'CUT', 'WD'). Returns '' if not found."""
+    status = competitor.get("status") or {}
+    pos = status.get("position") or {}
+    if isinstance(pos, dict):
+        return str(pos.get("displayName") or pos.get("name") or "").strip()
+    return str(pos).strip()
+
+
+def _competitor_score(competitor: dict) -> str:
+    """Extract the overall to-par score string ('E', '-12', '+3')."""
+    score = competitor.get("score")
+    if isinstance(score, dict):
+        return str(score.get("displayValue") or score.get("value") or "").strip()
+    if isinstance(score, (int, float)):
+        return f"{score:+d}" if isinstance(score, int) else f"{score:+g}"
+    return str(score or "").strip()
+
+
+def _competitor_status(competitor: dict, position: str) -> str:
+    """Map ESPN's status into the four-state vocabulary the rest of the
+    pipeline expects: active/cut/withdrawn/disqualified."""
+    pos_upper = position.upper()
+    if pos_upper == "CUT" or pos_upper == "MDF":
+        return "cut"
+    if pos_upper == "WD":
+        return "withdrawn"
+    if pos_upper == "DQ":
+        return "disqualified"
+
+    # Fall back to the structured status type if position is empty.
+    type_info = ((competitor.get("status") or {}).get("type") or {})
+    name = str(type_info.get("name", "")).lower()
+    state = str(type_info.get("state", "")).lower()
+    if "cut" in name or "cut" in state:
+        return "cut"
+    if "withdraw" in name or "wd" in state:
+        return "withdrawn"
+    if "disqual" in name or "dq" in state:
+        return "disqualified"
+    return "active"
+
+
+def parse_espn_json(payload: dict) -> dict:
+    """Walk ESPN's JSON payload into the {tournament_name, players[]}
+    shape the downstream pipeline expects.
+
+    Returned shape:
+        {
+          "tournament_name": str,
+          "players": [
+            {"player_name": str, "position": str, "score": str,
+             "winnings": float,
+             "status": "active"|"cut"|"withdrawn"|"disqualified"},
+            ...
+          ]
+        }
+
+    Defensive about field paths because ESPN's hidden API isn't
+    versioned; if a field shifts, we degrade gracefully (empty string,
+    0 winnings, status='active') rather than raising. The match-rate
+    gate downstream catches catastrophic schema drift.
+    """
+    print("Parsing ESPN leaderboard JSON...")
+
+    events = payload.get("events") or []
+    if not events:
+        raise ValueError("ESPN payload has no events[] — nothing to parse.")
+
+    # PGA Tour scoreboard normally has one active event. If multiple
+    # show up (e.g. mixed tour week), pick the one with the most
+    # competitors so we don't silently grab a Champions/LIV sidebar.
+    def _competitor_count(ev: dict) -> int:
+        comps = ev.get("competitions") or []
+        return len((comps[0].get("competitors") or [])) if comps else 0
+
+    event = max(events, key=_competitor_count)
+    tournament_name = (
+        event.get("name")
+        or event.get("shortName")
+        or event.get("displayName")
+        or "Unknown"
+    )
+
+    competitions = event.get("competitions") or []
+    competitors = (competitions[0].get("competitors") if competitions else []) or []
+
+    players: list[dict] = []
+    for c in competitors:
+        athlete = c.get("athlete") or {}
+        player_name = (
+            athlete.get("displayName")
+            or athlete.get("fullName")
+            or athlete.get("name")
+            or ""
+        ).strip()
+        if not player_name:
+            continue
+
+        position = _competitor_position(c)
+        score = _competitor_score(c)
+        status = _competitor_status(c, position)
+        # Inactive players don't earn money even if ESPN lists a stale value.
+        winnings = 0 if position.upper() in _INACTIVE_POSITIONS else _competitor_winnings(c)
+
+        players.append({
+            "player_name": player_name,
+            "position": position,
+            "score": score,
+            "winnings": winnings,
+            "status": status,
+        })
+
+    print(f"Tournament: {tournament_name}")
+    print(f"Parsed {len(players)} players from leaderboard")
+
+    if not players:
+        raise ValueError(
+            f"ESPN payload yielded 0 players for '{tournament_name}'. "
+            f"Schema may have changed. Event keys: {list(event.keys())[:10]}; "
+            f"competition keys: {list(competitions[0].keys())[:10] if competitions else []}."
+        )
+
+    return {"tournament_name": tournament_name, "players": players}
 
 
 def get_supabase_client() -> Client:
@@ -543,9 +562,9 @@ def update_results(dry_run: bool = True, mark_complete: bool = False, force: boo
     all_league_settings = get_all_league_settings(supabase)
     print(f"Loaded settings for {len(all_league_settings)} league(s)")
 
-    # Scrape and parse leaderboard FIRST to get tournament name
-    raw_text = scrape_espn_leaderboard()
-    parsed_data = parse_with_gemini(raw_text)
+    # Fetch and parse leaderboard FIRST to get tournament name
+    payload = fetch_espn_leaderboard_json()
+    parsed_data = parse_espn_json(payload)
 
     espn_tournament_name = parsed_data["tournament_name"]
     leaderboard_results = parsed_data["players"]
