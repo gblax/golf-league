@@ -71,19 +71,34 @@ def scrape_espn_leaderboard() -> str:
     response.raise_for_status()
 
     soup = BeautifulSoup(response.text, "html.parser")
-
-    # Remove script and style elements
     for element in soup(["script", "style", "nav", "footer", "header"]):
         element.decompose()
-
-    # Get text content
     text = soup.get_text(separator="\n", strip=True)
-
-    # Clean up excessive whitespace
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     cleaned_text = "\n".join(lines)
-
     print(f"Scraped {len(cleaned_text)} characters of text")
+
+    # ESPN's leaderboard is increasingly a single-page-app shell where the
+    # actual leaderboard data lives in JSON embedded in <script> tags — and
+    # html.parser drops <script> contents from get_text(). If the visible
+    # text is too short to be a real leaderboard, fall back to passing the
+    # raw HTML through. Gemini parses HTML fine.
+    if len(cleaned_text) < 1000:
+        print("  [scrape] visible text too short; falling back to raw HTML")
+        cleaned_text = response.text
+        print(f"  [scrape] raw body has {len(cleaned_text)} characters")
+
+    # Hard sanity gate. Without this, an empty scrape silently turns into a
+    # Gemini hallucination from training data, which then fails matching and
+    # only shows up as a 0% catastrophic-match failure with no clear cause.
+    if len(cleaned_text) < 1000:
+        raise ValueError(
+            f"ESPN leaderboard scrape returned only {len(cleaned_text)} chars after fallback "
+            f"(HTTP {response.status_code}, raw body length {len(response.text)}). "
+            f"Refusing to call Gemini with an empty leaderboard. "
+            f"Raw body sample: {response.text[:500]!r}"
+        )
+
     return cleaned_text
 
 
@@ -96,7 +111,9 @@ def parse_with_gemini(raw_text: str) -> dict:
     genai.configure(api_key=GEMINI_API_KEY)
     model = genai.GenerativeModel(GEMINI_MODEL)
 
-    prompt = f"""Parse this ESPN golf leaderboard text and extract tournament info and player results as JSON.
+    prompt = f"""Parse this ESPN golf leaderboard page and extract tournament info and player results as JSON.
+
+The input may be plain text OR raw HTML/JSON from ESPN's single-page-app shell — leaderboard data is often embedded inside <script> tags as JSON. Look at all of it.
 
 Return a JSON object with these fields:
 - tournament_name: string (the name of the tournament, e.g., "The American Express", "Farmers Insurance Open")
@@ -107,11 +124,11 @@ Return a JSON object with these fields:
   - winnings: number (prize money in dollars, 0 if not listed or if they missed cut)
   - status: string ("active", "cut", "withdrawn", "disqualified")
 
-Only include players who have results (position/score).
+Only extract data that actually appears in the input. If the input contains no leaderboard data, return {{"tournament_name": "Unknown", "players": []}} — DO NOT invent players or tournaments from prior knowledge.
 Return ONLY the JSON object, no markdown or explanation.
 
-Leaderboard text:
-{raw_text[:15000]}
+Leaderboard page:
+{raw_text[:40000]}
 """
 
     # Retry with exponential backoff for rate limits
