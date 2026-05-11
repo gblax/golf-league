@@ -26,10 +26,18 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-# ESPN's JSON API endpoint, used by their own apps. Returns structured data
-# directly — no LLM parsing needed. The public HTML page sits behind a
-# CDN/Akamai bot challenge so we don't bother with an HTML fallback.
-ESPN_API_URL = "https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard"
+# ESPN's JSON API endpoints, used by their own apps. Returns structured
+# data directly — no LLM parsing needed. The public HTML page sits behind
+# a CDN/Akamai bot challenge so we don't bother with an HTML fallback.
+#
+# Try `/scoreboard` first (ESPN's standard pattern across all sports) and
+# fall back to the older `/leaderboard` alias. ESPN has flipped which one
+# is canonical at least once, so trying both keeps the Monday cron alive
+# through future renames.
+ESPN_API_URLS = (
+    "https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard",
+    "https://site.api.espn.com/apis/site/v2/sports/golf/pga/leaderboard",
+)
 
 # Name-suffix tokens stripped from the end of a normalized name.
 _NAME_SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
@@ -73,36 +81,50 @@ _API_HEADERS = {
 def fetch_espn_leaderboard_json() -> dict:
     """Fetch the current PGA Tour leaderboard from ESPN's JSON API.
 
-    Raises loudly if the response is missing, too short, malformed, or
-    doesn't look like a leaderboard payload. The caller (and the
-    catastrophic-match-rate gate) treats any failure here as a signal to
-    fall back to manual entry in the commissioner UI.
+    Tries each URL in ESPN_API_URLS in order and returns the first that
+    yields a parseable leaderboard-shaped payload. Raises with all
+    per-URL failures if every candidate fails so the operator can see
+    whether ESPN renamed the endpoint again or returned an empty shell.
     """
-    print(f"Fetching ESPN leaderboard JSON API: {ESPN_API_URL}")
-    resp = requests.get(ESPN_API_URL, headers=_API_HEADERS, timeout=30)
-    resp.raise_for_status()
-    body = resp.text
-    print(f"  [api] HTTP {resp.status_code}, {len(body)} chars")
+    errors: list[str] = []
+    for url in ESPN_API_URLS:
+        print(f"Fetching ESPN leaderboard JSON API: {url}")
+        try:
+            resp = requests.get(url, headers=_API_HEADERS, timeout=30)
+            print(f"  [api] HTTP {resp.status_code}, {len(resp.text)} chars")
+            resp.raise_for_status()
+        except requests.HTTPError as exc:
+            errors.append(f"{url}: HTTP {exc.response.status_code if exc.response else '?'}")
+            continue
+        except requests.RequestException as exc:
+            errors.append(f"{url}: {exc}")
+            continue
 
-    if len(body) < 1000 or not body.lstrip().startswith("{"):
-        raise ValueError(
-            f"ESPN JSON API returned an unexpected response. "
-            f"HTTP {resp.status_code}, body length {len(body)}. "
-            f"Sample: {body[:500]!r}"
-        )
+        body = resp.text
+        if len(body) < 1000 or not body.lstrip().startswith("{"):
+            errors.append(f"{url}: short/non-JSON body ({len(body)} chars)")
+            continue
 
-    try:
-        payload = json.loads(body)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"ESPN JSON API returned invalid JSON: {exc}") from exc
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError as exc:
+            errors.append(f"{url}: invalid JSON ({exc})")
+            continue
 
-    if not (payload.get("events") or payload.get("leaderboard") or payload.get("competitions")):
-        raise ValueError(
-            f"ESPN JSON parsed but doesn't look like a leaderboard payload. "
-            f"Top-level keys: {list(payload.keys())[:10]}"
-        )
+        if not (payload.get("events") or payload.get("leaderboard") or payload.get("competitions")):
+            errors.append(
+                f"{url}: parsed but no events/leaderboard/competitions; "
+                f"top keys {list(payload.keys())[:10]}"
+            )
+            continue
 
-    return payload
+        return payload
+
+    raise ValueError(
+        "ESPN JSON API: every candidate endpoint failed. "
+        "Run with the commissioner override in CommissionerTab to enter "
+        "results manually. Diagnostics:\n  - " + "\n  - ".join(errors)
+    )
 
 
 # Substrings that identify a prize-money stat on competitor.statistics[].
