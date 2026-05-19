@@ -320,8 +320,25 @@ def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict
     Find a tournament in the database by matching the ESPN tournament name.
     Tournaments are shared across all leagues.
     Uses normalize_name() for accent/punctuation-insensitive comparison.
+
+    Only considers tournaments whose tournament_date is on or before
+    today + 1 day. Without this date guard, the Tier-3 keyword
+    fallback can match on a single shared token (e.g. "Classic")
+    against a far-future event — which is what caused the Myrtle
+    Beach Classic ESPN response to get scored against the July
+    Rocket Classic. Candidates are iterated date-DESC so the most
+    recently ended tournament wins when multiple tiers tie.
     """
-    response = supabase.table("tournaments").select("*").order("week", desc=True).execute()
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc).date() + timedelta(days=1)).isoformat()
+    response = (
+        supabase.table("tournaments")
+        .select("*")
+        .lte("tournament_date", cutoff)
+        .order("tournament_date", desc=True)
+        .execute()
+    )
 
     if not response.data:
         return None
