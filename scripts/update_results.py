@@ -69,6 +69,41 @@ def normalize_name(name: str) -> str:
     return " ".join(tokens)
 
 
+# Generic words that appear in many unrelated tournament names. A shared
+# token from this set is NOT enough to call two names the same event —
+# otherwise "Myrtle Beach Classic" and "Rocket Classic" match on "classic".
+_GENERIC_TOURNAMENT_WORDS = {
+    "open", "classic", "championship", "championships", "invitational",
+    "challenge", "cup", "tournament", "national", "golf", "pga", "tour",
+}
+
+
+def tournament_names_match(name_a: str, name_b: str) -> bool:
+    """Decide whether two tournament names refer to the same event.
+
+    Used as a verification gate: the schedule picks which week to score,
+    and this confirms the ESPN event we fetched is actually that
+    tournament before we write anything against its picks.
+
+      1. Exact normalized match.
+      2. Substring either direction (handles sponsor prefixes like
+         "THE CJ CUP Byron Nelson" vs "CJ Cup Byron Nelson").
+      3. A shared significant token (>3 chars) that is NOT a generic
+         golf-event word — so "byron"/"pebble" count but "classic"/"open"
+         alone do not.
+    """
+    a = normalize_name(name_a)
+    b = normalize_name(name_b)
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    if a in b or b in a:
+        return True
+    common = {w for w in (set(a.split()) & set(b.split())) if len(w) > 3}
+    return bool(common - _GENERIC_TOURNAMENT_WORDS)
+
+
 _API_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json, text/plain, */*",
@@ -225,9 +260,60 @@ def _competitor_status(competitor: dict, position: str) -> str:
     return "active"
 
 
-def parse_espn_json(payload: dict) -> dict:
+def _event_name(ev: dict) -> str:
+    """ESPN event display name, trying the fields that have carried it."""
+    return (ev.get("name") or ev.get("shortName") or ev.get("displayName") or "").strip()
+
+
+def _competitor_count(ev: dict) -> int:
+    comps = ev.get("competitions") or []
+    return len((comps[0].get("competitors") or [])) if comps else 0
+
+
+def _event_state(ev: dict) -> tuple[str, bool]:
+    """Return (state, completed) for an event. ESPN exposes the play state
+    ('pre'/'in'/'post') and a `completed` flag under status.type — on the
+    competition first, then the event. A finished tournament reports state
+    'post' / completed True."""
+    comps = ev.get("competitions") or []
+    for src in ((comps[0] if comps else {}), ev):
+        type_info = ((src.get("status") or {}).get("type") or {})
+        state = str(type_info.get("state", "")).lower()
+        if state:
+            return state, bool(type_info.get("completed")) or state == "post"
+    return "", False
+
+
+def _select_event(events: list[dict], expected_name: str | None = None) -> dict:
+    """Choose which ESPN event to score.
+
+    When expected_name is given (the schedule-driven target), restrict to
+    events whose name matches it and prefer a finished one. This is how a
+    multi-event week (a signature event running alongside an opposite-field
+    event) is disambiguated toward the tournament the league actually
+    scheduled, rather than just grabbing the largest field. If nothing
+    matches the expected name, fall back to the legacy heuristic so the
+    caller's name-verification gate can refuse on the mismatch.
+
+    With no expected_name, keep the legacy behavior: the finished event
+    with the largest field, or the largest field overall if none finished.
+    """
+    if expected_name:
+        matching = [ev for ev in events if tournament_names_match(_event_name(ev), expected_name)]
+        if matching:
+            finished = [ev for ev in matching if _event_state(ev)[1]]
+            return max(finished or matching, key=_competitor_count)
+    finished = [ev for ev in events if _event_state(ev)[1]]
+    return max(finished or events, key=_competitor_count)
+
+
+def parse_espn_json(payload: dict, expected_name: str | None = None) -> dict:
     """Walk ESPN's JSON payload into the {tournament_name, players[]}
     shape the downstream pipeline expects.
+
+    When expected_name is supplied, the event matching that name is
+    preferred (see _select_event) so the parser locks onto the league's
+    scheduled tournament in a multi-event week.
 
     Returned shape:
         {
@@ -251,40 +337,9 @@ def parse_espn_json(payload: dict) -> dict:
     if not events:
         raise ValueError("ESPN payload has no events[] — nothing to parse.")
 
-    # PGA Tour scoreboard normally has one active event. If multiple
-    # show up (e.g. mixed tour week), pick the one with the most
-    # competitors so we don't silently grab a Champions/LIV sidebar.
-    def _competitor_count(ev: dict) -> int:
-        comps = ev.get("competitions") or []
-        return len((comps[0].get("competitors") or [])) if comps else 0
-
-    def _event_state(ev: dict) -> tuple[str, bool]:
-        """Return (state, completed) for an event. ESPN exposes the
-        play state ('pre'/'in'/'post') and a `completed` flag under
-        status.type — on the competition first, then the event. A
-        finished tournament reports state 'post' / completed True."""
-        comps = ev.get("competitions") or []
-        for src in ((comps[0] if comps else {}), ev):
-            type_info = ((src.get("status") or {}).get("type") or {})
-            state = str(type_info.get("state", "")).lower()
-            if state:
-                return state, bool(type_info.get("completed")) or state == "post"
-        return "", False
-
-    # On a Monday, ESPN's scoreboard can carry both the just-finished event
-    # and the upcoming one (with a full, not-yet-played field). Prefer an
-    # event that has actually finished so we score final results, not an
-    # all-zero pre-tournament field. Fall back to the largest field only if
-    # nothing is finished (the downstream gate then refuses to write).
-    finished = [ev for ev in events if _event_state(ev)[1]]
-    event = max(finished or events, key=_competitor_count)
+    event = _select_event(events, expected_name)
     event_state, event_completed = _event_state(event)
-    tournament_name = (
-        event.get("name")
-        or event.get("shortName")
-        or event.get("displayName")
-        or "Unknown"
-    )
+    tournament_name = _event_name(event) or "Unknown"
 
     competitions = event.get("competitions") or []
     competitors = (competitions[0].get("competitors") if competitions else []) or []
@@ -341,99 +396,50 @@ def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def find_tournament_by_name(supabase: Client, espn_tournament_name: str) -> dict:
-    """
-    Find a tournament in the database by matching the ESPN tournament name.
-    Tournaments are shared across all leagues.
-    Uses normalize_name() for accent/punctuation-insensitive comparison.
+def get_tournament_to_update(supabase: Client) -> dict | None:
+    """Pick which tournament a run should score: the most recent one that
+    has finished play but isn't marked completed yet.
 
-    Only considers tournaments whose tournament_date is on or before
-    today + 1 day. Without this date guard, the Tier-3 keyword
-    fallback can match on a single shared token (e.g. "Classic")
-    against a far-future event — which is what caused the Myrtle
-    Beach Classic ESPN response to get scored against the July
-    Rocket Classic. Candidates are iterated date-DESC so the most
-    recently ended tournament wins when multiple tiers tie.
+    This is the schedule-driven selector — the league's own calendar
+    decides the target week, NOT whatever event ESPN happens to be
+    showing. That keeps each Monday's run pinned to the tournament that
+    just ended instead of drifting onto an upcoming or opposite-field
+    event via name matching. ESPN is then used only to fetch and verify
+    that week's results.
+
+    Tournaments are shared across all leagues. Returns None when nothing
+    has both ended and is still pending (e.g. an off week, or everything
+    is already scored) — the caller then has nothing to do.
     """
     from datetime import datetime, timedelta, timezone
 
-    cutoff = (datetime.now(timezone.utc).date() + timedelta(days=1)).isoformat()
     response = (
         supabase.table("tournaments")
         .select("*")
-        .lte("tournament_date", cutoff)
-        .order("tournament_date", desc=True)
+        .eq("completed", False)
+        .order("week", desc=True)
         .execute()
     )
-
     if not response.data:
         return None
 
-    espn_norm = normalize_name(espn_tournament_name)
-    espn_tokens = set(espn_norm.split())
+    now = datetime.now(timezone.utc)
 
-    # Normalize each tournament once; reused across all tiers.
-    candidates = [
-        (normalize_name(t.get("name", "")), t)
-        for t in response.data
-    ]
-
-    # Tier 1: exact normalized match.
-    for db_norm, t in candidates:
-        if db_norm and db_norm == espn_norm:
-            print(f"  [tournament] exact normalized match: '{t.get('name')}'")
-            return t
-
-    # Tier 2: substring match in either direction.
-    for db_norm, t in candidates:
-        if db_norm and (espn_norm in db_norm or db_norm in espn_norm):
-            print(f"  [tournament] substring match: '{t.get('name')}'")
-            return t
-
-    # Tier 3: significant-token intersection (>3 chars excludes "the", "open", etc.).
-    for db_norm, t in candidates:
-        significant_common = [w for w in (espn_tokens & set(db_norm.split())) if len(w) > 3]
-        if significant_common:
-            print(f"  [tournament] keyword match on {significant_common}: '{t.get('name')}'")
-            return t
+    # Ordered week-DESC, so the first ended-but-incomplete tournament is the
+    # most recent one. A tournament starts Thursday and ends Sunday night,
+    # so play is over once we're past start + 3 days 23:59.
+    for tournament in response.data:
+        date_str = tournament.get("tournament_date")
+        if not date_str:
+            continue
+        start = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        end = start + timedelta(days=3, hours=23, minutes=59)
+        if now > end:
+            return tournament
 
     return None
-
-
-def get_tournament_to_update(supabase: Client) -> dict:
-    """
-    Get the tournament that needs results updated.
-    Tournaments are shared across all leagues.
-    """
-    from datetime import datetime, timedelta
-
-    # Get all incomplete tournaments
-    response = supabase.table("tournaments").select("*").eq("completed", False).order("week", desc=True).execute()
-
-    if not response.data:
-        # Fallback: get the most recent tournament overall
-        response = supabase.table("tournaments").select("*").order("week", desc=True).limit(1).execute()
-        return response.data[0] if response.data else None
-
-    now = datetime.now()
-
-    # Find the most recent tournament that has ended
-    for tournament in response.data:
-        if tournament.get("tournament_date"):
-            # Tournament ends Sunday night (start date + 3 days)
-            tournament_date = datetime.fromisoformat(tournament["tournament_date"].replace("Z", "+00:00"))
-            tournament_end = tournament_date + timedelta(days=3, hours=23, minutes=59)
-
-            # Remove timezone info for comparison if needed
-            if tournament_end.tzinfo:
-                tournament_end = tournament_end.replace(tzinfo=None)
-
-            # If tournament has ended, this is the one we want to update
-            if now > tournament_end:
-                return tournament
-
-    # If no ended tournament found, return the earliest incomplete one
-    return response.data[-1] if response.data else None
 
 
 def get_picks_for_tournament(supabase: Client, tournament_id: str) -> list[dict]:
@@ -627,9 +633,23 @@ def update_results(dry_run: bool = True, mark_complete: bool = False, force: boo
     all_league_settings = get_all_league_settings(supabase)
     print(f"Loaded settings for {len(all_league_settings)} league(s)")
 
-    # Fetch and parse leaderboard FIRST to get tournament name
+    # Decide which week to score from OUR schedule, not from whatever event
+    # ESPN happens to be showing. The most recent ended-but-incomplete
+    # tournament is the one this run should post; ESPN is used only to fetch
+    # and verify its results below.
+    tournament = get_tournament_to_update(supabase)
+    if not tournament:
+        print("\nNo ended, incomplete tournament to score right now. Nothing to do.")
+        print("(Every ended tournament is already marked completed, or the next")
+        print("one hasn't finished yet.)")
+        return
+
+    print(f"\n[tournament] Target from schedule: '{tournament['name']}' (Week {tournament['week']})")
+    print(f"[tournament] Target normalized:    '{normalize_name(tournament['name'])}'")
+
+    # Fetch the leaderboard and lock onto the event matching our target week.
     payload = fetch_espn_leaderboard_json()
-    parsed_data = parse_espn_json(payload)
+    parsed_data = parse_espn_json(payload, expected_name=tournament["name"])
 
     espn_tournament_name = parsed_data["tournament_name"]
     leaderboard_results = parsed_data["players"]
@@ -639,6 +659,24 @@ def update_results(dry_run: bool = True, mark_complete: bool = False, force: boo
     print(f"\n[tournament] ESPN raw name:  '{espn_tournament_name}'")
     print(f"[tournament] ESPN normalized: '{normalize_name(espn_tournament_name)}'")
     print(f"[tournament] ESPN event state: '{event_state}' (completed={event_completed})")
+
+    # Verification gate: the ESPN event we parsed must actually be the
+    # tournament we set out to score. Schedule-first selection means ESPN
+    # only fetches and confirms — it never chooses the week. If ESPN is
+    # showing a different event (off week, opposite-field event, or this
+    # week's results aren't posted yet), refuse rather than score the wrong
+    # field against this week's picks.
+    if not tournament_names_match(espn_tournament_name, tournament["name"]) and not force:
+        print("\n" + "!" * 60)
+        print("ESPN EVENT DOES NOT MATCH THE SCHEDULED TOURNAMENT.")
+        print(f"  Scheduled: '{tournament['name']}' (Week {tournament['week']})")
+        print(f"  ESPN shows: '{espn_tournament_name}'")
+        print("ESPN may not have posted this week's results yet, or it's showing")
+        print("a different/opposite-field event. Refusing to apply updates or mark")
+        print("complete. Re-run once ESPN shows this tournament, or enter results")
+        print("manually via CommissionerTab. Use --force to override this guard.")
+        print("!" * 60)
+        return
 
     # Safety gate: only score a tournament whose ESPN event has finished.
     # On a Monday the scoreboard can roll to the upcoming event ('pre') or
@@ -672,24 +710,7 @@ def update_results(dry_run: bool = True, mark_complete: bool = False, force: boo
         print("!" * 60)
         return
 
-    # Find matching tournament in database by name
-    tournament = find_tournament_by_name(supabase, espn_tournament_name)
-
-    if not tournament:
-        print(f"\nCould not find tournament '{espn_tournament_name}' in database!")
-        print("Please make sure the tournament name in your database matches ESPN.")
-        # Dump DB tournament names (normalized) to aid diagnosis.
-        try:
-            all_tournaments = supabase.table("tournaments").select("name,week").order("week", desc=True).limit(10).execute()
-            print("Recent DB tournaments (normalized):")
-            for t in (all_tournaments.data or []):
-                print(f"  - week {t.get('week')}: '{t.get('name')}' -> '{normalize_name(t.get('name', ''))}'")
-        except Exception as exc:
-            print(f"  (failed to list tournaments: {exc})")
-        return
-
-    print(f"[tournament] DB name:         '{tournament['name']}' (Week {tournament['week']})")
-    print(f"[tournament] DB normalized:   '{normalize_name(tournament['name'])}'")
+    print(f"[tournament] Verified ESPN event matches Week {tournament['week']}.")
 
     # Pre-normalize the leaderboard once so per-pick matching is O(L) instead of O(L*P).
     normalized_leaderboard = normalize_leaderboard(leaderboard_results)

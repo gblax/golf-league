@@ -7,7 +7,12 @@ Run with: cd scripts && python -m unittest test_name_matching -v
 
 import unittest
 
-from update_results import match_golfer_name, normalize_name, parse_espn_json
+from update_results import (
+    match_golfer_name,
+    normalize_name,
+    parse_espn_json,
+    tournament_names_match,
+)
 
 
 def _lb(*names):
@@ -180,6 +185,53 @@ class ParseEspnEventSelectionTests(unittest.TestCase):
         ]}
         result = parse_espn_json(payload)
         self.assertTrue(result["event_completed"])
+
+    def test_expected_name_locks_onto_scheduled_event(self):
+        """In a multi-event week the parser must score the league's
+        scheduled tournament, even if the other event has a bigger field."""
+        payload = {"events": [
+            _event("Rocket Classic", "post", True,
+                   [_comp("A B", "1", 1500000), _comp("C D", "T2", 900000),
+                    _comp("E F", "T3", 500000)]),
+            _event("Myrtle Beach Classic", "post", True,
+                   [_comp("G H", "1", 700000)]),
+        ]}
+        result = parse_espn_json(payload, expected_name="Myrtle Beach Classic")
+        self.assertEqual(result["tournament_name"], "Myrtle Beach Classic")
+
+    def test_expected_name_no_match_falls_back(self):
+        """When no event matches the expected name, fall back to the legacy
+        pick so the caller's verification gate can refuse on the mismatch."""
+        payload = {"events": [
+            _event("Rocket Classic", "post", True,
+                   [_comp("A B", "1", 1500000)]),
+        ]}
+        result = parse_espn_json(payload, expected_name="The Sentry")
+        self.assertEqual(result["tournament_name"], "Rocket Classic")
+
+
+class TournamentNamesMatchTests(unittest.TestCase):
+    def test_exact(self):
+        self.assertTrue(tournament_names_match("CJ Cup Byron Nelson", "CJ Cup Byron Nelson"))
+
+    def test_sponsor_prefix_substring(self):
+        self.assertTrue(tournament_names_match("THE CJ CUP Byron Nelson", "CJ Cup Byron Nelson"))
+
+    def test_distinctive_token(self):
+        self.assertTrue(tournament_names_match("AT&T Byron Nelson", "CJ Cup Byron Nelson"))
+
+    def test_generic_token_alone_does_not_match(self):
+        """Regression guard: the bug that scored Myrtle Beach Classic against
+        Rocket Classic. A shared generic word must not be enough."""
+        self.assertFalse(tournament_names_match("Myrtle Beach Classic", "Rocket Classic"))
+        self.assertFalse(tournament_names_match("Genesis Open", "US Open"))
+
+    def test_unrelated(self):
+        self.assertFalse(tournament_names_match("Masters Tournament", "Charles Schwab Challenge"))
+
+    def test_empty(self):
+        self.assertFalse(tournament_names_match("", "Rocket Classic"))
+        self.assertFalse(tournament_names_match("Rocket Classic", ""))
 
 
 if __name__ == "__main__":
