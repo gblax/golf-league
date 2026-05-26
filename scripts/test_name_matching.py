@@ -7,7 +7,7 @@ Run with: cd scripts && python -m unittest test_name_matching -v
 
 import unittest
 
-from update_results import match_golfer_name, normalize_name
+from update_results import match_golfer_name, normalize_name, parse_espn_json
 
 
 def _lb(*names):
@@ -127,6 +127,59 @@ class MatchGolferNameTests(unittest.TestCase):
         match = match_golfer_name("Tom Kim", lb)
         self.assertIsNotNone(match)
         self.assertEqual(match["player_name"], "Tom Kim")
+
+
+def _event(name, state, completed, competitors):
+    return {
+        "name": name,
+        "competitions": [{
+            "status": {"type": {"state": state, "completed": completed}},
+            "competitors": competitors,
+        }],
+    }
+
+
+def _comp(name, position, earnings):
+    return {
+        "athlete": {"displayName": name},
+        "status": {"position": {"displayName": position}},
+        "score": {"displayValue": "-5"},
+        "earnings": earnings,
+    }
+
+
+class ParseEspnEventSelectionTests(unittest.TestCase):
+    def test_prefers_finished_event_over_larger_upcoming_field(self):
+        """On a Monday the scoreboard can carry the just-finished event
+        plus the upcoming one (with a larger, unplayed field). We must
+        score the finished event, not the all-zero upcoming one."""
+        payload = {"events": [
+            _event("CJ Cup Byron Nelson", "post", True,
+                   [_comp("Jordan Spieth", "1", 1800000),
+                    _comp("Si Woo Kim", "T2", 900000)]),
+            _event("Charles Schwab Challenge", "pre", False,
+                   [_comp("A B", "", 0), _comp("C D", "", 0), _comp("E F", "", 0)]),
+        ]}
+        result = parse_espn_json(payload)
+        self.assertEqual(result["tournament_name"], "CJ Cup Byron Nelson")
+        self.assertTrue(result["event_completed"])
+
+    def test_pre_event_reported_not_completed(self):
+        payload = {"events": [
+            _event("Charles Schwab Challenge", "pre", False,
+                   [_comp("A B", "", 0), _comp("C D", "", 0)]),
+        ]}
+        result = parse_espn_json(payload)
+        self.assertFalse(result["event_completed"])
+        self.assertEqual(sum(p["winnings"] for p in result["players"]), 0)
+
+    def test_post_state_without_completed_flag_counts_as_finished(self):
+        payload = {"events": [
+            _event("CJ Cup Byron Nelson", "post", None,
+                   [_comp("Jordan Spieth", "1", 1800000)]),
+        ]}
+        result = parse_espn_json(payload)
+        self.assertTrue(result["event_completed"])
 
 
 if __name__ == "__main__":

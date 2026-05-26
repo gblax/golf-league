@@ -258,7 +258,27 @@ def parse_espn_json(payload: dict) -> dict:
         comps = ev.get("competitions") or []
         return len((comps[0].get("competitors") or [])) if comps else 0
 
-    event = max(events, key=_competitor_count)
+    def _event_state(ev: dict) -> tuple[str, bool]:
+        """Return (state, completed) for an event. ESPN exposes the
+        play state ('pre'/'in'/'post') and a `completed` flag under
+        status.type — on the competition first, then the event. A
+        finished tournament reports state 'post' / completed True."""
+        comps = ev.get("competitions") or []
+        for src in ((comps[0] if comps else {}), ev):
+            type_info = ((src.get("status") or {}).get("type") or {})
+            state = str(type_info.get("state", "")).lower()
+            if state:
+                return state, bool(type_info.get("completed")) or state == "post"
+        return "", False
+
+    # On a Monday, ESPN's scoreboard can carry both the just-finished event
+    # and the upcoming one (with a full, not-yet-played field). Prefer an
+    # event that has actually finished so we score final results, not an
+    # all-zero pre-tournament field. Fall back to the largest field only if
+    # nothing is finished (the downstream gate then refuses to write).
+    finished = [ev for ev in events if _event_state(ev)[1]]
+    event = max(finished or events, key=_competitor_count)
+    event_state, event_completed = _event_state(event)
     tournament_name = (
         event.get("name")
         or event.get("shortName")
@@ -296,6 +316,7 @@ def parse_espn_json(payload: dict) -> dict:
         })
 
     print(f"Tournament: {tournament_name}")
+    print(f"Event state: {event_state or 'unknown'} (completed={event_completed})")
     print(f"Parsed {len(players)} players from leaderboard")
 
     if not players:
@@ -305,7 +326,12 @@ def parse_espn_json(payload: dict) -> dict:
             f"competition keys: {list(competitions[0].keys())[:10] if competitions else []}."
         )
 
-    return {"tournament_name": tournament_name, "players": players}
+    return {
+        "tournament_name": tournament_name,
+        "players": players,
+        "event_state": event_state,
+        "event_completed": event_completed,
+    }
 
 
 def get_supabase_client() -> Client:
@@ -607,9 +633,44 @@ def update_results(dry_run: bool = True, mark_complete: bool = False, force: boo
 
     espn_tournament_name = parsed_data["tournament_name"]
     leaderboard_results = parsed_data["players"]
+    event_completed = parsed_data.get("event_completed")
+    event_state = parsed_data.get("event_state") or "unknown"
 
     print(f"\n[tournament] ESPN raw name:  '{espn_tournament_name}'")
     print(f"[tournament] ESPN normalized: '{normalize_name(espn_tournament_name)}'")
+    print(f"[tournament] ESPN event state: '{event_state}' (completed={event_completed})")
+
+    # Safety gate: only score a tournament whose ESPN event has finished.
+    # On a Monday the scoreboard can roll to the upcoming event ('pre') or
+    # one still in progress ('in'); its field is listed but unplayed, so
+    # scoring it zeroes out every pick and (with --complete) marks the week
+    # done with no results. That is the recurring "ran but added no scores"
+    # failure. Refuse unless the event reports finished.
+    if not event_completed and not force:
+        print("\n" + "!" * 60)
+        print(f"ESPN EVENT NOT FINISHED (state='{event_state}').")
+        print("The leaderboard holds no final results yet, so scoring now would")
+        print("zero out every pick. Refusing to apply updates or mark complete.")
+        print("Re-run once the tournament finalizes, or enter results manually")
+        print("via CommissionerTab. Use --force to override this guard.")
+        print("!" * 60)
+        return
+
+    # Safety gate: a completed tournament always pays prize money. If the
+    # entire parsed field shows $0 earnings, the payload isn't carrying
+    # results (slim/alternate endpoint, or an event ESPN hasn't settled).
+    # Writing it would post all-$0 scores, so refuse rather than corrupt
+    # the week.
+    total_field_winnings = sum((p.get("winnings") or 0) for p in leaderboard_results)
+    if total_field_winnings <= 0 and not force:
+        print("\n" + "!" * 60)
+        print("ESPN LEADERBOARD HAS $0 EARNINGS ACROSS THE ENTIRE FIELD.")
+        print("A finished tournament always has prize money, so this payload")
+        print("is not final results. Refusing to apply updates or mark complete.")
+        print("Re-run once ESPN settles the results, or enter them manually via")
+        print("CommissionerTab. Use --force to override this guard.")
+        print("!" * 60)
+        return
 
     # Find matching tournament in database by name
     tournament = find_tournament_by_name(supabase, espn_tournament_name)
