@@ -72,6 +72,18 @@ def _get(path: str, params: dict) -> dict:
             "  Allow *.p.rapidapi.com (or run the prototype locally)."
         )
     print(f"  HTTP {resp.status_code}, {len(resp.text)} chars")
+    # Distinguish the sandbox's egress firewall from a real RapidAPI rejection.
+    # A managed remote environment proxies outbound traffic and returns a plain
+    # "Host not in allowlist" 403 *before* the request leaves the container, so
+    # the API key is never actually tested in that case.
+    if "allowlist" in resp.text.lower():
+        raise SystemExit(
+            f"✗ {resp.status_code} '{resp.text.strip()[:120]}'\n"
+            f"  This is THIS environment's network policy, NOT RapidAPI — the call to\n"
+            f"  {RAPIDAPI_HOST} was blocked before leaving the container, so the API\n"
+            "  key was never tested. Either add '*.p.rapidapi.com' to the environment's\n"
+            "  allowed domains, or run this probe on your local machine."
+        )
     if resp.status_code in (401, 403):
         raise SystemExit(
             f"✗ {resp.status_code} from RapidAPI — key missing/invalid or you're not\n"
