@@ -186,6 +186,45 @@ def index_players(players):
     return by_id, by_norm
 
 
+def field_ids_by_norm(players):
+    """Map normalized player name -> playerId for a parsed field, used to
+    opportunistically backfill available_golfers.golfer_id."""
+    out = {}
+    for p in players:
+        pid = p.get("player_id")
+        if pid:
+            out.setdefault(normalize_name(p.get("player_name", "")), pid)
+    return out
+
+
+def backfill_available_golfer_ids(supabase, players):
+    """Set available_golfers.golfer_id from the scored field for rows that don't
+    have one yet.
+
+    This is the rate-limit-friendly way to populate golfer_id: it reuses the
+    leaderboard already fetched for scoring (zero extra Slash Golf calls) and,
+    over a season, fills in IDs for the league's golfers as they appear in
+    fields. Only fills blanks -- never inserts or overwrites. Defensive: if the
+    golfer_id column doesn't exist yet (migration not run), it logs and moves
+    on rather than failing the scoring run.
+    """
+    try:
+        by_norm = field_ids_by_norm(players)
+        rows = supabase.table("available_golfers").select("*").execute().data or []
+        filled = 0
+        for g in rows:
+            if g.get("golfer_id"):
+                continue
+            pid = by_norm.get(normalize_name(g.get("name", "")))
+            if pid:
+                supabase.table("available_golfers").update({"golfer_id": pid}).eq("id", g["id"]).execute()
+                filled += 1
+        if filled:
+            print(f"Backfilled golfer_id on {filled} available golfer(s) from this field")
+    except Exception as exc:
+        print(f"  (golfer_id backfill skipped: {exc})")
+
+
 def match_pick_to_player(pick, by_id, by_norm):
     """Resolve a pick to a leaderboard player.
 
@@ -421,6 +460,10 @@ def update_results(dry_run=True, mark_complete=False, force=False):
     if results["winner_name"]:
         print(f"Recording tournament winner: {results['winner_name']}")
         set_tournament_winner(supabase, tournament["id"], results["winner_name"])
+
+    # Opportunistically fill in golfer_id on the league's golfers from this
+    # week's field (free -- reuses the leaderboard we already fetched).
+    backfill_available_golfer_ids(supabase, players)
 
     # Send push notifications.
     try:

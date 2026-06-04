@@ -11,7 +11,7 @@ Run with: cd scripts && python -m unittest test_scoring -v
 
 import unittest
 
-from update_results import calculate_penalty, index_players, match_pick_to_player
+from update_results import calculate_penalty, field_ids_by_norm, index_players, match_pick_to_player
 
 
 def _field():
@@ -48,6 +48,17 @@ class MatchPickTests(unittest.TestCase):
     def test_empty_pick_returns_none(self):
         self.assertIsNone(match_pick_to_player({"golfer_name": ""}, self.by_id, self.by_norm))
         self.assertIsNone(match_pick_to_player({}, self.by_id, self.by_norm))
+
+
+class FieldIdsByNormTests(unittest.TestCase):
+    def test_maps_normalized_name_to_id(self):
+        m = field_ids_by_norm(_field())
+        self.assertEqual(m["russell henley"], "34098")
+        self.assertEqual(m["nicolas echavarria"], "99001")  # accents normalized
+
+    def test_skips_players_without_id(self):
+        m = field_ids_by_norm([{"player_name": "No Id", "player_id": ""}])
+        self.assertEqual(m, {})
 
 
 class CalculatePenaltyTests(unittest.TestCase):
