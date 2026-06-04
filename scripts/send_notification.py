@@ -1,74 +1,29 @@
 #!/usr/bin/env python3
 """Send push notifications to all subscribed users."""
 
-import os
-import json
-from dotenv import load_dotenv
-from supabase import create_client
-from pywebpush import webpush, WebPushException
-
-load_dotenv()
-
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY")
-VAPID_PRIVATE_KEY = os.environ["VAPID_PRIVATE_KEY"]
-VAPID_PUBLIC_KEY = os.environ["VAPID_PUBLIC_KEY"]
-VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com")
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+from golf_common import get_supabase_client, send_web_push
 
 
 def send_to_all(title, body, url="/", tag="golf-league-notification", notify_type="results"):
     """Send a push notification to subscribed users filtered by preference."""
+    supabase = get_supabase_client()
     query = supabase.table("push_subscriptions").select("*")
     if notify_type == "results":
         query = query.eq("notify_results", True)
     elif notify_type == "reminders":
         query = query.eq("notify_reminders", True)
-    result = query.execute()
-    subscriptions = result.data or []
+    subscriptions = query.execute().data or []
 
-    payload = json.dumps({
+    payload = {
         "title": title,
         "body": body,
         "icon": "/icon-192.png",
         "badge": "/icon-192.png",
         "url": url,
         "tag": tag,
-    })
+    }
 
-    sent = 0
-    failed = 0
-    expired = []
-
-    for sub in subscriptions:
-        subscription_info = {
-            "endpoint": sub["endpoint"],
-            "keys": {
-                "p256dh": sub["p256dh"],
-                "auth": sub["auth"],
-            },
-        }
-        try:
-            webpush(
-                subscription_info=subscription_info,
-                data=payload,
-                vapid_private_key=VAPID_PRIVATE_KEY,
-                vapid_claims={"sub": VAPID_SUBJECT},
-            )
-            sent += 1
-        except WebPushException as e:
-            if e.response and e.response.status_code in (404, 410):
-                expired.append(sub["id"])
-            else:
-                print(f"  Push failed for {sub['endpoint'][:60]}...: {e}")
-            failed += 1
-
-    # Clean up expired subscriptions
-    if expired:
-        supabase.table("push_subscriptions").delete().in_("id", expired).execute()
-        print(f"  Removed {len(expired)} expired subscriptions")
-
+    sent, failed = send_web_push(supabase, subscriptions, payload)
     print(f"  Notifications: {sent} sent, {failed} failed")
     return sent, failed
 

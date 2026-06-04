@@ -1,32 +1,18 @@
 #!/usr/bin/env python3
 """
-Unit tests for name normalization and golfer-name matching.
+Unit tests for name normalization and tournament-name matching.
+
+These helpers survived the move off ESPN: normalize_name still backs the
+legacy-pick name fallback in scoring, and tournament_names_match maps a DB
+tournament onto its Slash Golf /schedule row during sync. (The old fuzzy
+golfer matcher and ESPN payload parser were deleted along with the scrape.)
 
 Run with: cd scripts && python -m unittest test_name_matching -v
 """
 
 import unittest
 
-from update_results import (
-    match_golfer_name,
-    normalize_name,
-    parse_espn_json,
-    tournament_names_match,
-)
-
-
-def _lb(*names):
-    """Build a fake leaderboard result list from a sequence of player names."""
-    return [
-        {
-            "player_name": n,
-            "position": "1",
-            "score": "-5",
-            "winnings": 0,
-            "status": "active",
-        }
-        for n in names
-    ]
+from slashgolf import normalize_name, tournament_names_match
 
 
 class NormalizeNameTests(unittest.TestCase):
@@ -59,157 +45,6 @@ class NormalizeNameTests(unittest.TestCase):
         self.assertEqual(normalize_name("  Rory   McIlroy  "), "rory mcilroy")
 
 
-class MatchGolferNameTests(unittest.TestCase):
-    def test_accent_match(self):
-        lb = _lb("Jose Ramirez")
-        self.assertIsNotNone(match_golfer_name("José Ramírez", lb))
-
-    def test_accent_match_reverse(self):
-        lb = _lb("José Ramírez")
-        self.assertIsNotNone(match_golfer_name("Jose Ramirez", lb))
-
-    def test_suffix_match(self):
-        lb = _lb("Davis Thompson")
-        self.assertIsNotNone(match_golfer_name("Davis Thompson III", lb))
-
-    def test_suffix_on_leaderboard(self):
-        lb = _lb("Davis Thompson III")
-        self.assertIsNotNone(match_golfer_name("Davis Thompson", lb))
-
-    def test_hyphen_match(self):
-        lb = _lb("Rafael Cabrera Bello")
-        self.assertIsNotNone(match_golfer_name("Rafael Cabrera-Bello", lb))
-
-    def test_hyphen_reverse(self):
-        lb = _lb("Rafael Cabrera-Bello")
-        self.assertIsNotNone(match_golfer_name("Rafael Cabrera Bello", lb))
-
-    def test_initial_match(self):
-        lb = _lb("JJ Spaun")
-        self.assertIsNotNone(match_golfer_name("J.J. Spaun", lb))
-
-    def test_initial_match_reverse(self):
-        lb = _lb("J.J. Spaun")
-        self.assertIsNotNone(match_golfer_name("JJ Spaun", lb))
-
-    def test_hyphenated_given_name(self):
-        lb = _lb("Byeong Hun An")
-        self.assertIsNotNone(match_golfer_name("Byeong-Hun An", lb))
-
-    def test_middle_initial(self):
-        lb = _lb("Viktor J Hovland")
-        self.assertIsNotNone(match_golfer_name("Viktor Hovland", lb))
-
-    def test_middle_initial_reverse(self):
-        lb = _lb("Viktor Hovland")
-        self.assertIsNotNone(match_golfer_name("Viktor J. Hovland", lb))
-
-    def test_common_surname_no_false_positive(self):
-        """
-        Regression guard: the old last-name-only fallback would incorrectly
-        match 'Chan Kim' to 'Si Woo Kim' if it were the only 'Kim' on the
-        board. The new matcher must refuse.
-        """
-        lb = _lb("Si Woo Kim", "Tom Kim", "Sungjae Im")
-        self.assertIsNone(match_golfer_name("Chan Kim", lb))
-
-    def test_not_found_returns_none(self):
-        lb = _lb("Scottie Scheffler", "Jordan Spieth")
-        self.assertIsNone(match_golfer_name("Rory McIlroy", lb))
-
-    def test_empty_pick_name(self):
-        lb = _lb("Scottie Scheffler")
-        self.assertIsNone(match_golfer_name("", lb))
-
-    def test_returns_leaderboard_row(self):
-        lb = _lb("Jose Ramirez")
-        match = match_golfer_name("José Ramírez", lb)
-        self.assertIsNotNone(match)
-        self.assertEqual(match["player_name"], "Jose Ramirez")
-
-    def test_disambiguates_among_common_first_names(self):
-        lb = _lb("Tom Kim", "Tom Hoge")
-        match = match_golfer_name("Tom Kim", lb)
-        self.assertIsNotNone(match)
-        self.assertEqual(match["player_name"], "Tom Kim")
-
-
-def _event(name, state, completed, competitors):
-    return {
-        "name": name,
-        "competitions": [{
-            "status": {"type": {"state": state, "completed": completed}},
-            "competitors": competitors,
-        }],
-    }
-
-
-def _comp(name, position, earnings):
-    return {
-        "athlete": {"displayName": name},
-        "status": {"position": {"displayName": position}},
-        "score": {"displayValue": "-5"},
-        "earnings": earnings,
-    }
-
-
-class ParseEspnEventSelectionTests(unittest.TestCase):
-    def test_prefers_finished_event_over_larger_upcoming_field(self):
-        """On a Monday the scoreboard can carry the just-finished event
-        plus the upcoming one (with a larger, unplayed field). We must
-        score the finished event, not the all-zero upcoming one."""
-        payload = {"events": [
-            _event("CJ Cup Byron Nelson", "post", True,
-                   [_comp("Jordan Spieth", "1", 1800000),
-                    _comp("Si Woo Kim", "T2", 900000)]),
-            _event("Charles Schwab Challenge", "pre", False,
-                   [_comp("A B", "", 0), _comp("C D", "", 0), _comp("E F", "", 0)]),
-        ]}
-        result = parse_espn_json(payload)
-        self.assertEqual(result["tournament_name"], "CJ Cup Byron Nelson")
-        self.assertTrue(result["event_completed"])
-
-    def test_pre_event_reported_not_completed(self):
-        payload = {"events": [
-            _event("Charles Schwab Challenge", "pre", False,
-                   [_comp("A B", "", 0), _comp("C D", "", 0)]),
-        ]}
-        result = parse_espn_json(payload)
-        self.assertFalse(result["event_completed"])
-        self.assertEqual(sum(p["winnings"] for p in result["players"]), 0)
-
-    def test_post_state_without_completed_flag_counts_as_finished(self):
-        payload = {"events": [
-            _event("CJ Cup Byron Nelson", "post", None,
-                   [_comp("Jordan Spieth", "1", 1800000)]),
-        ]}
-        result = parse_espn_json(payload)
-        self.assertTrue(result["event_completed"])
-
-    def test_expected_name_locks_onto_scheduled_event(self):
-        """In a multi-event week the parser must score the league's
-        scheduled tournament, even if the other event has a bigger field."""
-        payload = {"events": [
-            _event("Rocket Classic", "post", True,
-                   [_comp("A B", "1", 1500000), _comp("C D", "T2", 900000),
-                    _comp("E F", "T3", 500000)]),
-            _event("Myrtle Beach Classic", "post", True,
-                   [_comp("G H", "1", 700000)]),
-        ]}
-        result = parse_espn_json(payload, expected_name="Myrtle Beach Classic")
-        self.assertEqual(result["tournament_name"], "Myrtle Beach Classic")
-
-    def test_expected_name_no_match_falls_back(self):
-        """When no event matches the expected name, fall back to the legacy
-        pick so the caller's verification gate can refuse on the mismatch."""
-        payload = {"events": [
-            _event("Rocket Classic", "post", True,
-                   [_comp("A B", "1", 1500000)]),
-        ]}
-        result = parse_espn_json(payload, expected_name="The Sentry")
-        self.assertEqual(result["tournament_name"], "Rocket Classic")
-
-
 class TournamentNamesMatchTests(unittest.TestCase):
     def test_exact(self):
         self.assertTrue(tournament_names_match("CJ Cup Byron Nelson", "CJ Cup Byron Nelson"))
@@ -221,8 +56,8 @@ class TournamentNamesMatchTests(unittest.TestCase):
         self.assertTrue(tournament_names_match("AT&T Byron Nelson", "CJ Cup Byron Nelson"))
 
     def test_generic_token_alone_does_not_match(self):
-        """Regression guard: the bug that scored Myrtle Beach Classic against
-        Rocket Classic. A shared generic word must not be enough."""
+        """Regression guard: a shared generic word must not be enough, or
+        Myrtle Beach Classic scores against Rocket Classic."""
         self.assertFalse(tournament_names_match("Myrtle Beach Classic", "Rocket Classic"))
         self.assertFalse(tournament_names_match("Genesis Open", "US Open"))
 
