@@ -573,7 +573,7 @@ const App = () => {
     return () => clearInterval(interval);
   }, [tournaments]);
 
-const loadData = async () => {
+const loadData = async (opts = {}) => {
     if (!currentLeague) return;
     const leagueId = currentLeague.id;
 
@@ -692,25 +692,33 @@ const playersWithWinnings = (usersData || []).map(user => {
       }
 
       // NOW load user data AFTER tournaments are set
-      await loadUserDataWithTournaments(tournamentsData);
+      await loadUserDataWithTournaments(tournamentsData, opts);
     } catch (error) {
       console.error('Error loading data:', error);
     }
   };
 
-  const loadUserDataWithTournaments = async (tournamentsData) => {
+  const loadUserDataWithTournaments = async (tournamentsData, opts = {}) => {
     if (!currentUser || !currentLeague) return;
 
-    setPicksLoading(true);
+    // On a post-write reconcile we already show the pick optimistically, so skip
+    // the loading state to avoid a spinner flicker over the confirmed card.
+    if (!opts.preservePick) setPicksLoading(true);
 
     const { data: picksData } = await supabase
       .from('picks')
       .select('*')
       .eq('user_id', currentUser.id)
       .eq('league_id', currentLeague.id);
-    
+
     const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
-    setUserPicks(allUserPicks);
+    // When reconciling after a write, union so a stale read can't drop the
+    // golfer we just optimistically added to the "previously used" set.
+    if (opts.preservePick) {
+      setUserPicks(prev => Array.from(new Set([...prev, ...allUserPicks])));
+    } else {
+      setUserPicks(allUserPicks);
+    }
 
     const currentTournament = getCurrentTournament(tournamentsData);
 
@@ -726,13 +734,15 @@ const playersWithWinnings = (usersData || []).map(user => {
         golfer: primary,
         backup: backup
       });
-    } else {
+    } else if (!opts.preservePick) {
+      // Only clear on a genuine fresh load (initial load / league switch). After
+      // a submit we keep the optimistic pick rather than trust a stale "no pick".
       setSelectedPlayer('');
       setBackupPlayer('');
       setCurrentWeekPick({ golfer: '', backup: '' });
     }
-    
-    setPicksLoading(false);
+
+    if (!opts.preservePick) setPicksLoading(false);
   };
 
   const getCurrentTournament = (tournamentsList) => {
@@ -1378,8 +1388,18 @@ const handleSubmitPick = async () => {
         return;
       }
 
+      // Optimistically lock in the user's own pick right away. The card used to
+      // depend entirely on the loadData() refetch below, which on a slow network
+      // can be served stale from the service-worker cache (missing the row we
+      // just wrote) — leaving the pick "unsaved" until a manual refresh.
+      const backupForState = leagueSettings.backup_picks_enabled ? (backupPlayer || '') : '';
+      setCurrentWeekPick({ golfer: selectedPlayer, backup: backupForState });
+      setUserPicks(prev => (prev.includes(selectedPlayer) ? prev : [...prev, selectedPlayer]));
+
       showNotification('success', `Pick submitted: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (Backup: ${backupPlayer})` : ''}`);
-      loadData();
+      // Reconcile standings/field/etc. in the background, but don't let a
+      // possibly-stale read overwrite the pick we just confirmed.
+      loadData({ preservePick: true });
     } catch (error) {
       showNotification('error', error.message);
     } finally {
