@@ -51,6 +51,25 @@ SCHEDULE = {
     ],
 }
 
+# An in-progress round 2: top-level status not Official, players still on
+# course (thru/currentRound present), and a projected cut line.
+LIVE_IN_PROGRESS = {
+    "status": "In Progress",
+    "roundStatus": "In Progress",
+    "cutLines": [{"cutCount": {"$numberInt": "65"}, "cutScore": "-1"}],
+    "leaderboardRows": [
+        {"firstName": "Scottie", "lastName": "Scheffler", "playerId": "46046",
+         "position": "T1", "total": "-9", "status": "active",
+         "thru": {"$numberInt": "12"}, "currentRound": {"$numberInt": "2"}},
+        {"firstName": "Rory", "lastName": "McIlroy", "playerId": "28237",
+         "position": "T1", "total": "-9", "status": "active",
+         "thru": "F", "currentRound": {"$numberInt": "2"}},
+        {"firstName": "Some", "lastName": "Rookie", "playerId": "90001",
+         "position": "T80", "total": "+5", "status": "active",
+         "thru": "F", "currentRound": {"$numberInt": "2"}},
+    ],
+}
+
 
 class UnwrapTests(unittest.TestCase):
     def test_unwrap_scalars(self):
@@ -160,6 +179,49 @@ class ParseScheduleTests(unittest.TestCase):
         self.assertEqual(ev["winners_share"], 1638000.0)
         self.assertEqual(ev["start_ms"], 1768435200000)
         self.assertIsNone(ev["course"])  # not present at schedule level
+
+
+class ParseLiveLeaderboardTests(unittest.TestCase):
+    def setUp(self):
+        self.res = sg.parse_live_leaderboard(LIVE_IN_PROGRESS, tournament_name="The Memorial")
+        self.by_name = {p["player_name"]: p for p in self.res["players"]}
+
+    def test_metadata(self):
+        self.assertEqual(self.res["tournament_name"], "The Memorial")
+        self.assertEqual(self.res["event_status"], "In Progress")
+        self.assertEqual(self.res["round_status"], "In Progress")
+        self.assertFalse(self.res["event_completed"])
+        self.assertEqual(len(self.res["players"]), 3)
+
+    def test_cut_line_extracted(self):
+        self.assertEqual(self.res["cut_line"], "-1")
+
+    def test_no_earnings_in_live_shape(self):
+        # Live rows carry position/score/status only; money is a Monday concern.
+        for p in self.res["players"]:
+            self.assertNotIn("winnings", p)
+
+    def test_position_and_score_verbatim(self):
+        scottie = self.by_name["Scottie Scheffler"]
+        self.assertEqual(scottie["position"], "T1")
+        self.assertEqual(scottie["score"], "-9")
+        self.assertEqual(scottie["status"], "active")
+
+    def test_thru_and_round(self):
+        scottie = self.by_name["Scottie Scheffler"]
+        self.assertEqual(scottie["thru"], "12")
+        self.assertEqual(scottie["round"], 2)
+        rory = self.by_name["Rory McIlroy"]
+        self.assertEqual(rory["thru"], "F")
+
+    def test_player_id_propagated(self):
+        self.assertEqual(self.by_name["Rory McIlroy"]["player_id"], "28237")
+
+    def test_empty_board_is_empty_field(self):
+        res = sg.parse_live_leaderboard({"status": "Open", "leaderboardRows": []})
+        self.assertEqual(res["players"], [])
+        self.assertIsNone(res["cut_line"])
+        self.assertFalse(res["event_completed"])
 
 
 if __name__ == "__main__":

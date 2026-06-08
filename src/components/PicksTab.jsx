@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCircle, Shield, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Shield, X } from 'lucide-react';
+import LiveLeaderboard from './LiveLeaderboard';
+import { normalizeName } from '../utils/liveLeaderboard';
 
 const PicksTab = React.memo(function PicksTab({
   currentWeek,
@@ -26,11 +28,27 @@ const PicksTab = React.memo(function PicksTab({
   setShowBackupDropdown,
   handleSubmitPick,
   submittingPick,
+  // Live leaderboard (Phase 1)
+  liveIndex,
+  liveMembers,
+  currentUserName,
+  // Weekly field backstop (Phase 2)
+  fieldNames,
+  fieldLoaded,
+  fieldCount,
 }) {
   const [primaryHighlightIndex, setPrimaryHighlightIndex] = useState(0);
   const [backupHighlightIndex, setBackupHighlightIndex] = useState(0);
   const primaryListRef = useRef(null);
   const backupListRef = useRef(null);
+
+  // "Pick at your own risk" acknowledgement for an off-field golfer (Phase 2).
+  // Reset whenever the primary selection changes so each off-field pick is
+  // confirmed deliberately.
+  const [acknowledgedRisk, setAcknowledgedRisk] = useState(false);
+  useEffect(() => {
+    setAcknowledgedRisk(false);
+  }, [selectedPlayer]);
 
   // Reset highlight when the filtered list changes so we never point past the end.
   useEffect(() => {
@@ -125,6 +143,14 @@ const PicksTab = React.memo(function PicksTab({
   const lockTime = currentTournament?.picks_lock_time ? new Date(currentTournament.picks_lock_time) : null;
   const isLocked = lockTime && now >= lockTime;
 
+  // Field backstop (Phase 2): the field is advisory and only firms up mid-week,
+  // so it's a soft gate. When it's known we tag golfers and warn on off-field
+  // picks; when it isn't, picks are unrestricted (a banner sets expectations).
+  const fieldKnown = !!fieldLoaded && !!fieldNames && fieldNames.size > 0;
+  const inField = (name) => fieldKnown && fieldNames.has(normalizeName(name));
+  const selectedNotInField = !!selectedPlayer && fieldKnown && !inField(selectedPlayer);
+  const submitBlockedByRisk = selectedNotInField && !acknowledgedRisk;
+
   return (
     <div className="max-w-xl mx-auto">
       {/* Header */}
@@ -142,6 +168,24 @@ const PicksTab = React.memo(function PicksTab({
         )}
       </div>
 
+      {/* Field status banner (Phase 2) — only meaningful before picks lock */}
+      {!isLocked && (
+        fieldKnown ? (
+          <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{fieldCount}</span> golfers confirmed in this week's field. Golfers outside the field are flagged below.
+            </p>
+          </div>
+        ) : (
+          <div className="mb-4 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+              <span>This week's field isn't confirmed yet. You can pick now <span className="font-semibold">at your own risk</span> — anyone who ends up not playing takes the no-pick penalty.</span>
+            </p>
+          </div>
+        )
+      )}
+
       {/* Current Selection Card */}
       {currentWeekPick.golfer ? (
         <div className="mb-5 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
@@ -152,6 +196,12 @@ const PicksTab = React.memo(function PicksTab({
               {leagueSettings.backup_picks_enabled && currentWeekPick.backup && (
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Backup: <span className="font-medium text-slate-700 dark:text-slate-300">{currentWeekPick.backup}</span>
+                </p>
+              )}
+              {!isLocked && fieldKnown && !inField(currentWeekPick.golfer) && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                  <AlertTriangle size={12} className="shrink-0" />
+                  Not in this week's confirmed field
                 </p>
               )}
             </div>
@@ -238,7 +288,16 @@ const PicksTab = React.memo(function PicksTab({
                           : 'hover:bg-slate-50 dark:hover:bg-slate-700'
                       }`}
                     >
-                      {golfer}
+                      <span className="flex items-center justify-between gap-2">
+                        <span>{golfer}</span>
+                        {fieldKnown && (
+                          inField(golfer) ? (
+                            <span className="shrink-0 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">in field</span>
+                          ) : (
+                            <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">not in field</span>
+                          )
+                        )}
+                      </span>
                     </button>
                   );
                 })
@@ -348,10 +407,29 @@ const PicksTab = React.memo(function PicksTab({
         </div>
       )}
 
+      {/* Off-field warning + at-your-own-risk acknowledgement (Phase 2) */}
+      {!isLocked && selectedNotInField && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <p className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2 mb-2.5">
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+            <span><span className="font-semibold">{selectedPlayer}</span> isn't in this week's confirmed field. If they don't tee off you'll take the no-pick penalty.</span>
+          </p>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={acknowledgedRisk}
+              onChange={(e) => setAcknowledgedRisk(e.target.checked)}
+              className="w-4 h-4 rounded border-amber-300 dark:border-amber-700 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Submit anyway — at my own risk</span>
+          </label>
+        </div>
+      )}
+
       {/* Submit Button */}
       <button
         onClick={handleSubmitPick}
-        disabled={!selectedPlayer || isLocked || submittingPick}
+        disabled={!selectedPlayer || isLocked || submittingPick || submitBlockedByRisk}
         className="btn-primary w-full py-3"
       >
         {isLocked ? 'Picks Locked' : submittingPick ? (
@@ -397,6 +475,18 @@ const PicksTab = React.memo(function PicksTab({
           </div>
         );
       })()}
+
+      {/* Live leaderboard (Phase 1) — renders only when a snapshot exists */}
+      {liveIndex && !liveIndex.isEmpty && (
+        <div className="mt-6">
+          <LiveLeaderboard
+            index={liveIndex}
+            members={liveMembers}
+            tournamentName={currentTournament?.name}
+            currentUserName={currentUserName}
+          />
+        </div>
+      )}
     </div>
   );
 });

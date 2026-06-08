@@ -1,0 +1,48 @@
+name: Sync Tournament Field
+
+on:
+  # The field firms up Tue/Wed. Cron is UTC: 14:00 UTC = ~10am ET, 22:00 UTC =
+  # ~6pm ET. Running Tue + Wed catches the field once entrants/tee times post
+  # and before the Thursday-morning pick lock. ~4 calls/week.
+  schedule:
+    - cron: '0 14,22 * * 2,3'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no database writes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-field:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests supabase python-dotenv
+
+      - name: Run field sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: |
+          cd scripts
+          FLAGS="--apply"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" == "true" ]; then
+            FLAGS=""
+          fi
+          python sync_field.py $FLAGS

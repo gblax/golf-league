@@ -1,6 +1,26 @@
 import React from 'react';
-import { ChevronDown, ChevronRight, Trophy } from 'lucide-react';
+import { ChevronDown, ChevronRight, Trophy, TrendingUp } from 'lucide-react';
 import { computeCorrectPickCounts } from '../utils/winners';
+import { lookupLive, isOutStatus, outLabel } from '../utils/liveLeaderboard';
+import SeasonTrends from './SeasonTrends';
+
+// Compact live position/score for a player's current pick (Phase 1). Shown
+// inline beside the pick name during play; null when there's no snapshot or the
+// golfer isn't on the board.
+function LiveChip({ liveIndex, player, pickName }) {
+  if (!liveIndex || liveIndex.isEmpty || !pickName) return null;
+  const live = lookupLive(liveIndex, { golferId: player.currentPick?.golfer_id, golferName: pickName });
+  if (!live) return null;
+  if (isOutStatus(live.status)) {
+    return <span className="ml-1.5 text-[10px] font-bold text-red-500 dark:text-red-400 align-middle">{outLabel(live.status)}</span>;
+  }
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-1 align-middle tabular-nums">
+      <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{live.position}</span>
+      <span className={`text-[10px] font-semibold ${String(live.score || '').startsWith('-') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>{live.score}</span>
+    </span>
+  );
+}
 
 // Get the visible pick text for a player (returns plain string or status)
 function getPickDisplay(player, currentUser, currentTournament) {
@@ -21,7 +41,7 @@ function getPickDisplay(player, currentUser, currentTournament) {
 }
 
 // Render the current pick for the desktop table
-function renderDesktopPick(player, currentUser, currentTournament, leagueSettings) {
+function renderDesktopPick(player, currentUser, currentTournament, leagueSettings, liveIndex) {
   const display = getPickDisplay(player, currentUser, currentTournament);
 
   if (display.type === 'none') {
@@ -32,7 +52,10 @@ function renderDesktopPick(player, currentUser, currentTournament, leagueSetting
   }
   return (
     <div>
-      <div className="text-emerald-700 dark:text-emerald-400 font-medium">{display.name}</div>
+      <div className="text-emerald-700 dark:text-emerald-400 font-medium">
+        {display.name}
+        <LiveChip liveIndex={liveIndex} player={player} pickName={display.name} />
+      </div>
       {leagueSettings.backup_picks_enabled && player.currentPick?.backup_golfer_name && (
         <div className="text-xs text-slate-500 dark:text-slate-400">Backup: {player.currentPick.backup_golfer_name}</div>
       )}
@@ -163,12 +186,34 @@ const StandingsTab = React.memo(function StandingsTab({
   leagueSettings,
   expandedRows,
   toggleRowExpansion,
+  liveIndex,
 }) {
   const winCounts = React.useMemo(() => computeCorrectPickCounts(sortedStandings), [sortedStandings]);
+  const [showTrends, setShowTrends] = React.useState(false);
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Standings</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Standings</h2>
+        <button
+          onClick={() => setShowTrends((v) => !v)}
+          className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
+            showTrends
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400'
+          }`}
+          aria-expanded={showTrends}
+        >
+          <TrendingUp size={14} />
+          Trends
+        </button>
+      </div>
+
+      {showTrends && (
+        <div className="mb-5">
+          <SeasonTrends standings={sortedStandings} currentUser={currentUser} />
+        </div>
+      )}
 
       {/* ===== Mobile card layout (visible < sm) ===== */}
       <div className="sm:hidden space-y-1.5">
@@ -228,7 +273,10 @@ const StandingsTab = React.memo(function StandingsTab({
                       </div>
                       <div className="truncate text-right">
                         {pickDisplay.type === 'pick' && (
-                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">{pickDisplay.name}</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                            {pickDisplay.name}
+                            <LiveChip liveIndex={liveIndex} player={player} pickName={pickDisplay.name} />
+                          </span>
                         )}
                         {pickDisplay.type === 'locked' && (
                           <span className="text-slate-400 dark:text-slate-500">Hidden</span>
@@ -312,7 +360,7 @@ const StandingsTab = React.memo(function StandingsTab({
                     )}
                   </td>
                   <td className="py-3 px-4 text-sm">
-                    {renderDesktopPick(player, currentUser, currentTournament, leagueSettings)}
+                    {renderDesktopPick(player, currentUser, currentTournament, leagueSettings, liveIndex)}
                   </td>
                   <td className="py-3 px-2 text-center">
                     <button

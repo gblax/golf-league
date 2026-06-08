@@ -274,6 +274,81 @@ def parse_leaderboard(leaderboard_json, earnings_json=None, tournament_name=None
 
 
 # ---------------------------------------------------------------------------
+# Live leaderboard parsing
+#
+# The same /leaderboard endpoint the Monday scorer uses, but read mid-event to
+# drive the app's live board. Crucially this needs NO /earnings call — prize
+# money only finalizes after the event — so a live refresh is a single request.
+# ---------------------------------------------------------------------------
+def _cut_line(leaderboard_json):
+    """The projected/actual cut score (e.g. '-2') from a leaderboard payload."""
+    cut_lines = leaderboard_json.get("cutLines") or []
+    if cut_lines:
+        score = str(cut_lines[0].get("cutScore", "") or "").strip()
+        return score or None
+    return None
+
+
+def _row_thru(row):
+    """Holes played in the current round ('F' when finished), if the payload
+    carries it. Field name has varied, so a couple of candidates are tried."""
+    raw = unwrap(row.get("thru"))
+    if raw is None:
+        raw = unwrap(row.get("holesPlayed"))
+    if raw is None:
+        return None
+    return str(raw).strip() or None
+
+
+def parse_live_leaderboard(leaderboard_json, tournament_name=None):
+    """Parse an in-progress (or just-finished) leaderboard into the compact
+    shape the app's live board reads.
+
+    Returns::
+
+        {
+          "tournament_name": str | None,
+          "players": [{"player_id", "player_name", "position", "score",
+                       "status", "thru", "round"}],
+          "cut_line": str | None,
+          "event_status": str,      # raw top-level status ('In Progress'...)
+          "round_status": str,
+          "event_completed": bool,  # status == 'Official'
+          "updated_ms": int | None, # payload's own last-updated stamp, if any
+        }
+
+    Positions/scores are kept as the strings Slash Golf returns ('T4', '-7',
+    'E', 'CUT'); the app renders them verbatim. No earnings are joined here.
+    """
+    players = []
+    for row in leaderboard_json.get("leaderboardRows") or []:
+        player_id = str(unwrap(row.get("playerId")) or "").strip()
+        name = _full_name(row)
+        if not player_id and not name:
+            continue
+        position = str(row.get("position", "") or "").strip()
+        players.append({
+            "player_id": player_id,
+            "player_name": name,
+            "position": position,
+            "score": str(row.get("total", "") or "").strip(),
+            "status": _player_status(row.get("status"), position),
+            "thru": _row_thru(row),
+            "round": to_int(row.get("currentRound") or row.get("round")),
+        })
+
+    return {
+        "tournament_name": tournament_name,
+        "players": players,
+        "cut_line": _cut_line(leaderboard_json),
+        "event_status": str(unwrap(leaderboard_json.get("status")) or "").strip(),
+        "round_status": str(unwrap(leaderboard_json.get("roundStatus")) or "").strip(),
+        "event_completed": is_event_official(leaderboard_json),
+        "updated_ms": to_epoch_ms(leaderboard_json.get("lastUpdated")),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Schedule parsing
 # ---------------------------------------------------------------------------
 def parse_schedule(schedule_json):
@@ -362,3 +437,19 @@ def get_tournament_results(tourn_id, year, org_id=DEFAULT_ORG_ID, tournament_nam
     leaderboard = fetch_leaderboard(tourn_id, year, org_id)
     earnings = fetch_earnings(tourn_id, year, org_id)
     return parse_leaderboard(leaderboard, earnings, tournament_name=tournament_name)
+
+
+def get_live_leaderboard(tourn_id, year, org_id=DEFAULT_ORG_ID, tournament_name=None):
+    """High-level: fetch ONLY the leaderboard for an event and return the live
+    parsed shape. One API call (no earnings) — for the in-event live board."""
+    leaderboard = fetch_leaderboard(tourn_id, year, org_id)
+    return parse_live_leaderboard(leaderboard, tournament_name=tournament_name)
+
+
+def fetch_field(tourn_id, year, org_id=DEFAULT_ORG_ID):
+    """The tournament field/entry list. Slash Golf surfaces entrants through the
+    leaderboard endpoint once tee times are posted (typically Tue/Wed); before
+    that the rows are empty. Returns the parsed live shape; callers treat an
+    empty player list as 'field not confirmed yet'."""
+    leaderboard = fetch_leaderboard(tourn_id, year, org_id)
+    return parse_live_leaderboard(leaderboard)

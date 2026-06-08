@@ -1,0 +1,54 @@
+name: Update Live Leaderboard
+
+on:
+  # End-of-round snapshots. Cron is UTC; PGA rounds finish in the evening ET,
+  # which is late-night UTC, so each run captures the PREVIOUS ET day's round:
+  #   Fri 00:00 / 02:00 UTC  -> Thu evening ET (round 1)
+  #   Sat 00:00 / 02:00 UTC  -> Fri evening ET (round 2 / cut)
+  #   Sun 00:00 / 02:00 UTC  -> Sat evening ET (round 3)
+  #   Mon 00:00 / 02:00 UTC  -> Sun evening ET (final round)
+  # Two runs per evening so a round that finishes late still gets captured.
+  # ~8 calls/week total — comfortably inside even the free Slash Golf tier
+  # alongside the Monday scoring job.
+  schedule:
+    - cron: '0 0,2 * * 5,6,0,1'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no database writes)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  update-leaderboard:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests supabase python-dotenv
+
+      - name: Run live leaderboard updater
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: |
+          cd scripts
+          FLAGS="--apply"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" == "true" ]; then
+            FLAGS=""
+          fi
+          python update_leaderboard.py $FLAGS

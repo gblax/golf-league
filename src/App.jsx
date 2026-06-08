@@ -6,6 +6,7 @@ import StandingsTab from './components/StandingsTab';
 import ScheduleTab from './components/ScheduleTab';
 import LeagueInfoTab from './components/LeagueInfoTab';
 import CommissionerTab from './components/CommissionerTab';
+import { indexLiveLeaderboard, normalizeName } from './utils/liveLeaderboard';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -65,6 +66,10 @@ const App = () => {
   const [players, setPlayers] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [resultsData, setResultsData] = useState({});
+  // Live leaderboard snapshot + weekly field/golfer-id lookups (Phases 1 & 2)
+  const [liveLeaderboard, setLiveLeaderboard] = useState(null);
+  const [tournamentField, setTournamentField] = useState([]);
+  const [golferIdByName, setGolferIdByName] = useState({});
   const [editTournamentId, setEditTournamentId] = useState(null);
   const [editTournamentPicks, setEditTournamentPicks] = useState([]);
   const [editResultsData, setEditResultsData] = useState({});
@@ -601,6 +606,14 @@ const loadData = async () => {
 
       setAvailableGolfers(golfersData?.map(g => g.name) || []);
 
+      // Name -> Slash Golf golfer_id, so a pick made through the app carries an
+      // ID for exact Monday scoring (keyed by normalized name for robustness).
+      const idByName = {};
+      (golfersData || []).forEach(g => {
+        if (g.golfer_id) idByName[normalizeName(g.name)] = g.golfer_id;
+      });
+      setGolferIdByName(idByName);
+
       // Load league members with their picks for standings
       const { data: memberData } = await supabase
         .from('league_members')
@@ -615,7 +628,7 @@ const loadData = async () => {
           id,
           name,
           email,
-          picks:picks(golfer_name, winnings, penalty_amount, penalty_reason, tournament_id, backup_golfer_name, league_id)
+          picks:picks(golfer_name, golfer_id, winnings, penalty_amount, penalty_reason, tournament_id, backup_golfer_name, league_id)
         `)
         .in('id', memberIds.length > 0 ? memberIds : ['none']);
       
@@ -655,7 +668,29 @@ const playersWithWinnings = (usersData || []).map(user => {
 });
       
       setPlayers(playersWithWinnings);
-      
+
+      // Live leaderboard snapshot + weekly field for the active tournament.
+      // Both are shared across leagues (keyed by tournament), written by the
+      // backend; the browser only reads them.
+      const activeTournament = getCurrentTournament(tournamentsData);
+      if (activeTournament) {
+        const { data: liveData } = await supabase
+          .from('live_leaderboard')
+          .select('*')
+          .eq('tournament_id', activeTournament.id)
+          .maybeSingle();
+        setLiveLeaderboard(liveData || null);
+
+        const { data: fieldData } = await supabase
+          .from('tournament_field')
+          .select('golfer_id, golfer_name')
+          .eq('tournament_id', activeTournament.id);
+        setTournamentField(fieldData || []);
+      } else {
+        setLiveLeaderboard(null);
+        setTournamentField([]);
+      }
+
       // NOW load user data AFTER tournaments are set
       await loadUserDataWithTournaments(tournamentsData);
     } catch (error) {
@@ -1333,6 +1368,7 @@ const handleSubmitPick = async () => {
           tournament_id: currentTournament.id,
           league_id: currentLeague.id,
           golfer_name: selectedPlayer,
+          golfer_id: fieldIdByName[normalizeName(selectedPlayer)] || golferIdByName[normalizeName(selectedPlayer)] || null,
           backup_golfer_name: leagueSettings.backup_picks_enabled ? (backupPlayer || null) : null,
           winnings: 0
         }, { onConflict: 'user_id,tournament_id,league_id' });
@@ -1380,6 +1416,31 @@ const handleSubmitPick = async () => {
   const sortedStandings = useMemo(() =>
     [...players].sort((a, b) => b.winnings - a.winnings || a.name.localeCompare(b.name)),
     [players]);
+
+  // Live leaderboard lookups (Phase 1)
+  const liveIndex = useMemo(() => indexLiveLeaderboard(liveLeaderboard), [liveLeaderboard]);
+
+  const liveMembers = useMemo(() =>
+    sortedStandings
+      .filter(p => p.currentPick?.golfer_name && p.currentPick.golfer_name !== 'No Pick')
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        golferName: p.currentPick.golfer_name,
+        golferId: p.currentPick.golfer_id || null,
+      })),
+    [sortedStandings]);
+
+  // Weekly field lookups (Phase 2). Empty until the field is synced mid-week.
+  const fieldNames = useMemo(() =>
+    new Set((tournamentField || []).map(f => normalizeName(f.golfer_name)).filter(Boolean)),
+    [tournamentField]);
+
+  const fieldIdByName = useMemo(() => {
+    const m = {};
+    (tournamentField || []).forEach(f => { if (f.golfer_id) m[normalizeName(f.golfer_name)] = f.golfer_id; });
+    return m;
+  }, [tournamentField]);
 
   const currentTournament = currentTournamentMemo;
 
@@ -2141,6 +2202,12 @@ const handleSubmitPick = async () => {
                 setShowBackupDropdown={setShowBackupDropdown}
                 handleSubmitPick={handleSubmitPick}
                 submittingPick={submittingPick}
+                liveIndex={liveIndex}
+                liveMembers={liveMembers}
+                currentUserName={currentUser?.name}
+                fieldNames={fieldNames}
+                fieldLoaded={tournamentField.length > 0}
+                fieldCount={tournamentField.length}
               />
             )}
 
@@ -2183,6 +2250,7 @@ const handleSubmitPick = async () => {
                 leagueSettings={leagueSettings}
                 expandedRows={expandedRows}
                 toggleRowExpansion={toggleRowExpansion}
+                liveIndex={liveIndex}
               />
             )}
 
