@@ -3,16 +3,30 @@
 @tailwind utilities;
 
 @layer base {
+  /* Match native UI (form controls, scrollbars, etc.) to the active theme. */
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+
   *, *::before, *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Kill the grey tap flash on iOS/Android for a more native feel. */
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* No rubber-band scroll-chaining behind the app shell (PWA feel). */
+    overscroll-behavior-y: none;
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
   }
 
@@ -27,6 +41,41 @@
     padding-left: env(safe-area-inset-left);
   }
 
+  /* Smooth in-page scrolling for anchored jumps — unless reduced motion. */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+
+  /* Respect reduced-motion: neutralize animations/transitions app-wide. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Visible focus ring for keyboard users on controls that don't style their
+     own focus (buttons, toggles, options, tabs). Inputs keep their own ring,
+     and mouse/touch interactions don't show it (focus-visible only). */
+  :where(button, a, [role="button"], [role="switch"], [role="option"], [role="tab"], summary):focus-visible {
+    outline: none;
+    @apply ring-2 ring-emerald-500/60 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
+  }
+
+  ::selection { @apply bg-emerald-500/20; }
+
+  /* Subtle, theme-aware scrollbars. */
+  * { scrollbar-width: thin; scrollbar-color: rgb(148 163 184 / 0.45) transparent; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300/70 dark:bg-slate-600/60 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400/70 dark:bg-slate-500/70; }
+
+  /* Remove the legacy 300ms tap delay on interactive controls. */
+  button, a, [role="button"], label, input, select { touch-action: manipulation; }
+
   /* Tabular nums for financial data */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
@@ -39,9 +88,9 @@
      viewport when a field is focused; text-sm (14px) restores the compact
      look on tablet/desktop where the zoom behavior doesn't apply. */
   .input {
-    @apply w-full px-3.5 py-2.5 text-base md:text-sm border border-slate-200 dark:border-slate-700 rounded-xl
+    @apply w-full px-3.5 py-2.5 text-base md:text-sm appearance-none border border-slate-200 dark:border-slate-700 rounded-xl
            bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
-           placeholder-slate-400 dark:placeholder-slate-500
+           placeholder-slate-400 dark:placeholder-slate-500 shadow-sm
            focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500
            dark:focus:ring-emerald-400/20 dark:focus:border-emerald-400
            transition-colors duration-150;
@@ -52,8 +101,8 @@
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold
            text-white bg-emerald-600 hover:bg-emerald-700
            dark:bg-emerald-500 dark:hover:bg-emerald-600
-           rounded-xl transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           rounded-xl shadow-sm select-none transition duration-150 active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:shadow-none;
   }
 
   /* Ghost/secondary button */
@@ -61,14 +110,14 @@
     @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium
            text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800
            hover:bg-slate-200 dark:hover:bg-slate-700
-           rounded-xl transition-colors duration-150;
+           rounded-xl select-none transition duration-150 active:scale-[0.97];
   }
 
   /* Danger button */
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold
-           text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors duration-150
-           disabled:opacity-50 disabled:cursor-not-allowed;
+           text-white bg-red-600 hover:bg-red-700 rounded-xl select-none transition duration-150 active:scale-[0.97]
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
   }
 
   /* Card surfaces */
@@ -92,5 +141,14 @@
   /* Form label */
   .label {
     @apply block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wide;
+  }
+}
+
+@layer utilities {
+  /* Use dynamic viewport height where supported so the iOS Safari address bar
+     resizing doesn't cause 100vh overflow / clipped content. Transparently
+     upgrades every existing `min-h-screen` usage. */
+  @supports (min-height: 100dvh) {
+    .min-h-screen { min-height: 100dvh; }
   }
 }

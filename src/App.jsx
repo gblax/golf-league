@@ -2162,7 +2162,7 @@ const handleSubmitPick = async () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 ${
+                className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
                   activeTab === tab.id
                     ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'

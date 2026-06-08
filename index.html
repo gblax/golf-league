@@ -10,10 +10,16 @@
   <meta name="description" content="Track your golf one and done league picks, standings, and results" />
 
   <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#16a34a" />
-  <meta name="background-color" content="#0f172a" />
+  <!-- Adaptive browser/status-bar chrome so the top edge blends with the app
+       surface in each theme (slate-50 light, slate-950 dark). -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#020617" />
+  <meta name="background-color" content="#020617" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- 'default' keeps the iOS status bar text readable over the app's light
+       surface (black-translucent forces white text, which vanished in light
+       mode). The webview then starts below the status bar in standalone. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Golf League" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="msapplication-TileColor" content="#16a34a" />
@@ -40,7 +46,7 @@
     }
   </style>
 </head>
-<body class="bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+<body class="bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
