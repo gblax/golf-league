@@ -20,18 +20,21 @@ export default {
       //   green   -> aliased to fairway so stray green-* utilities match
       //   amber   -> antique gold (leaders / winners / highlights)
       colors: {
+        // Cool-neutral "stone" with only a faint sage undertone — clubhouse
+        // without the cream/yellow cast. Mid shades are intentionally darker
+        // than a warm parchment ramp to keep secondary text readable.
         slate: {
-          50:  '#f7f5ee',
-          100: '#efece0',
-          200: '#e1dcca',
-          300: '#cdc7b0',
-          400: '#a8a28c',
-          500: '#7e7b68',
-          600: '#5b5f4f',
-          700: '#3a4438',
-          800: '#202d25',
-          900: '#16221b',
-          950: '#0c1410',
+          50:  '#f4f5f3',
+          100: '#e9ebe8',
+          200: '#d8dbd6',
+          300: '#bfc4bd',
+          400: '#868d84',
+          500: '#5d645b',
+          600: '#454b43',
+          700: '#333a33',
+          800: '#1d2620',
+          900: '#131a16',
+          950: '#0b0f0d',
         },
         emerald: {
           50:  '#eef6ef',
@@ -59,18 +62,20 @@ export default {
           900: '#123c28',
           950: '#082016',
         },
+        // Antique gold for leaders/winners — deepened slightly so it reads gold,
+        // not lemon, against the cooler neutral surface.
         amber: {
-          50:  '#faf6ea',
-          100: '#f2e8c9',
-          200: '#e6d49e',
-          300: '#d6bd72',
-          400: '#c4a44c',
-          500: '#b08d3f',
-          600: '#8f7430',
-          700: '#6e5926',
-          800: '#574824',
-          900: '#3f351d',
-          950: '#221c0e',
+          50:  '#f8f3e8',
+          100: '#efe6cf',
+          200: '#e1cfa0',
+          300: '#cfb673',
+          400: '#bd9c47',
+          500: '#a8863a',
+          600: '#886a2c',
+          700: '#685022',
+          800: '#4f3f20',
+          900: '#392f1b',
+          950: '#1f1a0d',
         },
       },
       boxShadow: {

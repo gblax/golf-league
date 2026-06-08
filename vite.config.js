@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: 'Golf League',
         description: 'Track your golf one and done league picks, standings, and results',
         theme_color: '#1f6f43',
-        background_color: '#0c1410',
+        background_color: '#0b0f0d',
         display: 'standalone',
         orientation: 'portrait-primary',
         icons: [

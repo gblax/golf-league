@@ -65,7 +65,7 @@ function renderDesktopPick(player, currentUser, currentTournament, leagueSetting
 
 // Render rank badge
 function RankBadge({ idx, size = 'default' }) {
-  const base = size === 'small' ? 'w-5 h-5 text-[10px] font-display' : 'w-6 h-6 text-xs font-display';
+  const base = size === 'small' ? 'w-5 h-5 text-[10px]' : 'w-6 h-6 text-xs';
   if (idx === 0) {
     return <span className={`${base} inline-flex items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-bold`}>1</span>;
   }
