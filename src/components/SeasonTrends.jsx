@@ -6,8 +6,8 @@ import React from 'react';
 // net. "Net" = winnings minus penalties, which is what drives the standings.
 
 // Distinct line colors for non-user players (legible on light and dark).
-const PALETTE = ['#6366f1', '#f59e0b', '#ec4899', '#14b8a6', '#8b5cf6', '#ef4444', '#0ea5e9', '#84cc16', '#f97316', '#a855f7'];
-const USER_COLOR = '#10b981'; // emerald-500
+const PALETTE = ['#6366f1', '#0ea5e9', '#ec4899', '#14b8a6', '#8b5cf6', '#ef4444', '#f59e0b', '#84cc16', '#f97316', '#a855f7'];
+const USER_COLOR = '#1f6f43'; // fairway green (emerald-600)
 
 function compactMoney(n) {
   const v = Math.round(n);

@@ -12,8 +12,8 @@ export default defineConfig({
         name: 'Golf One and Done League',
         short_name: 'Golf League',
         description: 'Track your golf one and done league picks, standings, and results',
-        theme_color: '#16a34a',
-        background_color: '#020617',
+        theme_color: '#1f6f43',
+        background_color: '#0c1410',
         display: 'standalone',
         orientation: 'portrait-primary',
         icons: [

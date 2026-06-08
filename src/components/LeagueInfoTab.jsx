@@ -137,7 +137,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
         {/* Season Progress */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-            <Calendar className="text-blue-500" size={16} />
+            <Calendar className="text-emerald-600 dark:text-emerald-400" size={16} />
             Season Progress
           </h3>
           {(() => {
@@ -168,7 +168,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
         {/* League Rules */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-            <Shield className="text-blue-500" size={16} />
+            <Shield className="text-emerald-600 dark:text-emerald-400" size={16} />
             League Rules
           </h3>
 

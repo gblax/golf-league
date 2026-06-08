@@ -30,6 +30,14 @@
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
   }
 
+  /* Clubhouse display serif for page/section headings & brand. Component
+     classes still control size and weight; this only swaps the family. */
+  h1, h2 {
+    font-family: theme('fontFamily.display');
+    font-optical-sizing: auto;
+    letter-spacing: -0.005em;
+  }
+
   /* iPhone notch / home-indicator safe-area handling.
      Paired with viewport-fit=cover in index.html so content doesn't sit
      under the notch or the gesture bar in PWA/standalone mode. Fixed-position
