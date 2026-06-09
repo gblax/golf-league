@@ -2,8 +2,9 @@ import React from 'react';
 
 // Season trend charts (Phase 3). Hand-rolled SVG so the PWA bundle stays lean —
 // no charting library. Reads the same picksByWeek data the standings already
-// load: cumulative net winnings per player, plus the current user's week-by-week
-// net. "Net" = winnings minus penalties, which is what drives the standings.
+// load: cumulative winnings per player, plus the current user's week-by-week
+// winnings. Winnings drive the standings; penalties are tracked separately and
+// are not netted against winnings here.
 
 // Distinct line colors for non-user players (legible on light and dark).
 const PALETTE = ['#6366f1', '#0ea5e9', '#ec4899', '#14b8a6', '#8b5cf6', '#ef4444', '#f59e0b', '#84cc16', '#f97316', '#a855f7'];
@@ -25,11 +26,11 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
     return [...s].sort((a, b) => a - b);
   }, [standings]);
 
-  // Cumulative net series per player across those weeks.
+  // Cumulative winnings series per player across those weeks.
   const series = React.useMemo(() => {
     return standings.map((p) => {
       const byWeek = {};
-      (p.picksByWeek || []).forEach((w) => { byWeek[w.week] = (w.winnings || 0) - (w.penalty || 0); });
+      (p.picksByWeek || []).forEach((w) => { byWeek[w.week] = w.winnings || 0; });
       let cum = 0;
       const points = weeks.map((wk) => { cum += byWeek[wk] || 0; return cum; });
       return { id: p.id, name: p.name, points, final: cum, isUser: p.id === currentUser?.id };
@@ -63,13 +64,13 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
 
   const zeroY = yFor(0);
 
-  // ---- Current user's week-by-week net (personal bars) ----
+  // ---- Current user's week-by-week winnings (personal bars) ----
   const me = standings.find((p) => p.id === currentUser?.id);
   const myWeekly = weeks.map((wk) => {
     const w = (me?.picksByWeek || []).find((x) => x.week === wk);
-    return { week: wk, net: w ? (w.winnings || 0) - (w.penalty || 0) : 0 };
+    return { week: wk, winnings: w ? (w.winnings || 0) : 0 };
   });
-  const myMax = Math.max(1, ...myWeekly.map((d) => Math.abs(d.net)));
+  const myMax = Math.max(1, ...myWeekly.map((d) => d.winnings));
 
   // Legend ordered by current standing (final cumulative desc).
   const legend = [...series].sort((a, b) => b.final - a.final);
@@ -78,9 +79,9 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
     <div className="space-y-4">
       {/* Cumulative net winnings */}
       <div className="card p-4 sm:p-5">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Cumulative Net Winnings</h3>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Season total (winnings minus penalties) through each week.</p>
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Cumulative net winnings by week">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Cumulative Winnings</h3>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Season winnings total through each week.</p>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Cumulative winnings by week">
           {/* y reference lines: top, zero, bottom */}
           {[yMax, 0, yMin].filter((v, i, arr) => arr.indexOf(v) === i).map((v) => (
             <g key={v}>
@@ -137,16 +138,15 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
       {/* Your week-by-week net */}
       {me && (
         <div className="card p-4 sm:p-5">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Your Week-by-Week Net</h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{me.name}'s net result each week.</p>
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Your Week-by-Week Winnings</h3>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{me.name}'s winnings each week.</p>
           <div className="flex items-end gap-1.5 h-32">
             {myWeekly.map((d) => {
-              const h = Math.round((Math.abs(d.net) / myMax) * 100);
-              const positive = d.net >= 0;
+              const h = Math.round((d.winnings / myMax) * 100);
               return (
-                <div key={d.week} className="flex-1 flex flex-col items-center justify-end h-full group" title={`Wk ${d.week}: ${compactMoney(d.net)}`}>
+                <div key={d.week} className="flex-1 flex flex-col items-center justify-end h-full group" title={`Wk ${d.week}: ${compactMoney(d.winnings)}`}>
                   <div
-                    className={`w-full rounded-t ${positive ? 'bg-emerald-500 dark:bg-emerald-400' : 'bg-red-400 dark:bg-red-500'}`}
+                    className="w-full rounded-t bg-emerald-500 dark:bg-emerald-400"
                     style={{ height: `${Math.max(2, h)}%` }}
                   />
                   <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-1 tabular-nums">{d.week}</span>
