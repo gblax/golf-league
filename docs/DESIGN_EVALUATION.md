@@ -220,7 +220,9 @@ shared `<Spinner>` extracted (`src/components/Spinner.jsx`); `.badge` and
 `.btn-lg`/`.btn-sm` component classes added to `src/index.css` and adopted at the
 chip/button call sites; raw Supabase error messages now route through
 `friendlyError()` (`src/utils/errors.js`), which logs the raw error and returns
-user-appropriate copy.
+user-appropriate copy. The never-imported `src/hooks/` directory (five stale
+duplicates of App.jsx auth/league/notification logic) was deleted for the same
+single-source-of-truth reason.
 
 **Batch 3 — larger UX investments:**
 skeleton loaders for Picks/Standings; table scroll affordances (edge fade); dropdown
