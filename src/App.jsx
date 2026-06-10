@@ -511,6 +511,24 @@ const App = () => {
     }
   }, [currentUser, currentLeague]);
 
+  // Silently refresh when the app regains focus (PWA resume / tab switch
+  // back) — that's when someone re-opens the app to check scores. Throttled
+  // so rapid switches don't hammer the network, and routed through the
+  // preservePick path so no skeleton flashes and a stale read can't clobber
+  // a submitted pick.
+  const lastAutoRefreshRef = useRef(Date.now());
+  useEffect(() => {
+    if (!currentUser || !currentLeague) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastAutoRefreshRef.current < 60000) return;
+      lastAutoRefreshRef.current = Date.now();
+      loadData({ preservePick: true });
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [currentUser, currentLeague]);
+
   // Update dropdowns when data loads
   useEffect(() => {
     if (currentWeekPick.golfer) {
