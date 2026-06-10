@@ -21,6 +21,13 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Tab ids that may appear in the URL hash (#standings etc.).
+const TAB_IDS = ['picks', 'standings', 'schedule', 'admin', 'results'];
+const tabFromHash = () => {
+  const h = window.location.hash.replace('#', '');
+  return TAB_IDS.includes(h) ? h : 'picks';
+};
+
 // Golf-flavored loading copy — one phrase per app load.
 const LOADING_PHRASES = [
   'Reading the green…',
@@ -43,7 +50,10 @@ const formatPrizePool = (amount) => {
 };
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('picks');
+  // Tab navigation lives in the URL hash so the browser/Android back button
+  // moves between tabs instead of exiting the PWA, and tabs are deep-linkable
+  // (e.g. a results notification can open #standings directly).
+  const [activeTab, setActiveTabState] = useState(tabFromHash);
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [backupPlayer, setBackupPlayer] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -510,6 +520,18 @@ const App = () => {
       loadData();
     }
   }, [currentUser, currentLeague]);
+
+  // Keep the active tab in sync with the hash (back/forward, deep links).
+  useEffect(() => {
+    const onHashChange = () => setActiveTabState(tabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  const setActiveTab = (id) => {
+    setActiveTabState(id);
+    if (window.location.hash !== `#${id}`) window.location.hash = id;
+  };
 
   // Silently refresh when the app regains focus (PWA resume / tab switch
   // back) — that's when someone re-opens the app to check scores. Throttled
@@ -1614,6 +1636,10 @@ const handleSubmitPick = async () => {
     ...(userRole === 'commissioner' ? [{ id: 'results', icon: Shield, label: 'Admin' }] : []),
   ];
 
+  // A hash like #results is valid only for commissioners; fall back to picks
+  // rather than rendering an empty tab panel.
+  const visibleTab = navTabs.some(t => t.id === activeTab) ? activeTab : 'picks';
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
@@ -1766,9 +1792,9 @@ const handleSubmitPick = async () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                aria-current={activeTab === tab.id ? 'page' : undefined}
+                aria-current={visibleTab === tab.id ? 'page' : undefined}
                 className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
-                  activeTab === tab.id
+                  visibleTab === tab.id
                     ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                 }`}
@@ -1780,8 +1806,8 @@ const handleSubmitPick = async () => {
           </div>
 
           {/* Tab Content — keyed so switching tabs replays the fade */}
-          <div key={activeTab} className="p-3 sm:p-5 animate-fade-in">
-            {activeTab === 'picks' && (
+          <div key={visibleTab} className="p-3 sm:p-5 animate-fade-in">
+            {visibleTab === 'picks' && (
               <PicksTab
                 currentWeek={currentWeek}
                 currentTournament={currentTournament}
@@ -1819,7 +1845,7 @@ const handleSubmitPick = async () => {
               />
             )}
 
-            {activeTab === 'results' && (
+            {visibleTab === 'results' && (
               <CommissionerTab
                 currentLeague={currentLeague}
                 leagueSettings={leagueSettings}
@@ -1849,7 +1875,7 @@ const handleSubmitPick = async () => {
               />
             )}
 
-            {activeTab === 'standings' && (
+            {visibleTab === 'standings' && (
               <StandingsTab
                 sortedStandings={sortedStandings}
                 currentUser={currentUser}
@@ -1863,7 +1889,7 @@ const handleSubmitPick = async () => {
               />
             )}
 
-            {activeTab === 'schedule' && (
+            {visibleTab === 'schedule' && (
               <ScheduleTab
                 tournaments={tournaments}
                 currentWeek={currentWeek}
@@ -1876,7 +1902,7 @@ const handleSubmitPick = async () => {
               />
             )}
 
-            {activeTab === 'admin' && (
+            {visibleTab === 'admin' && (
               <LeagueInfoTab
                 leagueSettings={leagueSettings}
                 players={players}
@@ -1933,9 +1959,9 @@ const handleSubmitPick = async () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              aria-current={activeTab === tab.id ? 'page' : undefined}
+              aria-current={visibleTab === tab.id ? 'page' : undefined}
               className={`flex-1 pt-2 pb-1.5 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-150 ${
-                activeTab === tab.id
+                visibleTab === tab.id
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-slate-400 dark:text-slate-500'
               }`}
