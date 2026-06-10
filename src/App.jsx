@@ -15,6 +15,7 @@ import NotificationToast from './components/NotificationToast';
 import Spinner from './components/Spinner';
 import { indexLiveLeaderboard, normalizeName } from './utils/liveLeaderboard';
 import { friendlyError } from './utils/errors';
+import { buildPlayerColors } from './utils/playerColors';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -1489,6 +1490,9 @@ const handleSubmitPick = async () => {
     players.find(p => p.id === currentUser?.id)?.picksByWeek || [],
     [players, currentUser]);
 
+  // Stable identity color per league member, shared across surfaces.
+  const playerColors = useMemo(() => buildPlayerColors(players), [players]);
+
   // Live leaderboard lookups (Phase 1)
   const liveIndex = useMemo(() => indexLiveLeaderboard(liveLeaderboard), [liveLeaderboard]);
 
@@ -1785,6 +1789,7 @@ const handleSubmitPick = async () => {
                 submittingPick={submittingPick}
                 liveIndex={liveIndex}
                 liveMembers={liveMembers}
+                playerColors={playerColors}
                 currentUserName={currentUser?.name}
                 fieldNames={fieldNames}
                 fieldLoaded={tournamentField.length > 0}
@@ -1832,6 +1837,7 @@ const handleSubmitPick = async () => {
                 expandedRows={expandedRows}
                 toggleRowExpansion={toggleRowExpansion}
                 liveIndex={liveIndex}
+                playerColors={playerColors}
               />
             )}
 
@@ -1852,6 +1858,7 @@ const handleSubmitPick = async () => {
               <LeagueInfoTab
                 leagueSettings={leagueSettings}
                 players={players}
+                playerColors={playerColors}
                 currentUser={currentUser}
                 currentWeek={currentWeek}
                 currentTournament={currentTournament}

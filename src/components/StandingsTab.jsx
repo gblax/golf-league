@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Lock, Trophy, TrendingUp } from 'lucide-reac
 import { computeCorrectPickCounts } from '../utils/winners';
 import { lookupLive, isOutStatus, outLabel } from '../utils/liveLeaderboard';
 import SeasonTrends from './SeasonTrends';
+import PlayerAvatar from './PlayerAvatar';
 
 // Compact live position/score for a player's current pick (Phase 1). Shown
 // inline beside the pick name during play; null when there's no snapshot or the
@@ -203,6 +204,7 @@ const StandingsTab = React.memo(function StandingsTab({
   expandedRows,
   toggleRowExpansion,
   liveIndex,
+  playerColors = {},
 }) {
   const winCounts = React.useMemo(() => computeCorrectPickCounts(sortedStandings), [sortedStandings]);
   const [showTrends, setShowTrends] = React.useState(false);
@@ -227,7 +229,7 @@ const StandingsTab = React.memo(function StandingsTab({
 
       {showTrends && (
         <div className="mb-5">
-          <SeasonTrends standings={sortedStandings} currentUser={currentUser} />
+          <SeasonTrends standings={sortedStandings} currentUser={currentUser} playerColors={playerColors} />
         </div>
       )}
 
@@ -254,6 +256,7 @@ const StandingsTab = React.memo(function StandingsTab({
                     <span className="flex-shrink-0">
                       <RankBadge idx={idx} size="small" />
                     </span>
+                    <PlayerAvatar name={player.name} color={playerColors[player.id]} size="sm" />
                     <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-slate-900 dark:text-white`}>
                       {player.name}
                     </span>
@@ -354,6 +357,7 @@ const StandingsTab = React.memo(function StandingsTab({
                   </td>
                   <td className={`py-3 px-4 text-sm text-slate-900 dark:text-white ${player.id === currentUser?.id ? 'font-bold' : 'font-medium'}`}>
                     <span className="inline-flex items-center gap-2">
+                      <PlayerAvatar name={player.name} color={playerColors[player.id]} size="sm" />
                       {player.name}
                       {winCounts[player.id] > 0 && (
                         <span

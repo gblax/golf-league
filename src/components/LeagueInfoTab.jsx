@@ -1,9 +1,11 @@
 import React from 'react';
 import { Trophy, Users, Calendar, CheckCircle, XCircle, Shield } from 'lucide-react';
+import PlayerAvatar from './PlayerAvatar';
 
 const LeagueInfoTab = React.memo(function LeagueInfoTab({
   leagueSettings,
   players,
+  playerColors = {},
   currentUser,
   currentWeek,
   currentTournament,
@@ -250,7 +252,10 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                   ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
                   : 'bg-slate-50 dark:bg-slate-800 border-transparent'
               }`}>
-                <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{player.name}</p>
+                <p className="flex items-center justify-center gap-1.5 text-xs font-medium text-slate-900 dark:text-white">
+                  <PlayerAvatar name={player.name} color={playerColors[player.id]} size="xs" />
+                  <span className="truncate">{player.name}</span>
+                </p>
                 {player.penalties > 0 && (
                   <p className="text-[10px] text-red-500 dark:text-red-400 tabular-nums mt-0.5">-${player.penalties}</p>
                 )}
@@ -270,7 +275,10 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
 
               return (
                 <div key={player.id} className="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl">
-                  <p className="text-xs font-medium text-slate-900 dark:text-white">{player.name}</p>
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-slate-900 dark:text-white">
+                    <PlayerAvatar name={player.name} color={playerColors[player.id]} size="xs" />
+                    {player.name}
+                  </p>
                   <div>
                     {(() => {
                       const infoPickName = player.currentPick?.golfer_name;

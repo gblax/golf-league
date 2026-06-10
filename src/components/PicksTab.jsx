@@ -34,6 +34,7 @@ const PicksTab = React.memo(function PicksTab({
   // Live leaderboard (Phase 1)
   liveIndex,
   liveMembers,
+  playerColors,
   currentUserName,
   // Weekly field backstop (Phase 2)
   fieldNames,
@@ -557,6 +558,7 @@ const PicksTab = React.memo(function PicksTab({
             members={liveMembers}
             tournamentName={currentTournament?.name}
             currentUserName={currentUserName}
+            playerColors={playerColors}
           />
         </div>
       )}

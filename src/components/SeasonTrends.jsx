@@ -1,14 +1,16 @@
 import React from 'react';
+import { buildPlayerColors } from '../utils/playerColors';
 
 // Season trend charts (Phase 3). Hand-rolled SVG so the PWA bundle stays lean —
 // no charting library. Reads the same picksByWeek data the standings already
 // load: cumulative winnings per player, plus the current user's week-by-week
 // winnings. Winnings drive the standings; penalties are tracked separately and
 // are not netted against winnings here.
-
-// Distinct line colors for non-user players (legible on light and dark).
-const PALETTE = ['#6366f1', '#0ea5e9', '#ec4899', '#14b8a6', '#8b5cf6', '#ef4444', '#f59e0b', '#84cc16', '#f97316', '#a855f7'];
-const USER_COLOR = '#1f6f43'; // fairway green (emerald-600)
+//
+// Line colors come from the shared per-player identity palette
+// (utils/playerColors), so each player's chart color matches their avatar in
+// the standings and live leaderboard. The current user is emphasized by
+// stroke weight, an end dot, and a bold legend entry.
 
 function compactMoney(n) {
   const v = Math.round(n);
@@ -18,7 +20,11 @@ function compactMoney(n) {
   return `${v < 0 ? '-' : ''}$${abs}`;
 }
 
-const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }) {
+const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, playerColors }) {
+  const colorById = React.useMemo(
+    () => playerColors || buildPlayerColors(standings),
+    [playerColors, standings]
+  );
   // Weeks that actually have posted results (isPast), as ordered x categories.
   const weeks = React.useMemo(() => {
     const s = new Set();
@@ -54,13 +60,6 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
   const ySpan = yMax - yMin || 1;
   const xFor = (i) => (weeks.length === 1 ? padL + plotW / 2 : padL + (i / (weeks.length - 1)) * plotW);
   const yFor = (v) => padT + (1 - (v - yMin) / ySpan) * plotH;
-
-  // Color map: current user emerald; others cycle the palette by rank.
-  const colorById = {};
-  let ci = 0;
-  [...series].sort((a, b) => b.final - a.final).forEach((s) => {
-    colorById[s.id] = s.isUser ? USER_COLOR : PALETTE[ci++ % PALETTE.length];
-  });
 
   const zeroY = yFor(0);
 
@@ -119,7 +118,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser }
           })}
           {/* end dot for the current user */}
           {series.filter((s) => s.isUser && s.points.length).map((s) => (
-            <circle key={s.id} cx={xFor(s.points.length - 1)} cy={yFor(s.points[s.points.length - 1])} r={3.5} fill={USER_COLOR} />
+            <circle key={s.id} cx={xFor(s.points.length - 1)} cy={yFor(s.points[s.points.length - 1])} r={3.5} fill={colorById[s.id]} />
           ))}
         </svg>
 

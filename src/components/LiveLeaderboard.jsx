@@ -1,6 +1,7 @@
 import React from 'react';
 import { Activity, ChevronDown, ChevronRight, Clock, Trophy } from 'lucide-react';
 import { lookupLive, positionRank, formatUpdatedLabel, isOutStatus, outLabel, normalizeName } from '../utils/liveLeaderboard';
+import PlayerAvatar from './PlayerAvatar';
 
 // Color a to-par score: under par green, over par slate, even neutral.
 function scoreClass(score) {
@@ -38,6 +39,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
   members = [],
   tournamentName,
   currentUserName,
+  playerColors = {},
 }) {
   const [showField, setShowField] = React.useState(false);
 
@@ -108,12 +110,15 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
                     : 'bg-slate-50 dark:bg-slate-800/50 border-transparent'
                 }`}
               >
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                    {m.name}
-                    {isYou && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{m.golferName}</p>
+                <div className="min-w-0 flex items-center gap-2">
+                  <PlayerAvatar name={m.name} color={playerColors[m.id]} size="sm" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                      {m.name}
+                      {isYou && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{m.golferName}</p>
+                  </div>
                 </div>
                 <LiveStatus live={m.live} />
               </div>
