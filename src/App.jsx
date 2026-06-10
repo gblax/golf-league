@@ -1451,10 +1451,20 @@ const handleSubmitPick = async () => {
     }));
   }, []);
 
-  const availableForPick = useMemo(() =>
-    availableGolfers.filter(g =>
-      !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer
-    ), [availableGolfers, userPicks, selectedPlayer, backupPlayer]);
+  // Weekly field lookups (Phase 2). Empty until the field is synced mid-week.
+  const fieldNames = useMemo(() =>
+    new Set((tournamentField || []).map(f => normalizeName(f.golfer_name)).filter(Boolean)),
+    [tournamentField]);
+
+  // Browsable pick list: confirmed-field golfers first, then the rest, both
+  // alphabetical — so opening the dropdown without typing shows this week's
+  // field rather than an arbitrary database order.
+  const availableForPick = useMemo(() => {
+    const inField = (g) => fieldNames.size > 0 && fieldNames.has(normalizeName(g));
+    return availableGolfers
+      .filter(g => !userPicks.includes(g) || g === selectedPlayer || g === backupPlayer)
+      .sort((a, b) => (inField(b) - inField(a)) || a.localeCompare(b));
+  }, [availableGolfers, userPicks, selectedPlayer, backupPlayer, fieldNames]);
 
   const filteredPrimaryGolfers = useMemo(() =>
     availableForPick
@@ -1492,11 +1502,6 @@ const handleSubmitPick = async () => {
         golferId: p.currentPick.golfer_id || null,
       })),
     [sortedStandings]);
-
-  // Weekly field lookups (Phase 2). Empty until the field is synced mid-week.
-  const fieldNames = useMemo(() =>
-    new Set((tournamentField || []).map(f => normalizeName(f.golfer_name)).filter(Boolean)),
-    [tournamentField]);
 
   const fieldIdByName = useMemo(() => {
     const m = {};

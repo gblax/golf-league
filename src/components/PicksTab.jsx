@@ -116,7 +116,7 @@ const PicksTab = React.memo(function PicksTab({
         i <= 0 ? filteredPrimaryGolfers.length - 1 : i - 1,
       );
     } else if (e.key === 'Enter') {
-      if (showPrimaryDropdown && primarySearchTerm && filteredPrimaryGolfers.length > 0) {
+      if (showPrimaryDropdown && filteredPrimaryGolfers.length > 0) {
         e.preventDefault();
         const golfer = filteredPrimaryGolfers[primaryHighlightIndex] || filteredPrimaryGolfers[0];
         setSelectedPlayer(golfer);
@@ -144,7 +144,7 @@ const PicksTab = React.memo(function PicksTab({
         i <= 0 ? filteredBackupGolfers.length - 1 : i - 1,
       );
     } else if (e.key === 'Enter') {
-      if (showBackupDropdown && backupSearchTerm && filteredBackupGolfers.length > 0) {
+      if (showBackupDropdown && filteredBackupGolfers.length > 0) {
         e.preventDefault();
         const golfer = filteredBackupGolfers[backupHighlightIndex] || filteredBackupGolfers[0];
         setBackupPlayer(golfer);
@@ -287,7 +287,7 @@ const PicksTab = React.memo(function PicksTab({
             inputMode="search"
             enterKeyHint="search"
             role="combobox"
-            aria-expanded={showPrimaryDropdown && !!primarySearchTerm}
+            aria-expanded={showPrimaryDropdown}
             aria-controls="primary-golfer-listbox"
             aria-autocomplete="list"
             aria-activedescendant={
@@ -306,7 +306,9 @@ const PicksTab = React.memo(function PicksTab({
               <X size={16} />
             </button>
           )}
-          {showPrimaryDropdown && primarySearchTerm && (
+          {/* Renders on focus even with an empty query so the field can be
+              browsed by tapping, not just searched by typing. */}
+          {showPrimaryDropdown && (
             <div
               ref={primaryListRef}
               id="primary-golfer-listbox"
@@ -381,7 +383,7 @@ const PicksTab = React.memo(function PicksTab({
               inputMode="search"
               enterKeyHint="search"
               role="combobox"
-              aria-expanded={showBackupDropdown && !!backupSearchTerm}
+              aria-expanded={showBackupDropdown}
               aria-controls="backup-golfer-listbox"
               aria-autocomplete="list"
               aria-activedescendant={
@@ -400,7 +402,7 @@ const PicksTab = React.memo(function PicksTab({
                 <X size={16} />
               </button>
             )}
-            {showBackupDropdown && backupSearchTerm && (
+            {showBackupDropdown && (
               <div
                 ref={backupListRef}
                 id="backup-golfer-listbox"
