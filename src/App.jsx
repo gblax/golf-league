@@ -1847,6 +1847,7 @@ const handleSubmitPick = async () => {
                 showBackupDropdown={showBackupDropdown}
                 timeUntilLock={timeUntilLock}
                 lockUrgent={lockUrgent}
+                lockTimeLabel={lockTimeLabel}
                 leagueSettings={leagueSettings}
                 userPicks={userPicks}
                 pickHistory={myPickHistory}

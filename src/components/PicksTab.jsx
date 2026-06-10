@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Flag, Shield, X } from 'lucide-react';
+import EmptyState from './EmptyState';
 import LiveLeaderboard from './LiveLeaderboard';
 import Spinner from './Spinner';
 import WeekRecapCard from './WeekRecapCard';
-import { normalizeName } from '../utils/liveLeaderboard';
+import { isOutStatus, lookupLive, normalizeName, outLabel } from '../utils/liveLeaderboard';
 
 const PicksTab = React.memo(function PicksTab({
   currentWeek,
@@ -17,6 +18,7 @@ const PicksTab = React.memo(function PicksTab({
   showBackupDropdown,
   timeUntilLock,
   lockUrgent,
+  lockTimeLabel,
   leagueSettings,
   userPicks,
   pickHistory,
@@ -194,6 +196,143 @@ const PicksTab = React.memo(function PicksTab({
   const selectedNotInField = !!selectedPlayer && fieldKnown && !inField(selectedPlayer);
   const submitBlockedByRisk = selectedNotInField && !acknowledgedRisk;
 
+  // Season scorecard — each spent golfer with the week used and what they
+  // earned. Shared by pick mode and watch mode.
+  const seasonScorecard = (() => {
+    const currentPick = selectedPlayer || currentWeekPick.golfer;
+    const pastPicks = userPicks.filter(p => p && p !== currentPick);
+    if (pastPicks.length === 0) return null;
+
+    const historyByGolfer = {};
+    (pickHistory || []).forEach(w => { if (w.golfer) historyByGolfer[w.golfer] = w; });
+    const fmtWinnings = (n) =>
+      n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n).toLocaleString()}`;
+    const sorted = [...pastPicks].sort((a, b) => {
+      const wa = historyByGolfer[a]?.week ?? Infinity;
+      const wb = historyByGolfer[b]?.week ?? Infinity;
+      return wa - wb || a.localeCompare(b);
+    });
+
+    return (
+      <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
+          Season Scorecard ({sorted.length})
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {sorted.map((golfer, idx) => {
+            const info = historyByGolfer[golfer];
+            return (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 text-xs rounded-md"
+              >
+                {info && (
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tabular-nums">Wk {info.week}</span>
+                )}
+                <span className="text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600">{golfer}</span>
+                {info && (
+                  info.winnings > 0 ? (
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtWinnings(info.winnings)}</span>
+                  ) : (
+                    <span className="text-slate-400 dark:text-slate-500 tabular-nums">$0</span>
+                  )
+                )}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    );
+  })();
+
+  // ---- Watch mode (Thu–Sun, after lock) ----
+  // A locked form isn't information. Lead with the user's golfer and the live
+  // leaderboard; the pick form returns when picks reopen on Monday.
+  if (isLocked) {
+    const myLiveRow = (liveMembers || []).find(m => m.name === currentUserName) || null;
+    const myLive = liveIndex && !liveIndex.isEmpty && myLiveRow ? lookupLive(liveIndex, myLiveRow) : null;
+    const myOut = myLive && isOutStatus(myLive.status);
+
+    return (
+      <div className="max-w-xl mx-auto">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Week {currentWeek}</h2>
+          <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+            Locked
+          </span>
+        </div>
+
+        {currentWeekPick.golfer ? (
+          <div className="mb-5 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+            <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-1">Your golfer</p>
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xl font-bold text-slate-900 dark:text-white truncate">{currentWeekPick.golfer}</p>
+                {leagueSettings.backup_picks_enabled && currentWeekPick.backup && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Backup: <span className="font-medium text-slate-700 dark:text-slate-300">{currentWeekPick.backup}</span>
+                  </p>
+                )}
+              </div>
+              {myLive ? (
+                myOut ? (
+                  <span className="shrink-0 text-sm font-bold px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-950/50 text-red-600 dark:text-red-400">
+                    {outLabel(myLive.status)}
+                  </span>
+                ) : (
+                  <div className="shrink-0 text-right tabular-nums">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white leading-none">{myLive.position || '—'}</p>
+                    <p className={`text-sm font-semibold mt-1 ${String(myLive.score || '').startsWith('-') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {myLive.score || ''}
+                      {myLive.thru && (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                          {myLive.thru === 'F' ? ' · F' : ` · thru ${myLive.thru}`}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )
+              ) : (
+                <p className="shrink-0 max-w-[45%] text-[11px] text-slate-400 dark:text-slate-500 text-right">
+                  Live scoring appears once play begins
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
+              No pick this week — the no-pick penalty applies.
+            </p>
+          </div>
+        )}
+
+        {liveIndex && !liveIndex.isEmpty ? (
+          <LiveLeaderboard
+            index={liveIndex}
+            members={liveMembers}
+            tournamentName={currentTournament?.name}
+            currentUserName={currentUserName}
+            playerColors={playerColors}
+          />
+        ) : (
+          <EmptyState
+            icon={Flag}
+            title="Golfers are on the course"
+            caption="Live scores appear here once play begins — check back during the first round."
+          />
+        )}
+
+        {lockTimeLabel && (
+          <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 text-center">{lockTimeLabel}</p>
+        )}
+
+        {seasonScorecard}
+      </div>
+    );
+  }
+
+  // ---- Pick mode (before lock) ----
   return (
     <div className="max-w-xl mx-auto">
       {/* Header */}
@@ -210,38 +349,31 @@ const PicksTab = React.memo(function PicksTab({
             </span>
           )
         )}
-        {timeUntilLock === 'Locked' && (
-          <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
-            Locked
-          </span>
-        )}
       </div>
 
       {/* One-time recap of the last completed tournament (pick mode only —
           during a locked weekend last week's results are old news) */}
-      {!isLocked && weekRecap && (
+      {weekRecap && (
         <WeekRecapCard
           recap={weekRecap}
           storageKey={`odg-recap-${leagueId}-${weekRecap.tournamentId}`}
         />
       )}
 
-      {/* Field status banner (Phase 2) — only meaningful before picks lock */}
-      {!isLocked && (
-        fieldKnown ? (
-          <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              <span className="font-semibold text-slate-700 dark:text-slate-300">{fieldCount}</span> golfers confirmed in this week's field. Golfers outside the field are flagged below.
-            </p>
-          </div>
-        ) : (
-          <div className="mb-4 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-            <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
-              <AlertTriangle size={13} className="shrink-0 mt-0.5" />
-              <span>This week's field isn't confirmed yet. You can pick now <span className="font-semibold">at your own risk</span> — anyone who ends up not playing takes the no-pick penalty.</span>
-            </p>
-          </div>
-        )
+      {/* Field status banner (Phase 2) */}
+      {fieldKnown ? (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{fieldCount}</span> golfers confirmed in this week's field. Golfers outside the field are flagged below.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+          <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+            <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+            <span>This week's field isn't confirmed yet. You can pick now <span className="font-semibold">at your own risk</span> — anyone who ends up not playing takes the no-pick penalty.</span>
+          </p>
+        </div>
       )}
 
       {/* Current Selection Card */}
@@ -256,7 +388,7 @@ const PicksTab = React.memo(function PicksTab({
                   Backup: <span className="font-medium text-slate-700 dark:text-slate-300">{currentWeekPick.backup}</span>
                 </p>
               )}
-              {!isLocked && fieldKnown && !inField(currentWeekPick.golfer) && (
+              {fieldKnown && !inField(currentWeekPick.golfer) && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                   <AlertTriangle size={12} className="shrink-0" />
                   Not in this week's confirmed field
@@ -460,17 +592,8 @@ const PicksTab = React.memo(function PicksTab({
         </div>
       )}
 
-      {/* Locked Banner */}
-      {isLocked && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-          <p className="text-sm font-medium text-red-700 dark:text-red-400 text-center">
-            Picks are locked for this tournament.
-          </p>
-        </div>
-      )}
-
       {/* Off-field warning + at-your-own-risk acknowledgement (Phase 2) */}
-      {!isLocked && selectedNotInField && (
+      {selectedNotInField && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
           <p className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2 mb-2.5">
             <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -491,10 +614,10 @@ const PicksTab = React.memo(function PicksTab({
       {/* Submit Button */}
       <button
         onClick={handleSubmitPick}
-        disabled={!selectedPlayer || isLocked || submittingPick || submitBlockedByRisk}
+        disabled={!selectedPlayer || submittingPick || submitBlockedByRisk}
         className="btn-primary btn-lg w-full"
       >
-        {isLocked ? 'Picks Locked' : submittingPick ? (
+        {submittingPick ? (
           <span className="flex items-center justify-center gap-2">
             <Spinner size="sm" className="border-current" />
             Locking in...
@@ -502,7 +625,7 @@ const PicksTab = React.memo(function PicksTab({
         ) : 'Lock It In'}
       </button>
 
-      {lockTime && !isLocked && (
+      {lockTime && (
         <p className="mt-2 text-xs text-slate-400 dark:text-slate-500 text-center">
           Locks {lockTime.toLocaleString('en-US', {
             weekday: 'short',
@@ -515,53 +638,7 @@ const PicksTab = React.memo(function PicksTab({
         </p>
       )}
 
-      {/* Season scorecard — each spent golfer with the week used and what they earned */}
-      {(() => {
-        const currentPick = selectedPlayer || currentWeekPick.golfer;
-        const pastPicks = userPicks.filter(p => p && p !== currentPick);
-        if (pastPicks.length === 0) return null;
-
-        const historyByGolfer = {};
-        (pickHistory || []).forEach(w => { if (w.golfer) historyByGolfer[w.golfer] = w; });
-        const fmtWinnings = (n) =>
-          n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n).toLocaleString()}`;
-        const sorted = [...pastPicks].sort((a, b) => {
-          const wa = historyByGolfer[a]?.week ?? Infinity;
-          const wb = historyByGolfer[b]?.week ?? Infinity;
-          return wa - wb || a.localeCompare(b);
-        });
-
-        return (
-          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
-              Season Scorecard ({sorted.length})
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {sorted.map((golfer, idx) => {
-                const info = historyByGolfer[golfer];
-                return (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 text-xs rounded-md"
-                  >
-                    {info && (
-                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tabular-nums">Wk {info.week}</span>
-                    )}
-                    <span className="text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600">{golfer}</span>
-                    {info && (
-                      info.winnings > 0 ? (
-                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtWinnings(info.winnings)}</span>
-                      ) : (
-                        <span className="text-slate-400 dark:text-slate-500 tabular-nums">$0</span>
-                      )
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+      {seasonScorecard}
 
       {/* Live leaderboard (Phase 1) — renders only when a snapshot exists */}
       {liveIndex && !liveIndex.isEmpty && (
