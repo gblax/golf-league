@@ -18,6 +18,7 @@ const PicksTab = React.memo(function PicksTab({
   lockUrgent,
   leagueSettings,
   userPicks,
+  pickHistory,
   filteredPrimaryGolfers,
   filteredBackupGolfers,
   picksLoading,
@@ -498,24 +499,49 @@ const PicksTab = React.memo(function PicksTab({
         </p>
       )}
 
-      {/* Used Golfers */}
+      {/* Season scorecard — each spent golfer with the week used and what they earned */}
       {(() => {
         const currentPick = selectedPlayer || currentWeekPick.golfer;
         const pastPicks = userPicks.filter(p => p && p !== currentPick);
-        return pastPicks.length > 0 && (
+        if (pastPicks.length === 0) return null;
+
+        const historyByGolfer = {};
+        (pickHistory || []).forEach(w => { if (w.golfer) historyByGolfer[w.golfer] = w; });
+        const fmtWinnings = (n) =>
+          n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n).toLocaleString()}`;
+        const sorted = [...pastPicks].sort((a, b) => {
+          const wa = historyByGolfer[a]?.week ?? Infinity;
+          const wb = historyByGolfer[b]?.week ?? Infinity;
+          return wa - wb || a.localeCompare(b);
+        });
+
+        return (
           <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
             <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
-              Previously Used ({pastPicks.length})
+              Season Scorecard ({sorted.length})
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {pastPicks.map((golfer, idx) => (
-                <span
-                  key={idx}
-                  className="inline-block px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs rounded-md"
-                >
-                  {golfer}
-                </span>
-              ))}
+              {sorted.map((golfer, idx) => {
+                const info = historyByGolfer[golfer];
+                return (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 text-xs rounded-md"
+                  >
+                    {info && (
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tabular-nums">Wk {info.week}</span>
+                    )}
+                    <span className="text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600">{golfer}</span>
+                    {info && (
+                      info.winnings > 0 ? (
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtWinnings(info.winnings)}</span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500 tabular-nums">$0</span>
+                      )
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
         );

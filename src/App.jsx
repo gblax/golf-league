@@ -1473,6 +1473,12 @@ const handleSubmitPick = async () => {
     [...players].sort((a, b) => b.winnings - a.winnings || a.name.localeCompare(b.name)),
     [players]);
 
+  // The current user's week-by-week history, for the season scorecard on the
+  // Picks tab (which week each used golfer was spent on, and what they earned).
+  const myPickHistory = useMemo(() =>
+    players.find(p => p.id === currentUser?.id)?.picksByWeek || [],
+    [players, currentUser]);
+
   // Live leaderboard lookups (Phase 1)
   const liveIndex = useMemo(() => indexLiveLeaderboard(liveLeaderboard), [liveLeaderboard]);
 
@@ -1759,6 +1765,7 @@ const handleSubmitPick = async () => {
                 lockUrgent={lockUrgent}
                 leagueSettings={leagueSettings}
                 userPicks={userPicks}
+                pickHistory={myPickHistory}
                 filteredPrimaryGolfers={filteredPrimaryGolfers}
                 filteredBackupGolfers={filteredBackupGolfers}
                 picksLoading={picksLoading}
