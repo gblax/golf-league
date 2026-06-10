@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Flag, Shield, X } from 'lucide-react';
 import LiveLeaderboard from './LiveLeaderboard';
 import Spinner from './Spinner';
+import WeekRecapCard from './WeekRecapCard';
 import { normalizeName } from '../utils/liveLeaderboard';
 
 const PicksTab = React.memo(function PicksTab({
@@ -40,6 +41,9 @@ const PicksTab = React.memo(function PicksTab({
   fieldNames,
   fieldLoaded,
   fieldCount,
+  // Monday recap of the last completed tournament
+  weekRecap,
+  leagueId,
 }) {
   const [primaryHighlightIndex, setPrimaryHighlightIndex] = useState(0);
   const [backupHighlightIndex, setBackupHighlightIndex] = useState(0);
@@ -212,6 +216,15 @@ const PicksTab = React.memo(function PicksTab({
           </span>
         )}
       </div>
+
+      {/* One-time recap of the last completed tournament (pick mode only —
+          during a locked weekend last week's results are old news) */}
+      {!isLocked && weekRecap && (
+        <WeekRecapCard
+          recap={weekRecap}
+          storageKey={`odg-recap-${leagueId}-${weekRecap.tournamentId}`}
+        />
+      )}
 
       {/* Field status banner (Phase 2) — only meaningful before picks lock */}
       {!isLocked && (

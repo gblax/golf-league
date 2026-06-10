@@ -93,6 +93,8 @@ export default {
         // One-shot success ping (expanding fairway-green ring), used to confirm
         // a submitted pick where the eye already is.
         'flash-success': 'flash-success 0.8s ease-out',
+        // One-shot celebration particles for picking the tournament winner.
+        'confetti-fall': 'confetti-fall 1.2s ease-in forwards',
       },
       keyframes: {
         'fade-in': {
@@ -118,6 +120,10 @@ export default {
         'flash-success': {
           '0%': { boxShadow: '0 0 0 0 rgb(43 128 73 / 0.4)' },
           '100%': { boxShadow: '0 0 0 14px rgb(43 128 73 / 0)' },
+        },
+        'confetti-fall': {
+          '0%': { transform: 'translateY(-16px) rotate(0deg)', opacity: '1' },
+          '100%': { transform: 'translateY(150px) rotate(540deg)', opacity: '0' },
         },
       }
     },

@@ -1537,6 +1537,33 @@ const handleSubmitPick = async () => {
   // Stable identity color per league member, shared across surfaces.
   const playerColors = useMemo(() => buildPlayerColors(players), [players]);
 
+  // Summary of the most recent completed tournament for the one-time Monday
+  // recap card on the Picks tab. Null until a tournament has completed.
+  const weekRecap = useMemo(() => {
+    const completed = tournaments.filter(t => t.completed);
+    if (completed.length === 0 || players.length === 0) return null;
+    const tournament = completed.reduce((a, b) => (b.week > a.week ? b : a));
+    const rows = players.map(p => {
+      const w = (p.picksByWeek || []).find(x => x.week === tournament.week);
+      return { id: p.id, name: p.name, golfer: w?.golfer || null, winnings: w?.winnings || 0, penalty: w?.penalty || 0 };
+    });
+    const topEarner = rows.reduce((a, b) => (b.winnings > (a?.winnings || 0) ? b : a), null);
+    const me = rows.find(r => r.id === currentUser?.id) || null;
+    const leader = sortedStandings[0]
+      ? { name: sortedStandings[0].name, winnings: sortedStandings[0].winnings }
+      : null;
+    return {
+      tournamentId: tournament.id,
+      week: tournament.week,
+      tournamentName: tournament.name,
+      winnerGolfer: tournament.winner_golfer_name || null,
+      me,
+      topEarner: topEarner && topEarner.winnings > 0 ? topEarner : null,
+      leader,
+      calledIt: !!(me?.golfer && tournament.winner_golfer_name && me.golfer === tournament.winner_golfer_name),
+    };
+  }, [tournaments, players, sortedStandings, currentUser]);
+
   // Live leaderboard lookups (Phase 1)
   const liveIndex = useMemo(() => indexLiveLeaderboard(liveLeaderboard), [liveLeaderboard]);
 
@@ -1839,6 +1866,8 @@ const handleSubmitPick = async () => {
                 liveMembers={liveMembers}
                 playerColors={playerColors}
                 currentUserName={currentUser?.name}
+                weekRecap={weekRecap}
+                leagueId={currentLeague?.id}
                 fieldNames={fieldNames}
                 fieldLoaded={tournamentField.length > 0}
                 fieldCount={tournamentField.length}
