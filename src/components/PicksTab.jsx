@@ -473,9 +473,9 @@ const PicksTab = React.memo(function PicksTab({
         {isLocked ? 'Picks Locked' : submittingPick ? (
           <span className="flex items-center justify-center gap-2">
             <Spinner size="sm" className="border-current" />
-            Submitting...
+            Locking in...
           </span>
-        ) : 'Submit Pick'}
+        ) : 'Lock It In'}
       </button>
 
       {lockTime && !isLocked && (

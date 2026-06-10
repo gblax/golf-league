@@ -144,6 +144,17 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
             const completedWeeks = tournaments.filter(t => t.completed).length;
             const totalWeeks = tournaments.length;
             const progressPercent = totalWeeks > 0 ? Math.round((completedWeeks / totalWeeks) * 100) : 0;
+            const remaining = totalWeeks - completedWeeks;
+            const atTheTurn = totalWeeks > 0 && completedWeeks * 2 === totalWeeks;
+            const seasonCopy = totalWeeks === 0
+              ? 'Schedule coming soon.'
+              : remaining === 0
+              ? 'Season complete — see you at the 19th hole 🍻'
+              : atTheTurn
+              ? 'Making the turn — halfway home.'
+              : progressPercent > 50
+              ? `On the back nine — ${remaining} ${remaining === 1 ? 'week' : 'weeks'} to the clubhouse.`
+              : `Front nine — ${remaining} ${remaining === 1 ? 'week' : 'weeks'} still to play.`;
 
             return (
               <div>
@@ -151,15 +162,20 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                   <span>{completedWeeks} of {totalWeeks} weeks</span>
                   <span className="tabular-nums font-medium">{progressPercent}%</span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${progressPercent}%` }}
+                <div className="relative">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-emerald-500 dark:bg-emerald-400 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  {/* "The turn" marker at the season midpoint */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-1/2 -translate-x-1/2 -top-1 h-4 w-px bg-slate-300 dark:bg-slate-600"
                   />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
-                  {totalWeeks - completedWeeks} weeks remaining
-                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{seasonCopy}</p>
               </div>
             );
           })()}

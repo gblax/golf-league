@@ -20,6 +20,18 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Golf-flavored loading copy — one phrase per app load.
+const LOADING_PHRASES = [
+  'Reading the green…',
+  'Raking the bunkers…',
+  'Replacing divots…',
+  'Waiting on the group ahead…',
+  'Checking the wind…',
+  'Walking the course…',
+  'Cleaning the grooves…',
+];
+const LOADING_PHRASE = LOADING_PHRASES[Math.floor(Math.random() * LOADING_PHRASES.length)];
+
 // Helper function to format prize pool
 const formatPrizePool = (amount) => {
   if (!amount) return 'TBA';
@@ -1420,7 +1432,7 @@ const handleSubmitPick = async () => {
         return next.includes(selectedPlayer) ? next : [...next, selectedPlayer];
       });
 
-      showNotification('success', `Pick submitted: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (Backup: ${backupPlayer})` : ''}`);
+      showNotification('success', `Locked in: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (backup: ${backupPlayer})` : ''} — play well ⛳`);
       // Reconcile standings/field/etc. in the background, but don't let a
       // possibly-stale read overwrite the pick we just confirmed.
       loadData({ preservePick: true });
@@ -1493,7 +1505,7 @@ const handleSubmitPick = async () => {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center transition-colors duration-300">
         <div className="flex flex-col items-center gap-3">
           <Spinner size="xl" />
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading...</div>
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">{LOADING_PHRASE}</div>
         </div>
       </div>
     );
