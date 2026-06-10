@@ -95,6 +95,20 @@ function RankBadge({ idx, size = 'default' }) {
   return <span className={`${base} inline-flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold`}>{idx + 1}</span>;
 }
 
+// Rank movement since the previous results week (▲2 / ▼1). Null delta renders nothing.
+function RankDelta({ delta }) {
+  if (!delta) return null;
+  const up = delta > 0;
+  return (
+    <span
+      title={`${up ? 'Up' : 'Down'} ${Math.abs(delta)} since last results`}
+      className={`text-[10px] font-bold tabular-nums ${up ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}
+    >
+      {up ? '▲' : '▼'}{Math.abs(delta)}
+    </span>
+  );
+}
+
 // Small trophy badge for a player who picked the tournament's actual winning golfer.
 function WinnerBadge({ size = 'default', winnerName }) {
   const px = size === 'small' ? 10 : 12;
@@ -209,6 +223,30 @@ const StandingsTab = React.memo(function StandingsTab({
   const winCounts = React.useMemo(() => computeCorrectPickCounts(sortedStandings), [sortedStandings]);
   const [showTrends, setShowTrends] = React.useState(false);
 
+  // Movement vs. the standings before the most recent results week.
+  // picksByWeek already carries every week's winnings, so "last week's
+  // standings" is just the current totals minus the latest results week.
+  const rankDeltas = React.useMemo(() => {
+    const resultWeeks = new Set();
+    sortedStandings.forEach(p => (p.picksByWeek || []).forEach(w => {
+      if ((w.winnings || 0) > 0 || (w.penalty || 0) > 0) resultWeeks.add(w.week);
+    }));
+    if (resultWeeks.size < 2) return {};
+    const latest = Math.max(...resultWeeks);
+    const prev = sortedStandings
+      .map(p => ({
+        id: p.id,
+        name: p.name,
+        total: (p.picksByWeek || []).reduce((s, w) => s + (w.week === latest ? 0 : (w.winnings || 0)), 0),
+      }))
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    const prevRank = {};
+    prev.forEach((p, i) => { prevRank[p.id] = i; });
+    const deltas = {};
+    sortedStandings.forEach((p, i) => { deltas[p.id] = (prevRank[p.id] ?? i) - i; });
+    return deltas;
+  }, [sortedStandings]);
+
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -253,8 +291,9 @@ const StandingsTab = React.memo(function StandingsTab({
                 {/* Row 1: rank, name, expand icon */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="flex-shrink-0">
+                    <span className="flex-shrink-0 inline-flex items-center gap-0.5">
                       <RankBadge idx={idx} size="small" />
+                      <RankDelta delta={rankDeltas[player.id]} />
                     </span>
                     <PlayerAvatar name={player.name} color={playerColors[player.id]} size="sm" />
                     <span className={`text-sm truncate ${isCurrentUser ? 'font-bold' : 'font-medium'} text-slate-900 dark:text-white`}>
@@ -353,7 +392,10 @@ const StandingsTab = React.memo(function StandingsTab({
                   }`}
                 >
                   <td className="py-3 px-4">
-                    <RankBadge idx={idx} />
+                    <span className="inline-flex items-center gap-1">
+                      <RankBadge idx={idx} />
+                      <RankDelta delta={rankDeltas[player.id]} />
+                    </span>
                   </td>
                   <td className={`py-3 px-4 text-sm text-slate-900 dark:text-white ${player.id === currentUser?.id ? 'font-bold' : 'font-medium'}`}>
                     <span className="inline-flex items-center gap-2">
