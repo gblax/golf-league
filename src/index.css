@@ -145,6 +145,12 @@
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold tabular-nums;
   }
 
+  /* Skeleton loading placeholder. Compose with width/height utilities to
+     mirror the shape of the content being loaded (avoids layout shift). */
+  .skeleton {
+    @apply animate-pulse rounded-lg bg-slate-200/80 dark:bg-slate-800;
+  }
+
   /* Card surfaces */
   .card {
     @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800

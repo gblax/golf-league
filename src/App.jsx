@@ -725,10 +725,15 @@ const playersWithWinnings = (usersData || []).map(user => {
       .eq('league_id', currentLeague.id);
 
     const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
-    // When reconciling after a write, union so a stale read can't drop the
-    // golfer we just optimistically added to the "previously used" set.
+    // When reconciling after a write, trust the fresh read but make sure the
+    // golfer we just wrote optimistically is present even if the read was
+    // served stale from the service-worker cache. (Unioning the whole previous
+    // set here kept replaced picks flagged as "used" for the rest of the
+    // session — changing Matt -> Alex never freed Matt back up.)
     if (opts.preservePick) {
-      setUserPicks(prev => Array.from(new Set([...prev, ...allUserPicks])));
+      setUserPicks(selectedPlayer && !allUserPicks.includes(selectedPlayer)
+        ? [...allUserPicks, selectedPlayer]
+        : allUserPicks);
     } else {
       setUserPicks(allUserPicks);
     }
@@ -1406,8 +1411,14 @@ const handleSubmitPick = async () => {
       // can be served stale from the service-worker cache (missing the row we
       // just wrote) — leaving the pick "unsaved" until a manual refresh.
       const backupForState = leagueSettings.backup_picks_enabled ? (backupPlayer || '') : '';
+      const replacedPick = currentWeekPick.golfer;
       setCurrentWeekPick({ golfer: selectedPlayer, backup: backupForState });
-      setUserPicks(prev => (prev.includes(selectedPlayer) ? prev : [...prev, selectedPlayer]));
+      // Swap rather than append: the golfer this pick replaces is no longer
+      // "used" this week, so changing your pick must free the old one back up.
+      setUserPicks(prev => {
+        const next = prev.filter(g => g !== replacedPick);
+        return next.includes(selectedPlayer) ? next : [...next, selectedPlayer];
+      });
 
       showNotification('success', `Pick submitted: ${selectedPlayer}${leagueSettings.backup_picks_enabled && backupPlayer ? ` (Backup: ${backupPlayer})` : ''}`);
       // Reconcile standings/field/etc. in the background, but don't let a
@@ -1546,11 +1557,19 @@ const handleSubmitPick = async () => {
     );
   }
 
+  const navTabs = [
+    { id: 'picks', icon: CheckCircle, label: 'Pick' },
+    { id: 'standings', icon: TrendingUp, label: 'Standings' },
+    { id: 'schedule', icon: Calendar, label: 'Schedule' },
+    { id: 'admin', icon: Users, label: 'League' },
+    ...(userRole === 'commissioner' ? [{ id: 'results', icon: Shield, label: 'Admin' }] : []),
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
       <NotificationToast notification={notification} onDismiss={() => setNotification(null)} />
-      <div className="max-w-6xl mx-auto p-3 sm:p-6">
+      <div className="max-w-6xl mx-auto p-3 pb-24 sm:p-6">
         {/* Header */}
         <div className="card p-4 sm:p-6 mb-4 sm:mb-5">
           <div className="flex items-start sm:items-center justify-between gap-4">
@@ -1689,19 +1708,14 @@ const handleSubmitPick = async () => {
           )}
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (top strip on tablet/desktop; phones use the bottom nav) */}
         <div className="card mb-4 sm:mb-5 overflow-hidden">
-          <div className="flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
-            {[
-              { id: 'picks', icon: CheckCircle, label: 'Pick' },
-              { id: 'standings', icon: TrendingUp, label: 'Standings' },
-              { id: 'schedule', icon: Calendar, label: 'Schedule' },
-              { id: 'admin', icon: Users, label: 'League' },
-              ...(userRole === 'commissioner' ? [{ id: 'results', icon: Shield, label: 'Admin' }] : []),
-            ].map(tab => (
+          <div className="hidden sm:flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+            {navTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
+                aria-current={activeTab === tab.id ? 'page' : undefined}
                 className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
                   activeTab === tab.id
                     ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
@@ -1714,8 +1728,8 @@ const handleSubmitPick = async () => {
             ))}
           </div>
 
-          {/* Tab Content */}
-          <div className="p-3 sm:p-5">
+          {/* Tab Content — keyed so switching tabs replays the fade */}
+          <div key={activeTab} className="p-3 sm:p-5 animate-fade-in">
             {activeTab === 'picks' && (
               <PicksTab
                 currentWeek={currentWeek}
@@ -1825,6 +1839,31 @@ const handleSubmitPick = async () => {
             )}          </div>
         </div>
       </div>
+
+      {/* Mobile bottom navigation. z-30 keeps it under the profile-menu
+          backdrop and modal overlays (z-40/z-50). */}
+      <nav
+        aria-label="Primary"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="flex">
+          {navTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              aria-current={activeTab === tab.id ? 'page' : undefined}
+              className={`flex-1 pt-2 pb-1.5 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-150 ${
+                activeTab === tab.id
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-slate-400 dark:text-slate-500'
+              }`}
+            >
+              <tab.icon size={20} />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 };

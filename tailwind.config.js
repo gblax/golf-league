@@ -90,6 +90,9 @@ export default {
         'modal-fade-in': 'modal-fade-in 0.15s ease-out',
         'scale-in': 'scale-in 0.15s ease-out',
         'slide-down': 'slide-down 0.2s ease-out',
+        // One-shot success ping (expanding fairway-green ring), used to confirm
+        // a submitted pick where the eye already is.
+        'flash-success': 'flash-success 0.8s ease-out',
       },
       keyframes: {
         'fade-in': {
@@ -111,6 +114,10 @@ export default {
         'slide-down': {
           '0%': { opacity: '0', transform: 'translateY(-8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'flash-success': {
+          '0%': { boxShadow: '0 0 0 0 rgb(43 128 73 / 0.4)' },
+          '100%': { boxShadow: '0 0 0 14px rgb(43 128 73 / 0)' },
         },
       }
     },

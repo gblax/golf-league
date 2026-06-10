@@ -104,7 +104,10 @@ const ScheduleTab = React.memo(function ScheduleTab({
                   <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
                     Week {tournament.week} Results
                   </p>
-                  <div className="overflow-x-auto">
+                  <div className="relative">
+                    {/* Right-edge fade hints that the table scrolls sideways on phones */}
+                    <div className="sm:hidden pointer-events-none absolute inset-y-0 right-0 w-6 z-10 bg-gradient-to-l from-white dark:from-slate-900" aria-hidden="true" />
+                    <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-800">
@@ -168,6 +171,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
                           })}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
               )}

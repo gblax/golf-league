@@ -5,9 +5,9 @@ empty/loading states, mobile ergonomics, accessibility, and micro-interactions.
 Every finding below was verified against the source on this branch; file and line
 references are accurate as of the commit that introduced this document.
 
-> **Status:** Batches 1 and 2 from the roadmap at the bottom have been implemented,
-> so the quoted "current" code for those findings reflects the pre-fix state.
-> Batch 3 remains open.
+> **Status:** all three batches from the roadmap at the bottom have been implemented,
+> so the quoted "current" code throughout reflects the pre-fix state. This document
+> now serves as the rationale/record for those changes.
 
 **Overall assessment:** the app is in good shape. The clubhouse theme (emerald/amber on
 cool slate, Fraunces display headings) is cohesive, the mobile-first layouts are
@@ -224,11 +224,19 @@ user-appropriate copy. The never-imported `src/hooks/` directory (five stale
 duplicates of App.jsx auth/league/notification logic) was deleted for the same
 single-source-of-truth reason.
 
-**Batch 3 — larger UX investments:**
-skeleton loaders for Picks/Standings; table scroll affordances (edge fade); dropdown
-vs. on-screen keyboard handling; designed empty states (PicksTab, LiveLeaderboard,
-league-select first-run); evaluate a fixed bottom nav on mobile; pick-submit success
-animation; tab-switch fade.
+**Batch 3 — larger UX investments (✅ implemented):**
+PicksTab now shows a layout-mirroring skeleton instead of a spinner (`.skeleton`
+class in `src/index.css`); the schedule results table has a right-edge fade hinting
+at sideways scroll on phones; the golfer search inputs scroll themselves into view
+on focus so the dropdown isn't hidden behind the on-screen keyboard; designed empty
+states landed for PicksTab (no-pick call to action), LiveLeaderboard, and the
+league-select first run, with a shared `EmptyState` component
+(`src/components/EmptyState.jsx`); phones get a fixed bottom tab bar (top tab strip
+remains on `sm+`), with `aria-current` on both; pick submission pings the pick card
+with a one-shot `flash-success` animation; tab switches fade in. (Standings renders
+from already-loaded state, so it has no loading window for a skeleton to fill.)
 
-Batches 1 and 2 are low-risk and almost entirely mechanical; batch 3 items are
-independent of each other and can be cherry-picked.
+All three batches are complete. The pick-state bug where changing a pick left the
+replaced golfer permanently flagged as "used" for the session was fixed alongside
+batch 3 (swap-not-append in `handleSubmitPick`; the post-write reconcile now trusts
+the fresh read instead of unioning stale state).

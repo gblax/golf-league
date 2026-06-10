@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, CheckCircle, Shield, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Flag, Shield, X } from 'lucide-react';
 import LiveLeaderboard from './LiveLeaderboard';
 import Spinner from './Spinner';
 import { normalizeName } from '../utils/liveLeaderboard';
@@ -50,6 +50,32 @@ const PicksTab = React.memo(function PicksTab({
   useEffect(() => {
     setAcknowledgedRisk(false);
   }, [selectedPlayer]);
+
+  // One-shot success ping on the pick card when the saved pick changes (the
+  // optimistic update on submit). Changes that arrive at the end of a loading
+  // cycle are the initial fetch / a league switch, not a submission — only a
+  // submit mutates the pick with no picksLoading transition around it.
+  const [flashPick, setFlashPick] = useState(false);
+  const prevPickRef = useRef(currentWeekPick.golfer);
+  const prevLoadingRef = useRef(picksLoading);
+  useEffect(() => {
+    const prev = prevPickRef.current;
+    const wasLoading = prevLoadingRef.current;
+    prevPickRef.current = currentWeekPick.golfer;
+    prevLoadingRef.current = picksLoading;
+    if (!wasLoading && !picksLoading && currentWeekPick.golfer && prev !== currentWeekPick.golfer) {
+      setFlashPick(true);
+      const t = setTimeout(() => setFlashPick(false), 900);
+      return () => clearTimeout(t);
+    }
+  }, [currentWeekPick.golfer, picksLoading]);
+
+  // Keep a focused search input (and its dropdown) visible above the
+  // on-screen keyboard on phones.
+  const scrollInputIntoView = (e) => {
+    const el = e.target;
+    setTimeout(() => el.scrollIntoView({ block: 'center' }), 150);
+  };
 
   // Reset highlight when the filtered list changes so we never point past the end.
   useEffect(() => {
@@ -132,10 +158,19 @@ const PicksTab = React.memo(function PicksTab({
   };
 
   if (picksLoading) {
+    // Skeleton mirrors the tab's real layout (header row, pick card, search
+    // field, submit button) so content doesn't jump when it loads.
     return (
-      <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <Spinner />
-        <p className="text-sm text-slate-500 dark:text-slate-400">Loading picks...</p>
+      <div className="max-w-xl mx-auto" aria-busy="true">
+        <div className="flex items-center justify-between mb-5">
+          <div className="skeleton h-6 w-32" />
+          <div className="skeleton h-6 w-20" />
+        </div>
+        <div className="skeleton h-24 w-full mb-5 rounded-xl" />
+        <div className="skeleton h-3.5 w-28 mb-2" />
+        <div className="skeleton h-11 w-full mb-5 rounded-xl" />
+        <div className="skeleton h-12 w-full rounded-xl" />
+        <p className="sr-only">Loading picks...</p>
       </div>
     );
   }
@@ -189,7 +224,7 @@ const PicksTab = React.memo(function PicksTab({
 
       {/* Current Selection Card */}
       {currentWeekPick.golfer ? (
-        <div className="mb-5 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+        <div className={`mb-5 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 ${flashPick ? 'animate-flash-success' : ''}`}>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-0.5">Current Pick</p>
@@ -210,9 +245,11 @@ const PicksTab = React.memo(function PicksTab({
           </div>
         </div>
       ) : (
-        <div className="mb-5 p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            No pick yet for Week {currentWeek} · <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatPrizePool(currentTournament?.prize_pool)}</span> purse
+        <div className="mb-5 p-5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-center">
+          <Flag className="mx-auto mb-2 text-emerald-500 dark:text-emerald-400" size={22} aria-hidden="true" />
+          <p className="text-sm font-semibold text-slate-900 dark:text-white">No pick yet for Week {currentWeek}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatPrizePool(currentTournament?.prize_pool)}</span> purse — search below to lock in your golfer.
           </p>
         </div>
       )}
@@ -233,7 +270,7 @@ const PicksTab = React.memo(function PicksTab({
               setShowPrimaryDropdown(true);
               setPrimaryHighlightIndex(0);
             }}
-            onFocus={() => setShowPrimaryDropdown(true)}
+            onFocus={(e) => { setShowPrimaryDropdown(true); scrollInputIntoView(e); }}
             onKeyDown={handlePrimaryKeyDown}
             autoComplete="off"
             autoCorrect="off"
@@ -327,7 +364,7 @@ const PicksTab = React.memo(function PicksTab({
                 setShowBackupDropdown(true);
                 setBackupHighlightIndex(0);
               }}
-              onFocus={() => setShowBackupDropdown(true)}
+              onFocus={(e) => { setShowBackupDropdown(true); scrollInputIntoView(e); }}
               onKeyDown={handleBackupKeyDown}
               autoComplete="off"
               autoCorrect="off"

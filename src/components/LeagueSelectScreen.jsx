@@ -41,6 +41,13 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
           <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Welcome, {currentUser?.name}</p>
         </div>
 
+        {/* First-run guidance for brand-new users with no leagues yet */}
+        {userLeagues.length === 0 && (
+          <p className="text-sm text-slate-500 dark:text-slate-400 text-center mb-5 px-2">
+            You're all set! Join a league with an invite code from your commissioner, or create your own and invite friends.
+          </p>
+        )}
+
         {/* League selection tabs */}
         <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
           {userLeagues.length > 0 && (

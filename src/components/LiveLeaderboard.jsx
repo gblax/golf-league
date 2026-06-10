@@ -121,7 +121,10 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
           })}
         </div>
       ) : (
-        <p className="text-xs text-slate-400 dark:text-slate-500 italic">No league picks to show for this week yet.</p>
+        <div className="px-3 py-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-center">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">No league picks on the board yet.</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Members' picks appear here once their golfers are on the live leaderboard.</p>
+        </div>
       )}
 
       {/* Full field (collapsible) */}

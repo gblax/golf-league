@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy, Shield, Mail, Settings, ChevronDown } from 'lucide-react';
+import EmptyState from './EmptyState';
 import Spinner from './Spinner';
 
 const CommissionerTab = React.memo(function CommissionerTab({
@@ -447,10 +448,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
           )}
 
           {!editTournamentId && (
-            <div className="text-center py-10 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-              <Trophy className="text-slate-300 dark:text-slate-600 mx-auto mb-2" size={32} />
-              <p className="text-xs text-slate-400 dark:text-slate-500">Select a tournament above to edit results.</p>
-            </div>
+            <EmptyState icon={Trophy} caption="Select a tournament above to edit results." />
           )}
         </div>
       </div>
