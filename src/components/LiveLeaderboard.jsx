@@ -127,6 +127,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
       {/* Full field (collapsible) */}
       <button
         onClick={() => setShowField((v) => !v)}
+        aria-expanded={showField}
         className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
       >
         {showField ? <ChevronDown size={14} /> : <ChevronRight size={14} />}

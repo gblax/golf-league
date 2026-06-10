@@ -5,6 +5,10 @@ empty/loading states, mobile ergonomics, accessibility, and micro-interactions.
 Every finding below was verified against the source on this branch; file and line
 references are accurate as of the commit that introduced this document.
 
+> **Status:** the Batch 1 quick wins from the roadmap at the bottom were implemented
+> immediately after this review, so the quoted "current" code for those findings
+> reflects the pre-fix state. Batches 2 and 3 remain open.
+
 **Overall assessment:** the app is in good shape. The clubhouse theme (emerald/amber on
 cool slate, Fraunces display headings) is cohesive, the mobile-first layouts are
 thoughtful (dynamic viewport height, safe-area insets, 16px inputs to prevent iOS zoom,
@@ -27,7 +31,6 @@ Findings are tagged **Impact** (what it costs users) and **Effort** (to fix).
 | 3 | Toasts have no `role="status"`/`aria-live`; dismiss button unlabeled | `src/App.jsx:1824-1843` (+3 inline copies), `src/components/NotificationToast.jsx:8-25` | Medium (a11y) | Small |
 | 4 | Schedule rows expand via a clickable `<div>` — no keyboard access | `src/components/ScheduleTab.jsx:26-29` | Medium (a11y) | Small |
 | 5 | Toggle switch track nearly invisible when off in dark mode | `src/App.jsx:2001`, `2017` | Medium (a11y) | Small |
-| 6 | "Mark as Complete" fires immediately with no confirmation | `src/components/CommissionerTab.jsx:263-270` | Medium | Small |
 
 ### 1.1 Dead duplicated components (the biggest cleanup win)
 
@@ -89,15 +92,6 @@ visible. (The toggles already have `role="switch"` + `aria-checked`, which is go
 
 **Recommendation:** `dark:bg-slate-700` with a `border border-slate-600`, or follow the
 emerald rename from 1.2 for the on-state at the same time.
-
-### 1.6 No confirmation on "Mark as Complete"
-
-`CommissionerTab.jsx:263-270` calls `handleMarkTournamentComplete` directly. Completing
-a tournament affects scoring/standings for the whole league and there's no in-app undo.
-
-**Recommendation:** a lightweight confirm step (two-tap "Are you sure?" inline state or
-a small modal). Same treatment could apply to "Save" on the tournament winner when it
-clears an existing value (`CommissionerTab.jsx:316-320` already warns, which is good).
 
 ---
 
@@ -209,12 +203,13 @@ on disclosure controls:
 
 ## Suggested roadmap
 
-**Batch 1 — quick wins (a small PR, ~a day):**
+**Batch 1 — quick wins (✅ implemented alongside this report):**
 toast `aria-live` + dismiss label; `aria-expanded`/`aria-label` on disclosure controls;
 ScheduleTab row → `<button>`; toggle track contrast; `green-/gray-` → `emerald-/slate-`
 rename on the two off-theme surfaces; "No pick" casing; duplicate `w-full` cleanup;
-confirm step on Mark as Complete; loading/disabled state on commissioner save buttons;
-"Copied ✓" state; placeholder/disabled contrast tweaks.
+loading/disabled state on commissioner save buttons; "Copied ✓" state;
+placeholder/disabled contrast tweaks. (One finding from the original draft was dropped:
+"Mark as Complete" already confirms via `window.confirm` in its App.jsx handler.)
 
 **Batch 2 — consolidation (the structural payoff):**
 resolve the dead-component duplication (adopt the extracted screens/modals/toast in

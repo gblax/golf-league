@@ -1479,7 +1479,7 @@ const handleSubmitPick = async () => {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
         {notification && (
-          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1512,7 +1512,7 @@ const handleSubmitPick = async () => {
             </div>
             <button
               onClick={handleResetPassword}
-              className="w-full btn-primary w-full py-3"
+              className="btn-primary w-full py-3"
             >
               Update Password
             </button>
@@ -1535,7 +1535,7 @@ const handleSubmitPick = async () => {
         </button>
 
         {notification && (
-          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1610,7 +1610,7 @@ const handleSubmitPick = async () => {
               <>
                 <button
                   onClick={handleForgotPassword}
-                  className="w-full btn-primary w-full py-3"
+                  className="btn-primary w-full py-3"
                 >
                   Send Reset Email
                 </button>
@@ -1630,7 +1630,7 @@ const handleSubmitPick = async () => {
                 >
                   {loginLoading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                       {isSignup ? 'Creating Account...' : 'Signing In...'}
                     </span>
                   ) : (
@@ -1674,7 +1674,7 @@ const handleSubmitPick = async () => {
         </button>
 
         {notification && (
-          <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
             notification.type === 'success'
               ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
               : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1698,20 +1698,20 @@ const handleSubmitPick = async () => {
             {userLeagues.length > 0 && (
               <button
                 onClick={() => setLeagueAction('select')}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
               >
                 My Leagues
               </button>
             )}
             <button
               onClick={() => setLeagueAction('join')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
             >
               Join League
             </button>
             <button
               onClick={() => setLeagueAction('create')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
             >
               Create League
             </button>
@@ -1724,16 +1724,16 @@ const handleSubmitPick = async () => {
                 <button
                   key={league.id}
                   onClick={() => selectLeague(league)}
-                  className="w-full p-4 bg-gray-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/20 border-2 border-slate-200 dark:border-slate-700 hover:border-green-400 dark:hover:border-green-500 rounded-xl text-left transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-xl text-left transition-all"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-gray-800 dark:text-gray-100">{league.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="font-bold text-slate-900 dark:text-white">{league.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {league.role === 'commissioner' ? 'Commissioner' : 'Member'}
                       </p>
                     </div>
-                    <ChevronRight className="text-gray-400" size={20} />
+                    <ChevronRight className="text-slate-400" size={20} />
                   </div>
                 </button>
               ))}
@@ -1743,7 +1743,7 @@ const handleSubmitPick = async () => {
           {/* Join a league */}
           {leagueAction === 'join' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Enter the invite code from your league commissioner to join an existing league.
               </p>
               <div>
@@ -1764,7 +1764,7 @@ const handleSubmitPick = async () => {
               </div>
               <button
                 onClick={handleJoinLeague}
-                className="w-full btn-primary w-full py-3"
+                className="btn-primary w-full py-3"
               >
                 Join League
               </button>
@@ -1774,7 +1774,7 @@ const handleSubmitPick = async () => {
           {/* Create a league */}
           {leagueAction === 'create' && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Create a new league and invite your friends with a unique invite code.
               </p>
               <div>
@@ -1794,7 +1794,7 @@ const handleSubmitPick = async () => {
               <button
                 onClick={handleCreateLeague}
                 disabled={creatingLeague}
-                className="w-full btn-primary w-full py-3"
+                className="btn-primary w-full py-3"
               >
                 {creatingLeague ? 'Creating...' : 'Create League'}
               </button>
@@ -1822,7 +1822,7 @@ const handleSubmitPick = async () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
       {notification && (
-        <div className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
+        <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
           notification.type === 'success'
             ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
             : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
@@ -1835,6 +1835,7 @@ const handleSubmitPick = async () => {
           <span className="text-sm font-medium">{notification.message}</span>
           <button
             onClick={() => setNotification(null)}
+            aria-label="Dismiss notification"
             className="ml-auto shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             <XCircle size={16} />
@@ -1967,17 +1968,17 @@ const handleSubmitPick = async () => {
 
                   <div className="space-y-4">
                     {!pushSupported ? (
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <p className="text-slate-600 dark:text-slate-400">
                         Push notifications are not supported on this browser. Try using Chrome, Edge, or Safari 16.4+ with the app installed to your home screen.
                       </p>
                     ) : pushPermission === 'denied' ? (
-                      <p className="text-gray-600 dark:text-gray-400">
+                      <p className="text-slate-600 dark:text-slate-400">
                         Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
                       </p>
                     ) : pushSubscribed ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <p className="text-gray-800 dark:text-gray-200 font-medium">Push notifications are enabled</p>
+                          <p className="text-slate-800 dark:text-slate-200 font-medium">Push notifications are enabled</p>
                           <button
                             onClick={handlePushUnsubscribe}
                             disabled={pushLoading}
@@ -1989,8 +1990,8 @@ const handleSubmitPick = async () => {
                         <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">When weekly results are posted</p>
+                              <p className="text-slate-800 dark:text-slate-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">When weekly results are posted</p>
                             </div>
                             <button
                               type="button"
@@ -1998,15 +1999,15 @@ const handleSubmitPick = async () => {
                               aria-checked={notifyResults}
                               aria-labelledby="notify-results-label"
                               onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
-                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
                             >
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
                             </button>
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-gray-800 dark:text-gray-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">Wednesday evening if you haven't picked yet</p>
+                              <p className="text-slate-800 dark:text-slate-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Wednesday evening if you haven't picked yet</p>
                             </div>
                             <button
                               type="button"
@@ -2014,7 +2015,7 @@ const handleSubmitPick = async () => {
                               aria-checked={notifyReminders}
                               aria-labelledby="notify-reminders-label"
                               onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
-                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-500'}`}
+                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
                             >
                               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
                             </button>
@@ -2024,8 +2025,8 @@ const handleSubmitPick = async () => {
                     ) : (
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-gray-800 dark:text-gray-200 font-medium">Get notified when results are posted</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Receive push notifications on this device.</p>
+                          <p className="text-slate-800 dark:text-slate-200 font-medium">Get notified when results are posted</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Receive push notifications on this device.</p>
                         </div>
                         <button
                           onClick={handlePushSubscribe}
@@ -2064,6 +2065,7 @@ const handleSubmitPick = async () => {
                     <button
                       onClick={() => setShowAccountSettings(false)}
                       className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
+                      aria-label="Close account settings"
                     >
                       <XCircle size={28} />
                     </button>

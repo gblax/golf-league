@@ -23,11 +23,14 @@ const ScheduleTab = React.memo(function ScheduleTab({
 
           return (
             <div key={tournament.id}>
-              <div
-                onClick={() => isCompleted && setExpandedScheduleTournament(
+              <button
+                type="button"
+                onClick={() => setExpandedScheduleTournament(
                   isExpanded ? null : tournament.id
                 )}
-                className={`p-3 sm:p-4 rounded-xl border transition-colors ${
+                disabled={!isCompleted}
+                aria-expanded={isCompleted ? isExpanded : undefined}
+                className={`w-full text-left p-3 sm:p-4 rounded-xl border transition-colors ${
                   isCompleted ? 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50' : 'cursor-default'
                 } ${
                   isCurrent
@@ -93,7 +96,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
                     )}
                   </div>
                 </div>
-              </div>
+              </button>
 
               {/* Expanded tournament results */}
               {isExpanded && isCompleted && (

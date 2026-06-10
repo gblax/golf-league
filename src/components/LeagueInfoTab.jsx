@@ -275,7 +275,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                       return isLocked ? (
                         <div className="flex items-center gap-1.5">
                           <XCircle className="text-red-400 dark:text-red-400" size={14} />
-                          <span className="text-xs text-red-500 dark:text-red-400 font-medium">No Pick</span>
+                          <span className="text-xs text-red-500 dark:text-red-400 font-medium">No pick</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">

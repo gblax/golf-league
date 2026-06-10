@@ -434,7 +434,7 @@ const PicksTab = React.memo(function PicksTab({
       >
         {isLocked ? 'Picks Locked' : submittingPick ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             Submitting...
           </span>
         ) : 'Submit Pick'}

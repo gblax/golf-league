@@ -225,6 +225,7 @@ const StandingsTab = React.memo(function StandingsTab({
             <div key={player.id}>
               <button
                 onClick={() => toggleRowExpansion(player.id)}
+                aria-expanded={!!isExpanded}
                 className={`w-full text-left rounded-xl border transition-colors ${
                   isCurrentUser
                     ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
@@ -365,6 +366,8 @@ const StandingsTab = React.memo(function StandingsTab({
                   <td className="py-3 px-2 text-center">
                     <button
                       onClick={() => toggleRowExpansion(player.id)}
+                      aria-expanded={!!expandedRows[player.id]}
+                      aria-label={`${expandedRows[player.id] ? 'Collapse' : 'Expand'} week-by-week results for ${player.name}`}
                       className="text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       {expandedRows[player.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}

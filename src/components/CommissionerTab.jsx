@@ -28,6 +28,10 @@ const CommissionerTab = React.memo(function CommissionerTab({
   loadTournamentPicks,
   getPenaltyAmount,
 }) {
+  const [inviteCopied, setInviteCopied] = React.useState(false);
+  const [savingSettings, setSavingSettings] = React.useState(false);
+  const [savingResultsUserId, setSavingResultsUserId] = React.useState(null);
+
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Commissioner</h2>
@@ -47,13 +51,18 @@ const CommissionerTab = React.memo(function CommissionerTab({
               {currentLeague?.invite_code}
             </div>
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(currentLeague?.invite_code || '');
-                showNotification('success', 'Invite code copied!');
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(currentLeague?.invite_code || '');
+                  setInviteCopied(true);
+                  setTimeout(() => setInviteCopied(false), 2000);
+                } catch {
+                  showNotification('error', 'Could not copy — select the code and copy it manually');
+                }
               }}
               className="btn-primary py-2.5"
             >
-              Copy
+              {inviteCopied ? 'Copied ✓' : 'Copy'}
             </button>
           </div>
         </div>
@@ -62,6 +71,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
         <div className="card overflow-hidden">
           <button
             onClick={() => setShowLeagueSettings(!showLeagueSettings)}
+            aria-expanded={showLeagueSettings}
             className="w-full flex items-center justify-between p-5"
           >
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -171,26 +181,32 @@ const CommissionerTab = React.memo(function CommissionerTab({
               })()}
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   const total = (leagueSettings.payout_first_pct || 0) + (leagueSettings.payout_second_pct || 0) + (leagueSettings.payout_third_pct || 0);
                   if (total > 100) {
                     showNotification('error', `Payout percentages total ${total}% — must not exceed 100%`);
                     return;
                   }
-                  handleUpdateLeagueSettings({
-                  no_pick_penalty: leagueSettings.no_pick_penalty,
-                  missed_cut_penalty: leagueSettings.missed_cut_penalty,
-                  withdrawal_penalty: leagueSettings.withdrawal_penalty,
-                  dq_penalty: leagueSettings.dq_penalty,
-                  buy_in_amount: leagueSettings.buy_in_amount,
-                  payout_first_pct: leagueSettings.payout_first_pct,
-                  payout_second_pct: leagueSettings.payout_second_pct,
-                  payout_third_pct: leagueSettings.payout_third_pct
-                });
+                  setSavingSettings(true);
+                  try {
+                    await handleUpdateLeagueSettings({
+                      no_pick_penalty: leagueSettings.no_pick_penalty,
+                      missed_cut_penalty: leagueSettings.missed_cut_penalty,
+                      withdrawal_penalty: leagueSettings.withdrawal_penalty,
+                      dq_penalty: leagueSettings.dq_penalty,
+                      buy_in_amount: leagueSettings.buy_in_amount,
+                      payout_first_pct: leagueSettings.payout_first_pct,
+                      payout_second_pct: leagueSettings.payout_second_pct,
+                      payout_third_pct: leagueSettings.payout_third_pct
+                    });
+                  } finally {
+                    setSavingSettings(false);
+                  }
                 }}
+                disabled={savingSettings}
                 className="btn-primary w-full sm:w-auto"
               >
-                Save Settings
+                {savingSettings ? 'Saving…' : 'Save Settings'}
               </button>
 
               <p className="text-[10px] text-slate-400 dark:text-slate-500">
@@ -308,7 +324,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                             <button
                               onClick={() => handleSaveTournamentWinner(editTournamentId, editTournamentWinner)}
                               disabled={savingTournamentWinner || !isDirty}
-                              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="btn-primary"
                             >
                               {savingTournamentWinner ? 'Saving…' : 'Save'}
                             </button>
@@ -403,10 +419,18 @@ const CommissionerTab = React.memo(function CommissionerTab({
                                   </div>
 
                                   <button
-                                    onClick={() => handleSaveEditResults(user.id)}
+                                    onClick={async () => {
+                                      setSavingResultsUserId(user.id);
+                                      try {
+                                        await handleSaveEditResults(user.id);
+                                      } finally {
+                                        setSavingResultsUserId(null);
+                                      }
+                                    }}
+                                    disabled={savingResultsUserId === user.id}
                                     className="btn-primary w-full mt-3"
                                   >
-                                    Save Changes
+                                    {savingResultsUserId === user.id ? 'Saving…' : 'Save Changes'}
                                   </button>
                                 </div>
                               );
