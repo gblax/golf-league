@@ -38,7 +38,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
   index,
   members = [],
   tournamentName,
-  currentUserName,
+  currentUserId,
   playerColors = {},
 }) {
   const [showField, setShowField] = React.useState(false);
@@ -100,7 +100,8 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
       {memberRows.length > 0 ? (
         <div className="space-y-1">
           {memberRows.map((m) => {
-            const isYou = currentUserName && m.name === currentUserName;
+            // Match by member id, not display name — names can collide.
+            const isYou = !!currentUserId && m.id === currentUserId;
             return (
               <div
                 key={m.id}

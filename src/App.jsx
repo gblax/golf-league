@@ -1866,7 +1866,7 @@ const handleSubmitPick = async () => {
                 liveIndex={liveIndex}
                 liveMembers={liveMembers}
                 playerColors={playerColors}
-                currentUserName={currentUser?.name}
+                currentUserId={currentUser?.id}
                 weekRecap={weekRecap}
                 leagueId={currentLeague?.id}
                 fieldNames={fieldNames}

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Trophy, X } from 'lucide-react';
-
-const fmtMoney = (n) =>
-  n >= 1000000 ? `$${(n / 1000000).toFixed(2)}M` : `$${Math.round(n).toLocaleString()}`;
+import { formatWinnings } from '../utils/money';
 
 // Deterministic particle layout so the celebration renders identically each
 // time without a randomness re-render. Falls once (forwards fill), and the
@@ -95,7 +93,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
                 <span className="font-medium">{me.golfer}</span>
                 {' — '}
                 <span className={`font-semibold tabular-nums ${me.winnings > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
-                  {fmtMoney(me.winnings)}
+                  {formatWinnings(me.winnings)}
                 </span>
                 {me.penalty > 0 && (
                   <span className="font-semibold tabular-nums text-red-500 dark:text-red-400"> (−${me.penalty})</span>
@@ -115,7 +113,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
             {recap.topEarner.golfer ? ` (${recap.topEarner.golfer})` : ''}
             {' — '}
             <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {fmtMoney(recap.topEarner.winnings)}
+              {formatWinnings(recap.topEarner.winnings)}
             </span>
           </p>
         )}
@@ -124,7 +122,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
             <span className="text-slate-400 dark:text-slate-500">League lead:</span>{' '}
             <span className="font-medium">{recap.leader.name}</span>
             {' — '}
-            <span className="font-semibold tabular-nums">{fmtMoney(recap.leader.winnings)}</span>
+            <span className="font-semibold tabular-nums">{formatWinnings(recap.leader.winnings)}</span>
           </p>
         )}
       </div>

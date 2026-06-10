@@ -61,8 +61,6 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
   const xFor = (i) => (weeks.length === 1 ? padL + plotW / 2 : padL + (i / (weeks.length - 1)) * plotW);
   const yFor = (v) => padT + (1 - (v - yMin) / ySpan) * plotH;
 
-  const zeroY = yFor(0);
-
   // ---- Current user's week-by-week winnings (personal bars) ----
   const me = standings.find((p) => p.id === currentUser?.id);
   const myWeekly = weeks.map((wk) => {

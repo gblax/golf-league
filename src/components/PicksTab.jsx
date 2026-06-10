@@ -5,6 +5,7 @@ import LiveLeaderboard from './LiveLeaderboard';
 import Spinner from './Spinner';
 import WeekRecapCard from './WeekRecapCard';
 import { isOutStatus, lookupLive, normalizeName, outLabel } from '../utils/liveLeaderboard';
+import { formatWinnings } from '../utils/money';
 
 const PicksTab = React.memo(function PicksTab({
   currentWeek,
@@ -38,7 +39,7 @@ const PicksTab = React.memo(function PicksTab({
   liveIndex,
   liveMembers,
   playerColors,
-  currentUserName,
+  currentUserId,
   // Weekly field backstop (Phase 2)
   fieldNames,
   fieldLoaded,
@@ -205,8 +206,6 @@ const PicksTab = React.memo(function PicksTab({
 
     const historyByGolfer = {};
     (pickHistory || []).forEach(w => { if (w.golfer) historyByGolfer[w.golfer] = w; });
-    const fmtWinnings = (n) =>
-      n >= 1000000 ? `$${(n / 1000000).toFixed(1)}M` : `$${Math.round(n).toLocaleString()}`;
     const sorted = [...pastPicks].sort((a, b) => {
       const wa = historyByGolfer[a]?.week ?? Infinity;
       const wb = historyByGolfer[b]?.week ?? Infinity;
@@ -232,7 +231,7 @@ const PicksTab = React.memo(function PicksTab({
                 <span className="text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600">{golfer}</span>
                 {info && (
                   info.winnings > 0 ? (
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{fmtWinnings(info.winnings)}</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatWinnings(info.winnings)}</span>
                   ) : (
                     <span className="text-slate-400 dark:text-slate-500 tabular-nums">$0</span>
                   )
@@ -249,7 +248,7 @@ const PicksTab = React.memo(function PicksTab({
   // A locked form isn't information. Lead with the user's golfer and the live
   // leaderboard; the pick form returns when picks reopen on Monday.
   if (isLocked) {
-    const myLiveRow = (liveMembers || []).find(m => m.name === currentUserName) || null;
+    const myLiveRow = (liveMembers || []).find(m => m.id === currentUserId) || null;
     const myLive = liveIndex && !liveIndex.isEmpty && myLiveRow ? lookupLive(liveIndex, myLiveRow) : null;
     const myOut = myLive && isOutStatus(myLive.status);
 
@@ -312,7 +311,7 @@ const PicksTab = React.memo(function PicksTab({
             index={liveIndex}
             members={liveMembers}
             tournamentName={currentTournament?.name}
-            currentUserName={currentUserName}
+            currentUserId={currentUserId}
             playerColors={playerColors}
           />
         ) : (
@@ -647,7 +646,7 @@ const PicksTab = React.memo(function PicksTab({
             index={liveIndex}
             members={liveMembers}
             tournamentName={currentTournament?.name}
-            currentUserName={currentUserName}
+            currentUserId={currentUserId}
             playerColors={playerColors}
           />
         </div>
