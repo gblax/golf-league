@@ -103,6 +103,9 @@ const App = () => {
   const [expandedScheduleTournament, setExpandedScheduleTournament] = useState(null);
   const [submittingPick, setSubmittingPick] = useState(false);
 
+  // Themed confirmation for "mark tournament complete" (replaces window.confirm)
+  const [confirmCompleteTournament, setConfirmCompleteTournament] = useState(null);
+
   // League settings state
   const [leagueSettings, setLeagueSettings] = useState({
     backup_picks_enabled: false,
@@ -1265,25 +1268,26 @@ const handleSaveResults = async (playerId) => {
     }
   };
 
-  const handleMarkTournamentComplete = async (tournamentId) => {
+  // Opens the themed confirm dialog; the actual write happens on confirm.
+  const handleMarkTournamentComplete = (tournamentId) => {
     const tournament = tournaments.find(t => t.id === tournamentId);
     if (!tournament) {
       showNotification('error', 'Tournament not found');
       return;
     }
+    setConfirmCompleteTournament(tournament);
+  };
 
-    const confirmed = window.confirm(
-      `Mark "${tournament.name}" (Week ${tournament.week}) as complete?\n\n` +
-      `Use this only when the automated results script didn't mark it complete. ` +
-      `Make sure all picks have winnings/penalties entered first.`
-    );
-    if (!confirmed) return;
+  const confirmMarkTournamentComplete = async () => {
+    const tournament = confirmCompleteTournament;
+    if (!tournament) return;
+    setConfirmCompleteTournament(null);
 
     try {
       const { error } = await supabase
         .from('tournaments')
         .update({ completed: true })
-        .eq('id', tournamentId);
+        .eq('id', tournament.id);
 
       if (error) throw error;
 
@@ -1873,6 +1877,32 @@ const handleSubmitPick = async () => {
             )}          </div>
         </div>
       </div>
+
+      {/* Mark-complete confirmation (themed, replaces window.confirm) */}
+      {confirmCompleteTournament && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-complete-title">
+          <div className="modal-panel p-5">
+            <h3 id="confirm-complete-title" className="text-base font-semibold text-slate-900 dark:text-white mb-2">
+              Mark tournament complete?
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+              &ldquo;{confirmCompleteTournament.name}&rdquo; (Week {confirmCompleteTournament.week}) will be marked complete.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+              Use this only when the automated results script didn&rsquo;t mark it complete.
+              Make sure all picks have winnings/penalties entered first.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmCompleteTournament(null)} className="btn-secondary">
+                Cancel
+              </button>
+              <button onClick={confirmMarkTournamentComplete} className="btn-primary">
+                Mark Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile bottom navigation. z-30 keeps it under the profile-menu
           backdrop and modal overlays (z-40/z-50). */}
