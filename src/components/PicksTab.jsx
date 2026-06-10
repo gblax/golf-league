@@ -15,6 +15,7 @@ const PicksTab = React.memo(function PicksTab({
   showPrimaryDropdown,
   showBackupDropdown,
   timeUntilLock,
+  lockUrgent,
   leagueSettings,
   userPicks,
   filteredPrimaryGolfers,
@@ -193,9 +194,15 @@ const PicksTab = React.memo(function PicksTab({
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Week {currentWeek} Pick</h2>
         {timeUntilLock && timeUntilLock !== 'Locked' && (
-          <span className="badge bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
-            {timeUntilLock} left
-          </span>
+          lockUrgent && !currentWeekPick.golfer ? (
+            <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 animate-pulse">
+              No pick — {timeUntilLock} left
+            </span>
+          ) : (
+            <span className="badge bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+              {timeUntilLock} left
+            </span>
+          )
         )}
         {timeUntilLock === 'Locked' && (
           <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">

@@ -1604,8 +1604,10 @@ const handleSubmitPick = async () => {
                         Locked
                       </span>
                     ) : (
-                      <span className={`badge border ${lockUrgent ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
-                        {timeUntilLock}
+                      // Urgency is only urgent if the user hasn't picked yet —
+                      // a red countdown over a submitted pick is just noise.
+                      <span className={`badge border ${lockUrgent && !currentWeekPick.golfer ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
+                        {lockUrgent && !currentWeekPick.golfer ? `No pick · ${timeUntilLock}` : timeUntilLock}
                       </span>
                     )}
                     {lockTimeLabel && (
@@ -1754,6 +1756,7 @@ const handleSubmitPick = async () => {
                 showPrimaryDropdown={showPrimaryDropdown}
                 showBackupDropdown={showBackupDropdown}
                 timeUntilLock={timeUntilLock}
+                lockUrgent={lockUrgent}
                 leagueSettings={leagueSettings}
                 userPicks={userPicks}
                 filteredPrimaryGolfers={filteredPrimaryGolfers}

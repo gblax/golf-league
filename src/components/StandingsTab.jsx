@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronRight, Trophy, TrendingUp } from 'lucide-react';
+import { ChevronDown, ChevronRight, Lock, Trophy, TrendingUp } from 'lucide-react';
 import { computeCorrectPickCounts } from '../utils/winners';
 import { lookupLive, isOutStatus, outLabel } from '../utils/liveLeaderboard';
 import SeasonTrends from './SeasonTrends';
@@ -18,6 +18,22 @@ function LiveChip({ liveIndex, player, pickName }) {
     <span className="ml-1.5 inline-flex items-center gap-1 align-middle tabular-nums">
       <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{live.position}</span>
       <span className={`text-[10px] font-semibold ${String(live.score || '').startsWith('-') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>{live.score}</span>
+    </span>
+  );
+}
+
+// Pre-lock, other players' picks are sealed — make that read as a deliberate
+// reveal mechanic rather than missing data.
+function SealedChip({ size = 'default' }) {
+  return (
+    <span
+      title="Sealed until picks lock"
+      className={`inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-medium ${
+        size === 'small' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
+      }`}
+    >
+      <Lock size={size === 'small' ? 9 : 11} aria-hidden="true" />
+      Sealed
     </span>
   );
 }
@@ -48,7 +64,7 @@ function renderDesktopPick(player, currentUser, currentTournament, leagueSetting
     return <span className="text-red-500 dark:text-red-400 text-sm">No pick</span>;
   }
   if (display.type === 'locked') {
-    return <span className="text-slate-400 dark:text-slate-500 text-sm">Hidden</span>;
+    return <SealedChip />;
   }
   return (
     <div>
@@ -137,7 +153,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
                 <span className="text-slate-400 dark:text-slate-500">Pick:</span>
                 {shouldHidePick ? (
                   weekData.golfer ? (
-                    <span className="text-slate-400 dark:text-slate-500">Hidden</span>
+                    <SealedChip size="small" />
                   ) : (
                     <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                   )
@@ -280,7 +296,7 @@ const StandingsTab = React.memo(function StandingsTab({
                           </span>
                         )}
                         {pickDisplay.type === 'locked' && (
-                          <span className="text-slate-400 dark:text-slate-500">Hidden</span>
+                          <SealedChip size="small" />
                         )}
                         {pickDisplay.type === 'none' && (
                           <span className="text-red-500 dark:text-red-400">No pick</span>
@@ -423,7 +439,7 @@ const StandingsTab = React.memo(function StandingsTab({
                                   <td className="py-2 px-3 text-xs">
                                     {shouldHidePick ? (
                                       weekData.golfer ? (
-                                        <span className="text-slate-400 dark:text-slate-500">Hidden</span>
+                                        <SealedChip size="small" />
                                       ) : (
                                         <span className="text-red-500 dark:text-red-400 font-medium">No pick</span>
                                       )
