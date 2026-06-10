@@ -1,5 +1,6 @@
 import React from 'react';
 import { Trophy, Shield, Mail, Settings, ChevronDown } from 'lucide-react';
+import Spinner from './Spinner';
 
 const CommissionerTab = React.memo(function CommissionerTab({
   currentLeague,
@@ -60,7 +61,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                   showNotification('error', 'Could not copy — select the code and copy it manually');
                 }
               }}
-              className="btn-primary py-2.5"
+              className="btn-primary"
             >
               {inviteCopied ? 'Copied ✓' : 'Copy'}
             </button>
@@ -350,7 +351,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                       <>
                         {loadingEditPicks ? (
                           <div className="flex flex-col items-center justify-center py-12 gap-3">
-                            <div className="w-8 h-8 border-[3px] border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                            <Spinner />
                             <p className="text-sm text-slate-500 dark:text-slate-400">Loading picks...</p>
                           </div>
                         ) : (
@@ -375,7 +376,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                                       )}
                                     </div>
                                     {userData.winnings > 0 && (
-                                      <span className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
+                                      <span className="badge bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
                                         ${parseInt(userData.winnings).toLocaleString()}
                                       </span>
                                     )}

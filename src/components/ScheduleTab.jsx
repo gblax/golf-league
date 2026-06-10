@@ -44,7 +44,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate">{tournament.name}</h3>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold tabular-nums ${
+                      <span className={`badge ${
                         tournament.prize_pool
                           ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
@@ -77,7 +77,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
                   </div>
                   <div className="flex-shrink-0 flex items-center gap-2">
                     {isCurrent ? (
-                      <span className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white">
+                      <span className="badge bg-emerald-600 dark:bg-emerald-500 text-white">
                         Current
                       </span>
                     ) : isCompleted ? (
@@ -90,7 +90,7 @@ const ScheduleTab = React.memo(function ScheduleTab({
                         />
                       </div>
                     ) : (
-                      <span className="text-[10px] font-medium px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      <span className="badge bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                         Upcoming
                       </span>
                     )}

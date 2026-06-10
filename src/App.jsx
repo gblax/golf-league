@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, TrendingUp, Bell, Shield, Mail, LogOut, LogIn, ChevronDown, ChevronRight, Sun, Moon, Settings, RefreshCw, Menu } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, TrendingUp, Bell, Shield, LogOut, ChevronRight, Sun, Moon, RefreshCw, Menu } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import PicksTab from './components/PicksTab';
 import StandingsTab from './components/StandingsTab';
 import ScheduleTab from './components/ScheduleTab';
 import LeagueInfoTab from './components/LeagueInfoTab';
 import CommissionerTab from './components/CommissionerTab';
+import LoginScreen from './components/LoginScreen';
+import ResetPasswordScreen from './components/ResetPasswordScreen';
+import LeagueSelectScreen from './components/LeagueSelectScreen';
+import NotificationSettingsModal from './components/NotificationSettingsModal';
+import AccountSettingsModal from './components/AccountSettingsModal';
+import NotificationToast from './components/NotificationToast';
+import Spinner from './components/Spinner';
 import { indexLiveLeaderboard, normalizeName } from './utils/liveLeaderboard';
+import { friendlyError } from './utils/errors';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -173,6 +181,11 @@ const App = () => {
     localStorage.setItem('currentLeagueId', league.id);
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem('currentLeagueId');
+  };
+
   const handleCreateLeague = async () => {
     if (!newLeagueName.trim()) {
       showNotification('error', 'Please enter a league name');
@@ -190,7 +203,7 @@ const App = () => {
         .single();
 
       if (error) {
-        showNotification('error', 'Error creating league: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not create the league. Please try again.'));
         return;
       }
 
@@ -222,7 +235,7 @@ const App = () => {
       setNewLeagueName('');
       setLeagueAction('select');
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not create the league. Please try again.'));
     } finally {
       setCreatingLeague(false);
     }
@@ -266,7 +279,7 @@ const App = () => {
         .insert([{ league_id: league.id, user_id: currentUser.id, role: 'member' }]);
 
       if (joinError) {
-        showNotification('error', 'Error joining league: ' + joinError.message);
+        showNotification('error', friendlyError(joinError, 'Could not join the league. Please try again.'));
         return;
       }
 
@@ -277,7 +290,7 @@ const App = () => {
       setJoinInviteCode('');
       setLeagueAction('select');
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not join the league. Please try again.'));
     }
   };
 
@@ -796,7 +809,7 @@ const playersWithWinnings = (usersData || []).map(user => {
         });
 
         if (authError) {
-          showNotification('error', 'Signup failed: ' + authError.message);
+          showNotification('error', friendlyError(authError, 'Could not create your account. Please try again.'));
           return;
         }
 
@@ -813,7 +826,7 @@ const playersWithWinnings = (usersData || []).map(user => {
           .maybeSingle();
 
         if (userError) {
-          showNotification('error', 'Error creating profile: ' + userError.message);
+          showNotification('error', friendlyError(userError, 'Could not finish setting up your account. Please try again.'));
           return;
         }
 
@@ -864,7 +877,7 @@ const playersWithWinnings = (usersData || []).map(user => {
         }
       }
     } catch (error) {
-      showNotification('error', 'Login error: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not sign in. Please try again.'));
     } finally {
       setLoginLoading(false);
     }
@@ -880,13 +893,13 @@ const playersWithWinnings = (usersData || []).map(user => {
         redirectTo: window.location.origin,
       });
       if (error) {
-        showNotification('error', 'Error sending reset email: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not send the reset email. Please try again.'));
       } else {
         showNotification('success', 'Password reset email sent! Check your inbox.');
         setShowForgotPassword(false);
       }
     } catch (error) {
-      showNotification('error', 'Error: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not send the reset email. Please try again.'));
     }
   };
 
@@ -898,14 +911,14 @@ const playersWithWinnings = (usersData || []).map(user => {
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
-        showNotification('error', 'Error resetting password: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not update your password. Please try again.'));
       } else {
         showNotification('success', 'Password updated successfully!');
         setShowResetPassword(false);
         setNewPassword('');
       }
     } catch (error) {
-      showNotification('error', 'Error: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not update your password. Please try again.'));
     }
   };
 
@@ -920,7 +933,7 @@ const playersWithWinnings = (usersData || []).map(user => {
       if (editEmail !== currentUser.email) {
         const { error: authError } = await supabase.auth.updateUser({ email: editEmail });
         if (authError) {
-          showNotification('error', 'Error updating email: ' + authError.message);
+          showNotification('error', friendlyError(authError, 'Could not update your email address.'));
           return;
         }
       }
@@ -935,7 +948,7 @@ const playersWithWinnings = (usersData || []).map(user => {
         .eq('id', currentUser.id);
 
       if (error) {
-        showNotification('error', 'Error updating profile: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not update your profile. Please try again.'));
         return;
       }
 
@@ -946,7 +959,7 @@ const playersWithWinnings = (usersData || []).map(user => {
       setShowAccountSettings(false);
       loadData();
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not update your profile. Please try again.'));
     }
   };
 
@@ -970,7 +983,7 @@ const playersWithWinnings = (usersData || []).map(user => {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
 
       if (error) {
-        showNotification('error', 'Error updating password: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not update your password. Please try again.'));
         return;
       }
 
@@ -978,7 +991,7 @@ const playersWithWinnings = (usersData || []).map(user => {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not update your password. Please try again.'));
     }
   };
 
@@ -1019,7 +1032,7 @@ const playersWithWinnings = (usersData || []).map(user => {
         if (error.code === '23505') { // Unique constraint violation
           showNotification('error', 'This golfer already exists in the list');
         } else {
-          showNotification('error', 'Error adding golfer: ' + error.message);
+          showNotification('error', friendlyError(error, 'Could not add the golfer. Please try again.'));
         }
         return;
       }
@@ -1029,7 +1042,7 @@ const playersWithWinnings = (usersData || []).map(user => {
       setShowAddGolfer(false);
       loadData(); // Reload to update available golfers
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not add the golfer. Please try again.'));
     }
   };
 
@@ -1051,14 +1064,14 @@ const playersWithWinnings = (usersData || []).map(user => {
         .eq('league_id', currentLeague.id);
 
       if (error) {
-        showNotification('error', 'Error saving settings: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not save settings. Please try again.'));
         return;
       }
 
       setLeagueSettings({ ...leagueSettings, ...newSettings });
       showNotification('success', 'Settings saved');
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not save settings. Please try again.'));
     }
   };
 
@@ -1093,7 +1106,7 @@ const handleSaveResults = async (playerId) => {
           }, { onConflict: 'user_id,tournament_id,league_id' });
 
         if (pickError) {
-          showNotification('error', 'Error saving penalty: ' + pickError.message);
+          showNotification('error', friendlyError(pickError, 'Could not save the penalty. Please try again.'));
           return;
         }
 
@@ -1126,7 +1139,7 @@ const handleSaveResults = async (playerId) => {
         .eq('league_id', currentLeague.id);
       
       if (pickError) {
-        showNotification('error', 'Error saving results: ' + pickError.message);
+        showNotification('error', friendlyError(pickError, 'Could not save the results. Please try again.'));
         return;
       }
       
@@ -1146,7 +1159,7 @@ const handleSaveResults = async (playerId) => {
       showNotification('success', 'Results saved');
       loadData(); // Reload to show updated standings
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not save the results. Please try again.'));
     }
   };
 
@@ -1259,7 +1272,7 @@ const handleSaveResults = async (playerId) => {
       showNotification('success', `Tournament marked as complete`);
       loadData();
     } catch (error) {
-      showNotification('error', 'Error marking tournament complete: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not mark the tournament complete.'));
     }
   };
 
@@ -1275,7 +1288,7 @@ const handleSaveResults = async (playerId) => {
       showNotification('success', trimmed ? 'Winning golfer saved' : 'Winning golfer cleared');
       loadData();
     } catch (error) {
-      showNotification('error', 'Error saving winning golfer: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not save the winning golfer.'));
     } finally {
       setSavingTournamentWinner(false);
     }
@@ -1341,7 +1354,7 @@ const handleSaveResults = async (playerId) => {
       loadTournamentPicks(editTournamentId); // Reload picks
       loadData(); // Reload standings
     } catch (error) {
-      showNotification('error', 'Error saving: ' + error.message);
+      showNotification('error', friendlyError(error, 'Could not save the results. Please try again.'));
     }
   };
 
@@ -1384,7 +1397,7 @@ const handleSubmitPick = async () => {
         }, { onConflict: 'user_id,tournament_id,league_id' });
 
       if (error) {
-        showNotification('error', 'Error submitting pick: ' + error.message);
+        showNotification('error', friendlyError(error, 'Could not submit your pick. Please try again.'));
         return;
       }
 
@@ -1401,7 +1414,7 @@ const handleSubmitPick = async () => {
       // possibly-stale read overwrite the pick we just confirmed.
       loadData({ preservePick: true });
     } catch (error) {
-      showNotification('error', error.message);
+      showNotification('error', friendlyError(error, 'Could not submit your pick. Please try again.'));
     } finally {
       setSubmittingPick(false);
     }
@@ -1468,7 +1481,7 @@ const handleSubmitPick = async () => {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center transition-colors duration-300">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-[3px] border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+          <Spinner size="xl" />
           <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Loading...</div>
         </div>
       </div>
@@ -1477,371 +1490,66 @@ const handleSubmitPick = async () => {
 
   if (showResetPassword) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
-        {notification && (
-          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
-            <span className="text-sm font-medium">{notification.message}</span>
-          </div>
-        )}
-        <div className="card p-8 max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-4">
-              <Trophy className="text-white" size={40} />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Set New Password</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">Enter your new password below</p>
-          </div>
-          <div className="space-y-5">
-            <div>
-              <label className="label">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleResetPassword()}
-                autoComplete="new-password"
-                enterKeyHint="go"
-                className="input"
-                placeholder="New password (min 6 characters)"
-              />
-            </div>
-            <button
-              onClick={handleResetPassword}
-              className="btn-primary w-full py-3"
-            >
-              Update Password
-            </button>
-          </div>
-        </div>
-      </div>
+      <ResetPasswordScreen
+        notification={notification}
+        newPassword={newPassword}
+        setNewPassword={setNewPassword}
+        handleResetPassword={handleResetPassword}
+      />
     );
   }
 
   if (showLogin) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
-        {/* Dark mode toggle for login page */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
-          aria-label="Toggle dark mode"
-        >
-          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        {notification && (
-          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
-            <span className="text-sm font-medium">{notification.message}</span>
-          </div>
-        )}
-
-        <div className="card p-8 max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-4">
-              <Trophy className="text-white" size={40} />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Golf One and Done</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2">{showForgotPassword ? 'Reset Password' : isSignup ? 'Create Account' : 'Welcome Back'}</p>
-          </div>
-
-          <div className="space-y-5">
-            {isSignup && (
-              <div>
-                <label className="label">Name</label>
-                <input
-                  type="text"
-                  value={signupName}
-                  onChange={(e) => setSignupName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  autoComplete="name"
-                  autoCapitalize="words"
-                  enterKeyHint="next"
-                  className="input"
-                  placeholder="Your name"
-                />
-              </div>
-            )}
-
-            <div>
-              <label className="label">Email</label>
-              <input
-                type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (showForgotPassword ? handleForgotPassword() : handleLogin())}
-                autoComplete="email"
-                inputMode="email"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                enterKeyHint={showForgotPassword ? 'go' : 'next'}
-                className="input"
-                placeholder="your@email.com"
-              />
-            </div>
-
-            {!showForgotPassword && (
-              <div>
-                <label className="label">Password</label>
-                <input
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  autoComplete={isSignup ? 'new-password' : 'current-password'}
-                  enterKeyHint="go"
-                  className="input"
-                  placeholder="Password"
-                />
-              </div>
-            )}
-
-            {showForgotPassword ? (
-              <>
-                <button
-                  onClick={handleForgotPassword}
-                  className="btn-primary w-full py-3"
-                >
-                  Send Reset Email
-                </button>
-                <button
-                  onClick={() => setShowForgotPassword(false)}
-                  className="w-full text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium transition-colors duration-150"
-                >
-                  Back to sign in
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleLogin}
-                  disabled={loginLoading}
-                  className="btn-primary w-full py-3"
-                >
-                  {loginLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      {isSignup ? 'Creating Account...' : 'Signing In...'}
-                    </span>
-                  ) : (
-                    isSignup ? 'Create Account' : 'Sign In'
-                  )}
-                </button>
-
-                {!isSignup && (
-                  <button
-                    onClick={() => setShowForgotPassword(true)}
-                    className="w-full text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm font-medium transition-colors duration-150"
-                  >
-                    Forgot password?
-                  </button>
-                )}
-
-                <button
-                  onClick={() => setIsSignup(!isSignup)}
-                  className="w-full text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 text-sm font-medium transition-colors duration-150"
-                >
-                  {isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <LoginScreen
+        notification={notification}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        loginEmail={loginEmail}
+        setLoginEmail={setLoginEmail}
+        loginPassword={loginPassword}
+        setLoginPassword={setLoginPassword}
+        signupName={signupName}
+        setSignupName={setSignupName}
+        isSignup={isSignup}
+        setIsSignup={setIsSignup}
+        showForgotPassword={showForgotPassword}
+        setShowForgotPassword={setShowForgotPassword}
+        loginLoading={loginLoading}
+        handleLogin={handleLogin}
+        handleForgotPassword={handleForgotPassword}
+      />
     );
   }
 
   // League selection/creation screen
   if (showLeagueSelect || !currentLeague) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
-          aria-label="Toggle dark mode"
-        >
-          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        {notification && (
-          <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
-            notification.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-              : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-          }`}>
-            {notification.type === 'success' ? <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />}
-            <span className="text-sm font-medium">{notification.message}</span>
-          </div>
-        )}
-
-        <div className="card p-8 max-w-md w-full">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-emerald-600 dark:bg-emerald-500 rounded-2xl mb-3">
-              <Trophy className="text-white" size={32} />
-            </div>
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">Golf One and Done</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">Welcome, {currentUser?.name}</p>
-          </div>
-
-          {/* League selection tabs */}
-          <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
-            {userLeagues.length > 0 && (
-              <button
-                onClick={() => setLeagueAction('select')}
-                className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
-              >
-                My Leagues
-              </button>
-            )}
-            <button
-              onClick={() => setLeagueAction('join')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Join League
-            </button>
-            <button
-              onClick={() => setLeagueAction('create')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
-            >
-              Create League
-            </button>
-          </div>
-
-          {/* Select existing league */}
-          {leagueAction === 'select' && userLeagues.length > 0 && (
-            <div className="space-y-3">
-              {userLeagues.map(league => (
-                <button
-                  key={league.id}
-                  onClick={() => selectLeague(league)}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-xl text-left transition-all"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-slate-900 dark:text-white">{league.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        {league.role === 'commissioner' ? 'Commissioner' : 'Member'}
-                      </p>
-                    </div>
-                    <ChevronRight className="text-slate-400" size={20} />
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Join a league */}
-          {leagueAction === 'join' && (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Enter the invite code from your league commissioner to join an existing league.
-              </p>
-              <div>
-                <label className="label">Invite Code</label>
-                <input
-                  type="text"
-                  value={joinInviteCode}
-                  onChange={(e) => setJoinInviteCode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleJoinLeague()}
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  enterKeyHint="go"
-                  className="input"
-                  placeholder="e.g. a1b2c3d4"
-                />
-              </div>
-              <button
-                onClick={handleJoinLeague}
-                className="btn-primary w-full py-3"
-              >
-                Join League
-              </button>
-            </div>
-          )}
-
-          {/* Create a league */}
-          {leagueAction === 'create' && (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Create a new league and invite your friends with a unique invite code.
-              </p>
-              <div>
-                <label className="label">League Name</label>
-                <input
-                  type="text"
-                  value={newLeagueName}
-                  onChange={(e) => setNewLeagueName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateLeague()}
-                  autoComplete="off"
-                  autoCapitalize="words"
-                  enterKeyHint="go"
-                  className="input"
-                  placeholder="e.g. Weekend Warriors Golf"
-                />
-              </div>
-              <button
-                onClick={handleCreateLeague}
-                disabled={creatingLeague}
-                className="btn-primary w-full py-3"
-              >
-                {creatingLeague ? 'Creating...' : 'Create League'}
-              </button>
-            </div>
-          )}
-
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                localStorage.removeItem('currentLeagueId');
-              }}
-              className="w-full text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
+      <LeagueSelectScreen
+        notification={notification}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        currentUser={currentUser}
+        userLeagues={userLeagues}
+        leagueAction={leagueAction}
+        setLeagueAction={setLeagueAction}
+        newLeagueName={newLeagueName}
+        setNewLeagueName={setNewLeagueName}
+        joinInviteCode={joinInviteCode}
+        setJoinInviteCode={setJoinInviteCode}
+        creatingLeague={creatingLeague}
+        selectLeague={selectLeague}
+        handleCreateLeague={handleCreateLeague}
+        handleJoinLeague={handleJoinLeague}
+        onSignOut={handleSignOut}
+      />
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
-      {notification && (
-        <div role="status" aria-live="polite" aria-atomic="true" className={`fixed top-[calc(1rem+env(safe-area-inset-top))] left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-xl shadow-elevated flex items-center gap-3 animate-slide-down max-w-sm w-[calc(100%-2rem)] sm:w-auto border ${
-          notification.type === 'success'
-            ? 'bg-emerald-50 dark:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
-            : 'bg-red-50 dark:bg-red-950/80 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-        }`}>
-          {notification.type === 'success' ? (
-            <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-          ) : (
-            <XCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
-          )}
-          <span className="text-sm font-medium">{notification.message}</span>
-          <button
-            onClick={() => setNotification(null)}
-            aria-label="Dismiss notification"
-            className="ml-auto shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-          >
-            <XCircle size={16} />
-          </button>
-        </div>
-      )}
+      <NotificationToast notification={notification} onDismiss={() => setNotification(null)} />
       <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
         <div className="card p-4 sm:p-6 mb-4 sm:mb-5">
@@ -1855,17 +1563,17 @@ const handleSubmitPick = async () => {
               </div>
               <div className="flex items-center gap-2 sm:gap-3 mt-2 flex-wrap">
                 <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Wk {currentWeek} · {currentTournament?.name}</span>
-                <span className="text-xs font-semibold tabular-nums px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span className="badge bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
                   {formatPrizePool(currentTournament?.prize_pool)}
                 </span>
                 {timeUntilLock && (
                   <>
                     {timeUntilLock === 'Locked' ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                      <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
                         Locked
                       </span>
                     ) : (
-                      <span className={`text-xs font-semibold tabular-nums px-2 py-0.5 rounded-md border ${lockUrgent ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
+                      <span className={`badge border ${lockUrgent ? 'bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800'}`}>
                         {timeUntilLock}
                       </span>
                     )}
@@ -1918,7 +1626,7 @@ const handleSubmitPick = async () => {
                           ))}
                           <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
                           <button
-                            onClick={async () => { await supabase.auth.signOut(); localStorage.removeItem('currentLeagueId'); }}
+                            onClick={handleSignOut}
                             className="w-full text-left px-3 py-2.5 sm:py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg flex items-center gap-2.5 transition-colors duration-150"
                           >
                             <LogOut size={16} />
@@ -1949,225 +1657,35 @@ const handleSubmitPick = async () => {
 
           {/* Notification Settings Modal */}
           {showSettings && (
-            <div className="modal-overlay">
-              <div className="modal-panel">
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Bell className="text-emerald-600 dark:text-emerald-400" size={20} />
-                      Notifications
-                    </h2>
-                    <button
-                      onClick={() => setShowSettings(false)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
-                      aria-label="Close notification settings"
-                    >
-                      <XCircle size={28} />
-                    </button>
-                  </div>
-
-                  <div className="space-y-4">
-                    {!pushSupported ? (
-                      <p className="text-slate-600 dark:text-slate-400">
-                        Push notifications are not supported on this browser. Try using Chrome, Edge, or Safari 16.4+ with the app installed to your home screen.
-                      </p>
-                    ) : pushPermission === 'denied' ? (
-                      <p className="text-slate-600 dark:text-slate-400">
-                        Notifications are blocked. Please enable them in your browser or device settings, then refresh the page.
-                      </p>
-                    ) : pushSubscribed ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-slate-800 dark:text-slate-200 font-medium">Push notifications are enabled</p>
-                          <button
-                            onClick={handlePushUnsubscribe}
-                            disabled={pushLoading}
-                            className="btn-danger"
-                          >
-                            {pushLoading ? 'Updating...' : 'Disable All'}
-                          </button>
-                        </div>
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-slate-800 dark:text-slate-200 text-sm font-medium" id="notify-results-label">Results notifications</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">When weekly results are posted</p>
-                            </div>
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={notifyResults}
-                              aria-labelledby="notify-results-label"
-                              onClick={() => handleToggleNotifyPref('notify_results', !notifyResults)}
-                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyResults ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                            >
-                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyResults ? 'translate-x-5' : ''}`} />
-                            </button>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-slate-800 dark:text-slate-200 text-sm font-medium" id="notify-reminders-label">Pick reminders</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Wednesday evening if you haven't picked yet</p>
-                            </div>
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={notifyReminders}
-                              aria-labelledby="notify-reminders-label"
-                              onClick={() => handleToggleNotifyPref('notify_reminders', !notifyReminders)}
-                              className={`w-11 h-6 rounded-full relative transition-colors cursor-pointer ${notifyReminders ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                            >
-                              <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notifyReminders ? 'translate-x-5' : ''}`} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-slate-800 dark:text-slate-200 font-medium">Get notified when results are posted</p>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">Receive push notifications on this device.</p>
-                        </div>
-                        <button
-                          onClick={handlePushSubscribe}
-                          disabled={pushLoading}
-                          className="btn-primary px-4 py-2"
-                        >
-                          {pushLoading ? 'Enabling...' : 'Enable'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <button
-                      onClick={() => setShowSettings(false)}
-                      className="btn-secondary w-full py-2.5"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <NotificationSettingsModal
+              onClose={() => setShowSettings(false)}
+              pushSupported={pushSupported}
+              pushPermission={pushPermission}
+              pushSubscribed={pushSubscribed}
+              pushLoading={pushLoading}
+              notifyResults={notifyResults}
+              notifyReminders={notifyReminders}
+              handlePushSubscribe={handlePushSubscribe}
+              handlePushUnsubscribe={handlePushUnsubscribe}
+              handleToggleNotifyPref={handleToggleNotifyPref}
+            />
           )}
 
           {/* Account Settings Modal */}
           {showAccountSettings && (
-            <div className="modal-overlay">
-              <div className="modal-panel max-w-lg">
-                <div className="p-5 sm:p-6">
-                  <div className="flex items-center justify-between mb-5">
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                      <Users className="text-emerald-600 dark:text-emerald-400" size={20} />
-                      Account Settings
-                    </h2>
-                    <button
-                      onClick={() => setShowAccountSettings(false)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
-                      aria-label="Close account settings"
-                    >
-                      <XCircle size={28} />
-                    </button>
-                  </div>
-
-                  {/* Profile Information Section */}
-                  <div className="mb-8 pb-6 border-b border-slate-200 dark:border-slate-800">
-                    <h3 className="font-semibold text-base mb-4 text-slate-900 dark:text-white">Profile Information</h3>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="label">Name</label>
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          autoComplete="name"
-                          autoCapitalize="words"
-                          enterKeyHint="next"
-                          className="input"
-                          placeholder="Your name"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="label">Email Address</label>
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          autoComplete="email"
-                          inputMode="email"
-                          autoCapitalize="off"
-                          autoCorrect="off"
-                          spellCheck={false}
-                          enterKeyHint="done"
-                          className="input"
-                          placeholder="your@email.com"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleUpdateProfile}
-                        className="btn-primary"
-                      >
-                        Save Profile Changes
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Change Password Section */}
-                  <div>
-                    <h3 className="font-semibold text-base mb-4 text-slate-900 dark:text-white">Change Password</h3>
-
-                    <div className="space-y-4">
-                      <div>
-                        <label className="label">New Password</label>
-                        <input
-                          type="password"
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          autoComplete="new-password"
-                          enterKeyHint="next"
-                          className="input"
-                          placeholder="Enter new password (min 6 characters)"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="label">Confirm New Password</label>
-                        <input
-                          type="password"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleChangePassword()}
-                          autoComplete="new-password"
-                          enterKeyHint="done"
-                          className="input"
-                          placeholder="Confirm new password"
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleChangePassword}
-                        className="btn-secondary text-slate-900 dark:text-white"
-                      >
-                        Update Password
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
-                    <button
-                      onClick={() => setShowAccountSettings(false)}
-                      className="btn-secondary w-full py-2.5"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AccountSettingsModal
+              editName={editName}
+              setEditName={setEditName}
+              editEmail={editEmail}
+              setEditEmail={setEditEmail}
+              newPassword={newPassword}
+              setNewPassword={setNewPassword}
+              confirmPassword={confirmPassword}
+              setConfirmPassword={setConfirmPassword}
+              onClose={() => setShowAccountSettings(false)}
+              handleUpdateProfile={handleUpdateProfile}
+              handleChangePassword={handleChangePassword}
+            />
           )}
         </div>
 

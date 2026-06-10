@@ -26,6 +26,7 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors duration-150"
+              aria-label="Close account settings"
             >
               <XCircle size={28} />
             </button>
@@ -42,6 +43,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
+                  autoComplete="name"
+                  autoCapitalize="words"
+                  enterKeyHint="next"
                   className="input"
                   placeholder="Your name"
                 />
@@ -53,6 +57,12 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="done"
                   className="input"
                   placeholder="your@email.com"
                 />
@@ -78,6 +88,8 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  enterKeyHint="next"
                   className="input"
                   placeholder="Enter new password (min 6 characters)"
                 />
@@ -89,6 +101,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleChangePassword()}
+                  autoComplete="new-password"
+                  enterKeyHint="done"
                   className="input"
                   placeholder="Confirm new password"
                 />
@@ -106,7 +121,7 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
           <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-800">
             <button
               onClick={onClose}
-              className="btn-secondary w-full py-2.5"
+              className="btn-secondary w-full"
             >
               Close
             </button>

@@ -5,9 +5,9 @@ empty/loading states, mobile ergonomics, accessibility, and micro-interactions.
 Every finding below was verified against the source on this branch; file and line
 references are accurate as of the commit that introduced this document.
 
-> **Status:** the Batch 1 quick wins from the roadmap at the bottom were implemented
-> immediately after this review, so the quoted "current" code for those findings
-> reflects the pre-fix state. Batches 2 and 3 remain open.
+> **Status:** Batches 1 and 2 from the roadmap at the bottom have been implemented,
+> so the quoted "current" code for those findings reflects the pre-fix state.
+> Batch 3 remains open.
 
 **Overall assessment:** the app is in good shape. The clubhouse theme (emerald/amber on
 cool slate, Fraunces display headings) is cohesive, the mobile-first layouts are
@@ -211,10 +211,16 @@ loading/disabled state on commissioner save buttons; "Copied ✓" state;
 placeholder/disabled contrast tweaks. (One finding from the original draft was dropped:
 "Mark as Complete" already confirms via `window.confirm` in its App.jsx handler.)
 
-**Batch 2 — consolidation (the structural payoff):**
-resolve the dead-component duplication (adopt the extracted screens/modals/toast in
-App.jsx, or delete them); extract `<Spinner>`; add `.badge` and `.btn-lg`/`.btn-sm`
-component classes; friendly error-message mapping.
+**Batch 2 — consolidation (✅ implemented):**
+the dead-component duplication is resolved — App.jsx now renders the extracted
+screens/modals/toast components (`LoginScreen`, `ResetPasswordScreen`,
+`LeagueSelectScreen`, `NotificationSettingsModal`, `AccountSettingsModal`,
+`NotificationToast`), which were first updated to match the live inline behavior;
+shared `<Spinner>` extracted (`src/components/Spinner.jsx`); `.badge` and
+`.btn-lg`/`.btn-sm` component classes added to `src/index.css` and adopted at the
+chip/button call sites; raw Supabase error messages now route through
+`friendlyError()` (`src/utils/errors.js`), which logs the raw error and returns
+user-appropriate copy.
 
 **Batch 3 — larger UX investments:**
 skeleton loaders for Picks/Standings; table scroll affordances (edge fade); dropdown

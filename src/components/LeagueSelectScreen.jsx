@@ -24,7 +24,7 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
       <button
         onClick={() => setDarkMode(!darkMode)}
-        className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
+        className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
         aria-label="Toggle dark mode"
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -46,20 +46,20 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
           {userLeagues.length > 0 && (
             <button
               onClick={() => setLeagueAction('select')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
             >
               My Leagues
             </button>
           )}
           <button
             onClick={() => setLeagueAction('join')}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
           >
             Join League
           </button>
           <button
             onClick={() => setLeagueAction('create')}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-green-500 text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
           >
             Create League
           </button>
@@ -72,16 +72,16 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
               <button
                 key={league.id}
                 onClick={() => selectLeague(league)}
-                className="w-full p-4 bg-gray-50 dark:bg-slate-700 hover:bg-green-50 dark:hover:bg-green-900/20 border-2 border-slate-200 dark:border-slate-700 hover:border-green-400 dark:hover:border-green-500 rounded-xl text-left transition-all"
+                className="w-full p-4 bg-slate-50 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border-2 border-slate-200 dark:border-slate-700 hover:border-emerald-400 dark:hover:border-emerald-500 rounded-xl text-left transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-bold text-gray-800 dark:text-gray-100">{league.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    <p className="font-bold text-slate-900 dark:text-white">{league.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {league.role === 'commissioner' ? 'Commissioner' : 'Member'}
                     </p>
                   </div>
-                  <ChevronRight className="text-gray-400" size={20} />
+                  <ChevronRight className="text-slate-400" size={20} />
                 </div>
               </button>
             ))}
@@ -91,7 +91,7 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
         {/* Join a league */}
         {leagueAction === 'join' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Enter the invite code from your league commissioner to join an existing league.
             </p>
             <div>
@@ -101,13 +101,18 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
                 value={joinInviteCode}
                 onChange={(e) => setJoinInviteCode(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoinLeague()}
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
                 className="input"
                 placeholder="e.g. a1b2c3d4"
               />
             </div>
             <button
               onClick={handleJoinLeague}
-              className="w-full btn-primary w-full py-3"
+              className="btn-primary btn-lg w-full"
             >
               Join League
             </button>
@@ -117,7 +122,7 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
         {/* Create a league */}
         {leagueAction === 'create' && (
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Create a new league and invite your friends with a unique invite code.
             </p>
             <div>
@@ -127,6 +132,9 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
                 value={newLeagueName}
                 onChange={(e) => setNewLeagueName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreateLeague()}
+                autoComplete="off"
+                autoCapitalize="words"
+                enterKeyHint="go"
                 className="input"
                 placeholder="e.g. Weekend Warriors Golf"
               />
@@ -134,7 +142,7 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
             <button
               onClick={handleCreateLeague}
               disabled={creatingLeague}
-              className="w-full btn-primary w-full py-3"
+              className="btn-primary btn-lg w-full"
             >
               {creatingLeague ? 'Creating...' : 'Create League'}
             </button>

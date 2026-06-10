@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle, Shield, X } from 'lucide-react';
 import LiveLeaderboard from './LiveLeaderboard';
+import Spinner from './Spinner';
 import { normalizeName } from '../utils/liveLeaderboard';
 
 const PicksTab = React.memo(function PicksTab({
@@ -133,7 +134,7 @@ const PicksTab = React.memo(function PicksTab({
   if (picksLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <div className="w-8 h-8 border-[3px] border-emerald-600 dark:border-emerald-400 border-t-transparent rounded-full animate-spin" />
+        <Spinner />
         <p className="text-sm text-slate-500 dark:text-slate-400">Loading picks...</p>
       </div>
     );
@@ -157,12 +158,12 @@ const PicksTab = React.memo(function PicksTab({
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Week {currentWeek} Pick</h2>
         {timeUntilLock && timeUntilLock !== 'Locked' && (
-          <span className="text-xs font-semibold tabular-nums px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+          <span className="badge bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
             {timeUntilLock} left
           </span>
         )}
         {timeUntilLock === 'Locked' && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+          <span className="badge bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
             Locked
           </span>
         )}
@@ -430,11 +431,11 @@ const PicksTab = React.memo(function PicksTab({
       <button
         onClick={handleSubmitPick}
         disabled={!selectedPlayer || isLocked || submittingPick || submitBlockedByRisk}
-        className="btn-primary w-full py-3"
+        className="btn-primary btn-lg w-full"
       >
         {isLocked ? 'Picks Locked' : submittingPick ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <Spinner size="sm" className="border-current" />
             Submitting...
           </span>
         ) : 'Submit Pick'}

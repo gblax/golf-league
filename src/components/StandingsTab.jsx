@@ -244,7 +244,7 @@ const StandingsTab = React.memo(function StandingsTab({
                     {winCounts[player.id] > 0 && (
                       <span
                         title={`Picked ${winCounts[player.id]} tournament ${winCounts[player.id] === 1 ? 'winner' : 'winners'}`}
-                        className="flex-shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                        className="badge flex-shrink-0 gap-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
                       >
                         <Trophy size={10} className="fill-amber-400/40" />
                         {winCounts[player.id]}
@@ -342,7 +342,7 @@ const StandingsTab = React.memo(function StandingsTab({
                       {winCounts[player.id] > 0 && (
                         <span
                           title={`Picked ${winCounts[player.id]} tournament ${winCounts[player.id] === 1 ? 'winner' : 'winners'}`}
-                          className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
+                          className="badge gap-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400"
                         >
                           <Trophy size={10} className="fill-amber-400/40" />
                           {winCounts[player.id]}

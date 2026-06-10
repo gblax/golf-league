@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, Sun, Moon } from 'lucide-react';
 import NotificationToast from './NotificationToast';
+import Spinner from './Spinner';
 
 const LoginScreen = React.memo(function LoginScreen({
   notification,
@@ -22,9 +23,10 @@ const LoginScreen = React.memo(function LoginScreen({
 }) {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
+      {/* Dark mode toggle for login page */}
       <button
         onClick={() => setDarkMode(!darkMode)}
-        className="fixed top-4 right-4 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
+        className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-[calc(1rem+env(safe-area-inset-right))] p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-soft text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors duration-150"
         aria-label="Toggle dark mode"
       >
         {darkMode ? <Sun size={20} /> : <Moon size={20} />}
@@ -50,6 +52,9 @@ const LoginScreen = React.memo(function LoginScreen({
                 value={signupName}
                 onChange={(e) => setSignupName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                autoComplete="name"
+                autoCapitalize="words"
+                enterKeyHint="next"
                 className="input"
                 placeholder="Your name"
               />
@@ -63,6 +68,12 @@ const LoginScreen = React.memo(function LoginScreen({
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (showForgotPassword ? handleForgotPassword() : handleLogin())}
+              autoComplete="email"
+              inputMode="email"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint={showForgotPassword ? 'go' : 'next'}
               className="input"
               placeholder="your@email.com"
             />
@@ -76,6 +87,8 @@ const LoginScreen = React.memo(function LoginScreen({
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                autoComplete={isSignup ? 'new-password' : 'current-password'}
+                enterKeyHint="go"
                 className="input"
                 placeholder="Password"
               />
@@ -86,7 +99,7 @@ const LoginScreen = React.memo(function LoginScreen({
             <>
               <button
                 onClick={handleForgotPassword}
-                className="w-full btn-primary w-full py-3"
+                className="btn-primary btn-lg w-full"
               >
                 Send Reset Email
               </button>
@@ -102,11 +115,11 @@ const LoginScreen = React.memo(function LoginScreen({
               <button
                 onClick={handleLogin}
                 disabled={loginLoading}
-                className="btn-primary w-full py-3"
+                className="btn-primary btn-lg w-full"
               >
                 {loginLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <Spinner size="md" className="border-current" />
                     {isSignup ? 'Creating Account...' : 'Signing In...'}
                   </span>
                 ) : (

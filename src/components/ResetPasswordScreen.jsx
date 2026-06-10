@@ -26,13 +26,16 @@ const ResetPasswordScreen = React.memo(function ResetPasswordScreen({
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleResetPassword()}
+              autoComplete="new-password"
+              enterKeyHint="go"
               className="input"
               placeholder="New password (min 6 characters)"
             />
           </div>
           <button
             onClick={handleResetPassword}
-            className="w-full btn-primary w-full py-3"
+            className="btn-primary btn-lg w-full"
           >
             Update Password
           </button>
