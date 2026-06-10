@@ -184,7 +184,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
               <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Pick Deadlines</p>
               <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-0.5">
-                <li>Picks lock on Thursdays at 2:00 AM ET</li>
+                <li>Picks lock when the tournament begins (usually Thursday morning ET) &mdash; the exact time is shown on the Pick tab</li>
                 <li>Each golfer can only be used <span className="font-semibold text-slate-800 dark:text-slate-200">once per season</span></li>
                 {leagueSettings.backup_picks_enabled && (
                   <li>Backup picks activate automatically if primary withdraws</li>
