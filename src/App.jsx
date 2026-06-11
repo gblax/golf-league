@@ -1511,17 +1511,18 @@ const handleSubmitPick = async () => {
       .sort((a, b) => (inField(b) - inField(a)) || a.localeCompare(b));
   }, [availableGolfers, userPicks, selectedPlayer, backupPlayer, fieldNames]);
 
+  // No result cap: the dropdown is browsable now, so truncating the list
+  // silently hid eligible golfers mid-alphabet. A few hundred rows in a
+  // scrollable listbox is cheap to render.
   const filteredPrimaryGolfers = useMemo(() =>
     availableForPick
-      .filter(g => g.toLowerCase().includes(primarySearchTerm.toLowerCase()))
-      .slice(0, 50),
+      .filter(g => g.toLowerCase().includes(primarySearchTerm.toLowerCase())),
     [availableForPick, primarySearchTerm]);
 
   const filteredBackupGolfers = useMemo(() =>
     availableForPick
       .filter(g => g !== selectedPlayer)
-      .filter(g => g.toLowerCase().includes(backupSearchTerm.toLowerCase()))
-      .slice(0, 50),
+      .filter(g => g.toLowerCase().includes(backupSearchTerm.toLowerCase())),
     [availableForPick, backupSearchTerm, selectedPlayer]);
 
   const sortedStandings = useMemo(() =>
