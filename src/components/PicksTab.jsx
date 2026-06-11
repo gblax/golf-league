@@ -293,7 +293,7 @@ const PicksTab = React.memo(function PicksTab({
                 )
               ) : (
                 <p className="shrink-0 max-w-[45%] text-[11px] text-slate-400 dark:text-slate-500 text-right">
-                  Live scoring appears once play begins
+                  Scores post after each round wraps up
                 </p>
               )}
             </div>
@@ -318,7 +318,7 @@ const PicksTab = React.memo(function PicksTab({
           <EmptyState
             icon={Flag}
             title="Golfers are on the course"
-            caption="Live scores appear here once play begins — check back during the first round."
+            caption="Scores update once a day, after each round ends — check back tonight for round one results."
           />
         )}
 
