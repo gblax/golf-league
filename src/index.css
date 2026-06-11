@@ -18,6 +18,14 @@
     text-size-adjust: 100%;
     /* Kill the grey tap flash on iOS/Android for a more native feel. */
     -webkit-tap-highlight-color: transparent;
+    /* Match the app surface so iOS rubber-band overscroll reveals
+       theme-colored canvas instead of a white/black gap. (dark: variants
+       can't target <html> itself — the .dark class lives on it — so this
+       is plain CSS rather than @apply.) */
+    background-color: theme('colors.slate.50');
+  }
+  html.dark {
+    background-color: theme('colors.slate.950');
   }
 
   body {

@@ -1985,6 +1985,10 @@ const handleSubmitPick = async () => {
         aria-label="Primary"
         className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]"
       >
+        {/* iOS rubber-band bounce moves fixed elements with the page; this
+            underlay extends the nav surface well below the screen edge so
+            the bounce can't reveal a gap beneath it. */}
+        <div aria-hidden="true" className="absolute inset-x-0 top-full h-32 bg-white dark:bg-slate-900" />
         <div className="flex">
           {navTabs.map(tab => (
             <button
