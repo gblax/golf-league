@@ -291,13 +291,18 @@ def _cut_line(leaderboard_json):
 
 def _row_thru(row):
     """Holes played in the current round ('F' when finished), if the payload
-    carries it. Field name has varied, so a couple of candidates are tried."""
+    carries it. Field name has varied, so a couple of candidates are tried.
+    'F*' (finished after a back-nine start) is folded into 'F' — the app
+    doesn't care which tee a finished round began on."""
     raw = unwrap(row.get("thru"))
     if raw is None:
         raw = unwrap(row.get("holesPlayed"))
     if raw is None:
         return None
-    return str(raw).strip() or None
+    value = str(raw).strip()
+    if value.upper() == "F*":
+        return "F"
+    return value or None
 
 
 def parse_live_leaderboard(leaderboard_json, tournament_name=None):

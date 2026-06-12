@@ -1,6 +1,6 @@
 import React from 'react';
 import { Activity, ChevronDown, ChevronRight, Clock, Trophy } from 'lucide-react';
-import { lookupLive, positionRank, formatUpdatedLabel, isOutStatus, outLabel, normalizeName } from '../utils/liveLeaderboard';
+import { lookupLive, positionRank, formatUpdatedLabel, isOutStatus, isThruFinished, outLabel, normalizeName } from '../utils/liveLeaderboard';
 import PlayerAvatar from './PlayerAvatar';
 
 // Color a to-par score: under par green, over par slate, even neutral.
@@ -11,7 +11,9 @@ function scoreClass(score) {
   return 'text-slate-500 dark:text-slate-400';
 }
 
-// One golfer's live status chip: position · score (· thru / CUT).
+// One golfer's live status chip: position · score (· thru / CUT). A finished
+// round shows nothing — round progress lives in the leaderboard header — so
+// "thru N" only appears for a partial round (e.g. suspended play).
 function LiveStatus({ live, showThru = true }) {
   if (!live) return <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>;
   const out = isOutStatus(live.status);
@@ -27,8 +29,8 @@ function LiveStatus({ live, showThru = true }) {
       <span className={`text-xs font-semibold ${out ? 'text-slate-400 dark:text-slate-500' : scoreClass(live.score)}`}>
         {live.score || ''}
       </span>
-      {showThru && !out && live.thru && (
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">{live.thru === 'F' ? 'F' : `thru ${live.thru}`}</span>
+      {showThru && !out && live.thru && !isThruFinished(live.thru) && (
+        <span className="text-[10px] text-slate-400 dark:text-slate-500">{`thru ${live.thru}`}</span>
       )}
     </span>
   );
@@ -47,6 +49,15 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
 
   const updatedLabel = formatUpdatedLabel(index.updatedAt);
   const isOfficial = (index.eventStatus || '').toLowerCase() === 'official';
+
+  // Tournament progress for the header, e.g. "Thru Rd 2" once the round is
+  // done or "Rd 2 in progress" when the snapshot caught a partial round
+  // (suspended play). Replaces per-row "thru F" noise on finished rounds.
+  const roundLabel = index.currentRound
+    ? index.roundInProgress
+      ? `Rd ${index.currentRound} in progress`
+      : `Thru Rd ${index.currentRound}`
+    : '';
 
   // League members with a real pick, resolved to their live row and sorted by
   // current position (golfers not on the board — e.g. didn't play — sink last).
@@ -92,7 +103,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
           <Clock size={11} />
           {isOfficial
             ? `Final results as of ${updatedLabel}`
-            : `Scores as of ${updatedLabel} · refreshed nightly after each round`}
+            : `${roundLabel ? `${roundLabel} · ` : ''}Scores as of ${updatedLabel} · refreshed nightly after each round`}
         </p>
       )}
 
@@ -178,7 +189,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
                       {p.score || ''}
                     </td>
                     <td className="py-1.5 px-2 text-right text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
-                      {out ? '' : p.thru || ''}
+                      {out ? '' : isThruFinished(p.thru) ? 'F' : p.thru || ''}
                     </td>
                   </tr>
                 );

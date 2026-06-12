@@ -31,15 +31,26 @@ export function positionRank(position) {
   return 8000; // unknown / no position yet
 }
 
+// True when a thru value means the round is done. Slash Golf reports 'F' for
+// a finished round and 'F*' when the player finished after a back-nine start.
+export function isThruFinished(thru) {
+  const t = String(thru || '').trim().toUpperCase();
+  return t === 'F' || t === 'F*';
+}
+
 // Build fast lookups from a live_leaderboard snapshot row (or null/undefined).
 export function indexLiveLeaderboard(snapshot) {
   const players = snapshot?.players || [];
   const byId = {};
   const byName = {};
+  let currentRound = null;
+  let roundInProgress = false;
   for (const p of players) {
     if (p.player_id) byId[String(p.player_id)] = p;
     const norm = normalizeName(p.player_name);
     if (norm && !(norm in byName)) byName[norm] = p;
+    if (Number.isFinite(p.round)) currentRound = Math.max(currentRound ?? 0, p.round);
+    if (!isOutStatus(p.status) && p.thru && !isThruFinished(p.thru)) roundInProgress = true;
   }
   return {
     byId,
@@ -49,6 +60,8 @@ export function indexLiveLeaderboard(snapshot) {
     eventStatus: snapshot?.event_status || '',
     roundStatus: snapshot?.round_status || '',
     updatedAt: snapshot?.updated_at || null,
+    currentRound,
+    roundInProgress,
     isEmpty: players.length === 0,
   };
 }

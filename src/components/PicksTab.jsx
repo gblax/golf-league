@@ -4,7 +4,7 @@ import EmptyState from './EmptyState';
 import LiveLeaderboard from './LiveLeaderboard';
 import Spinner from './Spinner';
 import WeekRecapCard from './WeekRecapCard';
-import { isOutStatus, lookupLive, normalizeName, outLabel } from '../utils/liveLeaderboard';
+import { isOutStatus, isThruFinished, lookupLive, normalizeName, outLabel } from '../utils/liveLeaderboard';
 import { formatWinnings } from '../utils/money';
 
 const PicksTab = React.memo(function PicksTab({
@@ -283,9 +283,10 @@ const PicksTab = React.memo(function PicksTab({
                     <p className="text-2xl font-bold text-slate-900 dark:text-white leading-none">{myLive.position || '—'}</p>
                     <p className={`text-sm font-semibold mt-1 ${String(myLive.score || '').startsWith('-') ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                       {myLive.score || ''}
-                      {myLive.thru && (
+                      {/* Finished rounds show nothing — "thru N" only for a partial round */}
+                      {myLive.thru && !isThruFinished(myLive.thru) && (
                         <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-                          {myLive.thru === 'F' ? ' · F' : ` · thru ${myLive.thru}`}
+                          {` · thru ${myLive.thru}`}
                         </span>
                       )}
                     </p>

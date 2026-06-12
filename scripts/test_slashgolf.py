@@ -66,7 +66,7 @@ LIVE_IN_PROGRESS = {
          "thru": "F", "currentRound": {"$numberInt": "2"}},
         {"firstName": "Some", "lastName": "Rookie", "playerId": "90001",
          "position": "T80", "total": "+5", "status": "active",
-         "thru": "F", "currentRound": {"$numberInt": "2"}},
+         "thru": "F*", "currentRound": {"$numberInt": "2"}},
     ],
 }
 
@@ -213,6 +213,9 @@ class ParseLiveLeaderboardTests(unittest.TestCase):
         self.assertEqual(scottie["round"], 2)
         rory = self.by_name["Rory McIlroy"]
         self.assertEqual(rory["thru"], "F")
+        # 'F*' (finished, back-nine start) is folded into plain 'F'.
+        rookie = self.by_name["Some Rookie"]
+        self.assertEqual(rookie["thru"], "F")
 
     def test_player_id_propagated(self):
         self.assertEqual(self.by_name["Rory McIlroy"]["player_id"], "28237")
