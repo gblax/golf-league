@@ -57,6 +57,19 @@
     padding-left: env(safe-area-inset-left);
   }
 
+  /* App-shell mode (main app screen only — toggled from App.jsx). Locks the
+     page to the viewport so the in-app scroll container owns scrolling and the
+     bottom nav, as a non-fixed flex child, stays pinned. iOS Safari can't
+     mis-paint a nav that isn't position:fixed. Login/league-select screens
+     don't get .shell, so they keep normal document scrolling. */
+  html.shell, html.shell body { height: 100vh; overflow: hidden; }
+  @supports (height: 100dvh) {
+    html.shell, html.shell body { height: 100dvh; }
+  }
+  /* #root keeps the notch insets on top/sides; the bottom inset is dropped here
+     because the bottom nav clears the home indicator with its own padding. */
+  html.shell #root { height: 100%; overflow: hidden; padding-bottom: 0; }
+
   /* Smooth in-page scrolling for anchored jumps — unless reduced motion. */
   @media (prefers-reduced-motion: no-preference) {
     html { scroll-behavior: smooth; }
