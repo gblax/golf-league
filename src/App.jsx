@@ -1568,15 +1568,20 @@ const handleSubmitPick = async () => {
   // Live leaderboard lookups (Phase 1)
   const liveIndex = useMemo(() => indexLiveLeaderboard(liveLeaderboard), [liveLeaderboard]);
 
+  // Every league member, so the live leaderboard can also surface who didn't
+  // pick (golferName null) rather than silently dropping them.
   const liveMembers = useMemo(() =>
-    sortedStandings
-      .filter(p => p.currentPick?.golfer_name && p.currentPick.golfer_name !== 'No Pick')
-      .map(p => ({
+    sortedStandings.map(p => {
+      const golferName = (p.currentPick?.golfer_name && p.currentPick.golfer_name !== 'No Pick')
+        ? p.currentPick.golfer_name
+        : null;
+      return {
         id: p.id,
         name: p.name,
-        golferName: p.currentPick.golfer_name,
-        golferId: p.currentPick.golfer_id || null,
-      })),
+        golferName,
+        golferId: golferName ? (p.currentPick.golfer_id || null) : null,
+      };
+    }),
     [sortedStandings]);
 
   const fieldIdByName = useMemo(() => {
@@ -1980,10 +1985,13 @@ const handleSubmitPick = async () => {
       )}
 
       {/* Mobile bottom navigation. z-30 keeps it under the profile-menu
-          backdrop and modal overlays (z-40/z-50). */}
+          backdrop and modal overlays (z-40/z-50). Background is fully opaque
+          (no backdrop-blur): on iOS Safari a position:fixed element with
+          backdrop-filter is repainted at the wrong scroll offset, leaving the
+          bar stranded mid-page during/after scroll. */}
       <nav
         aria-label="Primary"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]"
       >
         {/* iOS rubber-band bounce moves fixed elements with the page; this
             underlay extends the nav surface well below the screen edge so

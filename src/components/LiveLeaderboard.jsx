@@ -61,13 +61,17 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
 
   // League members with a real pick, resolved to their live row and sorted by
   // current position (golfers not on the board — e.g. didn't play — sink last).
-  const memberRows = members
+  const pickedRows = members
     .filter((m) => m.golferName)
     .map((m) => ({ ...m, live: lookupLive(index, { golferId: m.golferId, golferName: m.golferName }) }))
     .sort((a, b) => (a.live ? positionRank(a.live.position) : Infinity) - (b.live ? positionRank(b.live.position) : Infinity));
 
+  // Members who never submitted a pick — shown last so it's clear who's missing.
+  const noPickRows = members.filter((m) => !m.golferName);
+  const memberRows = [...pickedRows, ...noPickRows];
+
   // Normalized names of league picks, to highlight them in the full field.
-  const pickedNorms = new Set(memberRows.map((m) => normalizeName(m.golferName)));
+  const pickedNorms = new Set(pickedRows.map((m) => normalizeName(m.golferName)));
 
   const fieldSorted = [...index.players].sort((a, b) => positionRank(a.position) - positionRank(b.position));
 
@@ -129,10 +133,20 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
                       {m.name}
                       {isYou && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
                     </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{m.golferName}</p>
+                    {m.golferName ? (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{m.golferName}</p>
+                    ) : (
+                      <p className="text-[11px] text-red-500 dark:text-red-400 truncate">No pick</p>
+                    )}
                   </div>
                 </div>
-                <LiveStatus live={m.live} />
+                {m.golferName ? (
+                  <LiveStatus live={m.live} />
+                ) : (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shrink-0">
+                    —
+                  </span>
+                )}
               </div>
             );
           })}
