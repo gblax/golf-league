@@ -154,10 +154,16 @@ DEFAULT_LEAGUE_SETTINGS = {
 
 
 def update_pick_winnings(supabase, pick_id, winnings, penalty_amount=0, penalty_reason=None):
-    """Update winnings (and any penalty) for a specific pick."""
-    update_data = {"winnings": winnings}
+    """Update winnings (and any penalty) for a specific pick.
+
+    winnings/penalty_amount are integer columns, but prize money arrives from
+    /earnings as a float (e.g. 1068200.0). Recent PostgREST serializes a
+    whole-dollar float as "1068200.0", which Postgres rejects for an integer
+    column (22P02), so coerce to int before writing.
+    """
+    update_data = {"winnings": int(round(winnings or 0))}
     if penalty_amount > 0:
-        update_data["penalty_amount"] = penalty_amount
+        update_data["penalty_amount"] = int(round(penalty_amount))
         update_data["penalty_reason"] = penalty_reason
     supabase.table("picks").update(update_data).eq("id", pick_id).execute()
 
