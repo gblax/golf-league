@@ -1,4 +1,17 @@
-requests>=2.31.0
-supabase>=2.0.0
-python-dotenv>=1.0.0
-pywebpush>=1.14.0
+# Pinned for reproducible CI installs. The GitHub Actions jobs install from
+# this file (pip install -r scripts/requirements.txt) so a new upstream release
+# can't silently change behavior between runs — which is exactly what bit the
+# Monday results job once before.
+#
+# postgrest is a transitive dependency of supabase, pinned explicitly because a
+# postgrest release changed how it serializes whole-dollar floats (sending
+# "1068200.0"), which Postgres rejects for an integer column. Keep it in
+# lockstep with supabase when bumping.
+#
+# To upgrade: change a version here, run the jobs (or `pip install -r` locally),
+# confirm they pass, and commit the new pins.
+requests==2.34.2
+python-dotenv==1.2.2
+pywebpush==2.3.0
+supabase==2.31.0
+postgrest==2.31.0
