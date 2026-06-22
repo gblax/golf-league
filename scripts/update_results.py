@@ -264,7 +264,18 @@ def calculate_penalty(status, position, league_settings):
 # Main
 # ---------------------------------------------------------------------------
 def update_results(dry_run=True, mark_complete=False, force=False):
-    """Main function to update tournament results across all leagues."""
+    """Update tournament results across all leagues.
+
+    Returns True on a clean outcome — an off week with nothing to score, a
+    dry-run preview, or a successful apply. Returns False when an ended
+    tournament WAS due to be scored but the run could not apply it: it
+    couldn't be mapped to a Slash Golf event, the results aren't final, the
+    field shows $0, or zero picks matched. The CLI turns a False into a
+    non-zero exit, so a scheduled run that silently failed to score surfaces
+    as a RED GitHub Actions run (with a failure notification) instead of a
+    green check that hides the problem. An off week stays green — there was
+    genuinely nothing to do.
+    """
     print("=" * 50)
     print("Golf League Results Updater (Slash Golf)")
     print("=" * 50)
@@ -278,7 +289,7 @@ def update_results(dry_run=True, mark_complete=False, force=False):
     tournament = get_tournament_to_update(supabase)
     if not tournament:
         print("\nNo ended, incomplete tournament to score right now. Nothing to do.")
-        return
+        return True  # genuine off week — a clean (green) outcome, not a failure
 
     year = tournament_season_year(tournament)
     print(f"\n[tournament] Target from schedule: '{tournament['name']}' (Week {tournament['week']}, season {year})")
@@ -292,7 +303,7 @@ def update_results(dry_run=True, mark_complete=False, force=False):
         print("Set tournaments.slashgolf_tourn_id (run sync_schedule.py), or enter")
         print("results manually via CommissionerTab.")
         print("!" * 60)
-        return
+        return False  # an ended tournament went unscored — fail loudly
 
     # Fetch + parse the leaderboard and earnings.
     print(f"[tournament] Slash Golf tournId={tourn_id}, orgId={ORG_ID}, year={year}")
@@ -311,7 +322,7 @@ def update_results(dry_run=True, mark_complete=False, force=False):
         print("Refusing to apply updates or mark complete — results aren't final yet.")
         print("Re-run once the event is Official, or enter results manually. Use --force to override.")
         print("!" * 60)
-        return
+        return False  # results due but not final yet — fail loudly so it's re-run
 
     # Safety gate: a completed tournament always pays prize money. An all-$0
     # field means the payload isn't carrying final results.
@@ -322,7 +333,7 @@ def update_results(dry_run=True, mark_complete=False, force=False):
         print("A finished tournament always has prize money, so this isn't final results.")
         print("Refusing to apply updates. Use --force to override.")
         print("!" * 60)
-        return
+        return False  # $0 field means results aren't really final — fail loudly
 
     print(f"[tournament] Verified final results for Week {tournament['week']} (field purse ${total_field_winnings:,.0f}).")
 
@@ -444,13 +455,13 @@ def update_results(dry_run=True, mark_complete=False, force=False):
         print("Refusing to apply updates. Inspect the diagnostics above, then re-run")
         print("with --force to override.")
         print("!" * 60)
-        return
+        return False  # wrong event / bad mapping — fail loudly
 
     if dry_run:
         print("\n[DRY RUN] No changes made to database.")
         print("Run with --apply to update the database.")
         print("Run with --apply --complete to also mark tournament as completed.")
-        return
+        return True  # preview only — reaching here means the gates passed
 
     print("\nApplying updates to database...")
     for update in updates:
@@ -489,6 +500,7 @@ def update_results(dry_run=True, mark_complete=False, force=False):
         print("Tournament marked as completed!")
 
     print("Done!")
+    return True
 
 
 if __name__ == "__main__":
@@ -502,4 +514,9 @@ if __name__ == "__main__":
         print("Use --apply --complete to also mark tournament as completed")
         print("Use --force to override the safety gates\n")
 
-    update_results(dry_run=dry_run, mark_complete=mark_complete, force=force)
+    ok = update_results(dry_run=dry_run, mark_complete=mark_complete, force=force)
+    if not ok:
+        # An ended tournament was due to be scored but the run couldn't apply
+        # it. Exit non-zero so the scheduled GitHub Actions run goes red and
+        # sends a failure notification, instead of passing silently green.
+        sys.exit(1)
