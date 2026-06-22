@@ -1,0 +1,66 @@
+name: Sync Tournament Schedule
+
+on:
+  # Map each DB tournament onto its Slash Golf event and store the
+  # slashgolf_tourn_id (and real prize_pool), so the Monday scorer and the live
+  # leaderboard map by ID instead of a fragile runtime name match. Cron is UTC;
+  # Wednesday 13:00 UTC (~9am ET) is well before Thursday's first round, the
+  # Thu-Sun live-board snapshots, and Monday's scoring run. One /schedule call
+  # per week — negligible against the Slash Golf rate budget. Re-running weekly
+  # is self-healing: new events, name corrections, and purse updates get picked
+  # up automatically.
+  schedule:
+    - cron: '0 13 * * 3'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (no database writes)'
+        required: false
+        default: 'false'
+        type: boolean
+      create:
+        description: 'Also insert schedule events with no matching DB tournament (review the run log — week numbers come from the PGA calendar)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  sync-schedule:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Run schedule sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+        run: |
+          cd scripts
+          # Scheduled runs always apply the (safe) ID + purse mapping and never
+          # create new tournaments. Manual runs can dry-run and/or opt into
+          # --create.
+          FLAGS="--apply"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ "${{ inputs.dry_run }}" == "true" ]; then
+              FLAGS=""
+            fi
+            if [ "${{ inputs.create }}" == "true" ]; then
+              FLAGS="$FLAGS --create"
+            fi
+          fi
+          python sync_schedule.py $FLAGS
