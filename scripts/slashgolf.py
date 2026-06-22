@@ -126,6 +126,31 @@ _GENERIC_TOURNAMENT_WORDS = {
 }
 
 
+def _collapse_initialisms(norm):
+    """Merge runs of single-letter tokens into one acronym token, so a dotted
+    initialism and its solid form compare equal.
+
+    ``normalize_name`` turns "U.S." into the two tokens "u s" (the dots become
+    spaces). Collapsing them back to "us" lets "US Open" and "U.S. Open" match
+    — the kind of major whose only other token ("open") is a generic word the
+    significant-token rule deliberately ignores. Also covers "W.M." vs "WM",
+    etc. Tournament names don't carry meaningful standalone single letters, so
+    this is safe here (it is intentionally NOT applied to personal names, where
+    "J.J." must stay distinct)."""
+    out, buf = [], []
+    for tok in norm.split():
+        if len(tok) == 1 and tok.isalpha():
+            buf.append(tok)
+            continue
+        if buf:
+            out.append("".join(buf))
+            buf = []
+        out.append(tok)
+    if buf:
+        out.append("".join(buf))
+    return " ".join(out)
+
+
 def tournament_names_match(name_a, name_b):
     """Whether two tournament names refer to the same event. Used by the
     schedule sync to map a DB tournament onto its Slash Golf schedule row.
@@ -134,8 +159,12 @@ def tournament_names_match(name_a, name_b):
       2. Substring either direction (sponsor prefixes).
       3. A shared significant token (>3 chars) that is NOT a generic
          golf-event word ("byron"/"pebble" count; "classic"/"open" don't).
+
+    Dotted initialisms are collapsed first ("U.S." -> "us") so "US Open" maps
+    to "U.S. Open"; rules 1 and 2 then carry it.
     """
-    a, b = normalize_name(name_a), normalize_name(name_b)
+    a = _collapse_initialisms(normalize_name(name_a))
+    b = _collapse_initialisms(normalize_name(name_b))
     if not a or not b:
         return False
     if a == b or a in b or b in a:

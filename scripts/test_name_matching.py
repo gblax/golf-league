@@ -61,6 +61,16 @@ class TournamentNamesMatchTests(unittest.TestCase):
         self.assertFalse(tournament_names_match("Myrtle Beach Classic", "Rocket Classic"))
         self.assertFalse(tournament_names_match("Genesis Open", "US Open"))
 
+    def test_dotted_initialism(self):
+        """"US Open" (our schedule) must map to "U.S. Open" (Slash Golf's
+        name) even though the dots split into separate tokens and "open" is a
+        generic word. This is the major that silently failed to score."""
+        self.assertTrue(tournament_names_match("US Open", "U.S. Open"))
+        self.assertTrue(tournament_names_match("U.S. Open", "US Open"))
+        self.assertTrue(tournament_names_match("US Open", "U.S. Open Championship"))
+        # The dotted form must still be held to the same generic-word guard.
+        self.assertFalse(tournament_names_match("Genesis Open", "U.S. Open"))
+
     def test_unrelated(self):
         self.assertFalse(tournament_names_match("Masters Tournament", "Charles Schwab Challenge"))
 
