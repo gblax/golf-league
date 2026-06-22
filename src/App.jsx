@@ -355,18 +355,6 @@ const App = () => {
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
-  // Lock the page to the viewport while the main app (with its bottom nav) is
-  // mounted, so the in-app scroll container handles scrolling and the nav can
-  // be a non-fixed flex child. Login/league-select screens are excluded so they
-  // keep normal document scrolling (they can grow past the viewport). The
-  // matching height/overflow rules live under `.shell` in index.css.
-  const showMainApp = !loading && !showResetPassword && !showLogin && !showLeagueSelect && !!currentLeague;
-  useEffect(() => {
-    const el = document.documentElement;
-    el.classList.toggle('shell', showMainApp);
-    return () => el.classList.remove('shell');
-  }, [showMainApp]);
-
   // Check push notification support
   useEffect(() => {
     const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -1686,15 +1674,10 @@ const handleSubmitPick = async () => {
   const visibleTab = navTabs.some(t => t.id === activeTab) ? activeTab : 'picks';
 
   return (
-    <div className="app-shell flex flex-col h-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Toast Notification */}
       <NotificationToast notification={notification} onDismiss={() => setNotification(null)} />
-      {/* The single scroll container. Keeping the page itself locked to the
-          viewport (see .shell rules in index.css) and scrolling only here means
-          the bottom nav is a normal flex child, not position:fixed — so iOS
-          Safari can't strand it mid-page during momentum scrolling. */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
-        <div className="max-w-6xl mx-auto p-3 pb-6 sm:p-6">
+      <div className="max-w-6xl mx-auto p-3 sm:p-6">
         {/* Header */}
         <div className="card p-4 sm:p-6 mb-4 sm:mb-5">
           <div className="flex items-start sm:items-center justify-between gap-4">
@@ -1835,15 +1818,17 @@ const handleSubmitPick = async () => {
           )}
         </div>
 
-        {/* Navigation Tabs (top strip on tablet/desktop; phones use the bottom nav) */}
+        {/* Navigation Tabs — top strip on every screen size (phones included).
+            A top nav in normal document flow sidesteps the iOS fixed-position
+            and PWA viewport-height quirks that plagued the bottom bar. */}
         <div className="card mb-4 sm:mb-5 overflow-hidden">
-          <div className="hidden sm:flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+          <div className="flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
             {navTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 aria-current={visibleTab === tab.id ? 'page' : undefined}
-                className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-xs sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
+                className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[11px] sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
                   visibleTab === tab.id
                     ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
@@ -1973,7 +1958,6 @@ const handleSubmitPick = async () => {
               />
             )}          </div>
         </div>
-        </div>
       </div>
 
       {/* Mark-complete confirmation (themed, replaces window.confirm) */}
@@ -2001,33 +1985,6 @@ const handleSubmitPick = async () => {
           </div>
         </div>
       )}
-
-      {/* Mobile bottom navigation. A normal flex child of the app shell (not
-          position:fixed): it sits at the bottom of the locked-height shell and
-          never scrolls, so iOS Safari can't strand it mid-page. shrink-0 keeps
-          it from being squeezed; the padding clears the home indicator. */}
-      <nav
-        aria-label="Primary"
-        className="sm:hidden shrink-0 z-30 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-[env(safe-area-inset-bottom)]"
-      >
-        <div className="flex">
-          {navTabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              aria-current={visibleTab === tab.id ? 'page' : undefined}
-              className={`flex-1 pt-2 pb-1.5 flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors duration-150 ${
-                visibleTab === tab.id
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-slate-400 dark:text-slate-500'
-              }`}
-            >
-              <tab.icon size={20} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
     </div>
   );
 };
