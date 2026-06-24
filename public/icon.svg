@@ -1,33 +1,197 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#22c55e"/>
-      <stop offset="100%" style="stop-color:#15803d"/>
+    <!-- Background: deep jewel-tone emerald -->
+    <linearGradient id="bg" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" style="stop-color:#052e16"/>
+      <stop offset="50%" style="stop-color:#14532d"/>
+      <stop offset="100%" style="stop-color:#071a0e"/>
     </linearGradient>
-    <radialGradient id="shine" cx="35%" cy="30%" r="65%">
-      <stop offset="0%" style="stop-color:#4ade80; stop-opacity:0.4"/>
-      <stop offset="100%" style="stop-color:#15803d; stop-opacity:0"/>
+
+    <!-- Ambient warmth from center -->
+    <radialGradient id="bgGlow" cx="42%" cy="52%" r="58%">
+      <stop offset="0%" style="stop-color:#16a34a; stop-opacity:0.38"/>
+      <stop offset="100%" style="stop-color:#14532d; stop-opacity:0"/>
     </radialGradient>
+
+    <!-- Putting green surface -->
+    <radialGradient id="putting" cx="35%" cy="40%" r="70%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="60%" style="stop-color:#16a34a"/>
+      <stop offset="100%" style="stop-color:#15803d"/>
+    </radialGradient>
+
+    <!-- Golf ball: full 3D sphere shading -->
+    <radialGradient id="ballBody" cx="36%" cy="28%" r="74%">
+      <stop offset="0%"   style="stop-color:#ffffff"/>
+      <stop offset="28%"  style="stop-color:#f4f8f6"/>
+      <stop offset="62%"  style="stop-color:#dce8e2"/>
+      <stop offset="100%" style="stop-color:#b0c6bc"/>
+    </radialGradient>
+
+    <!-- Primary specular: bright top-left hot spot -->
+    <radialGradient id="spec1" cx="30%" cy="22%" r="30%">
+      <stop offset="0%"   style="stop-color:#ffffff; stop-opacity:0.96"/>
+      <stop offset="50%"  style="stop-color:#ffffff; stop-opacity:0.42"/>
+      <stop offset="100%" style="stop-color:#ffffff; stop-opacity:0"/>
+    </radialGradient>
+
+    <!-- Secondary specular: bottom-right bounce from green (Liquid Glass iridescent) -->
+    <radialGradient id="spec2" cx="72%" cy="75%" r="26%">
+      <stop offset="0%"   style="stop-color:#86efac; stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#86efac; stop-opacity:0"/>
+    </radialGradient>
+
+    <!-- Flag: warm amber-gold -->
+    <linearGradient id="flagGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   style="stop-color:#fde68a"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+
+    <!-- Liquid Glass sheen: the iOS 26 lens-cap highlight -->
+    <linearGradient id="glassTop" x1="28%" y1="0%" x2="72%" y2="58%">
+      <stop offset="0%"   style="stop-color:#ffffff; stop-opacity:0.24"/>
+      <stop offset="38%"  style="stop-color:#ffffff; stop-opacity:0.09"/>
+      <stop offset="100%" style="stop-color:#ffffff; stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- Edge rim highlight: thin bright line along the top -->
+    <linearGradient id="rimLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   style="stop-color:#ffffff; stop-opacity:0"/>
+      <stop offset="30%"  style="stop-color:#ffffff; stop-opacity:0.38"/>
+      <stop offset="70%"  style="stop-color:#ffffff; stop-opacity:0.38"/>
+      <stop offset="100%" style="stop-color:#ffffff; stop-opacity:0"/>
+    </linearGradient>
+
+    <!-- Warm green glow at very bottom (reflected fairway light) -->
+    <linearGradient id="groundGlow" x1="0%" y1="60%" x2="0%" y2="100%">
+      <stop offset="0%"   style="stop-color:#4ade80; stop-opacity:0"/>
+      <stop offset="100%" style="stop-color:#4ade80; stop-opacity:0.11"/>
+    </linearGradient>
+
+    <!-- Drop shadow filter for ball -->
+    <filter id="ballShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="2" dy="10" stdDeviation="14"
+                    flood-color="#020d06" flood-opacity="0.55"/>
+    </filter>
+
+    <!-- Soft glow filter for flag & ambient elements -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Soft blur for pre-shadow -->
+    <filter id="softBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
   </defs>
-  <!-- Full square background -->
-  <rect width="512" height="512" fill="url(#bgGrad)" rx="0"/>
-  <!-- Subtle shine overlay -->
-  <rect width="512" height="512" fill="url(#shine)" rx="0"/>
-  <!-- Golf flag pole - centered in safe zone -->
-  <rect x="230" y="115" width="7" height="265" fill="white" opacity="0.95" rx="3.5"/>
-  <!-- Golf flag -->
-  <path d="M237 115 L237 190 L310 152.5 Z" fill="white" opacity="0.95"/>
-  <!-- Golf hole - subtle ground -->
-  <ellipse cx="234" cy="380" rx="75" ry="18" fill="#14532d" opacity="0.6"/>
-  <!-- Golf ball -->
-  <circle cx="330" cy="340" r="33" fill="white"/>
-  <!-- Ball dimples -->
-  <circle cx="320" cy="330" r="2.5" fill="#e5e7eb"/>
-  <circle cx="335" cy="328" r="2.5" fill="#e5e7eb"/>
-  <circle cx="343" cy="340" r="2.5" fill="#e5e7eb"/>
-  <circle cx="335" cy="352" r="2.5" fill="#e5e7eb"/>
-  <circle cx="320" cy="350" r="2.5" fill="#e5e7eb"/>
-  <circle cx="327" cy="340" r="2.5" fill="#e5e7eb"/>
-  <!-- Ball subtle shadow -->
-  <ellipse cx="330" cy="375" rx="25" ry="6" fill="#14532d" opacity="0.25"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 1 · BACKGROUND              -->
+  <!-- ═══════════════════════════════════ -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#bgGlow)"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 2 · SCENE / GROUND          -->
+  <!-- ═══════════════════════════════════ -->
+  <!-- Soft horizon glow (sun behind the pin) -->
+  <ellipse cx="210" cy="300" rx="145" ry="90"
+           fill="#22c55e" opacity="0.07" filter="url(#softBlur)"/>
+
+  <!-- Putting green surface -->
+  <ellipse cx="245" cy="438" rx="238" ry="84" fill="url(#putting)" opacity="0.90"/>
+  <!-- Green fringe highlight -->
+  <ellipse cx="245" cy="432" rx="235" ry="81"
+           fill="none" stroke="#4ade80" stroke-width="2" opacity="0.22"/>
+
+  <!-- Hole cup -->
+  <ellipse cx="185" cy="416" rx="32" ry="11"  fill="#020d06" opacity="0.88"/>
+  <ellipse cx="185" cy="415" rx="30" ry="9.5"
+           fill="none" stroke="#0d4a24" stroke-width="2" opacity="0.55"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 3 · FLAG PIN                -->
+  <!-- ═══════════════════════════════════ -->
+  <!-- Pin shadow (slightly skewed for perspective) -->
+  <rect x="184" y="148" width="4" height="268"
+        fill="#020d06" opacity="0.22" rx="2" transform="skewX(4)"/>
+  <!-- Pin shaft -->
+  <rect x="181" y="138" width="6" height="278"
+        fill="white" opacity="0.92" rx="3"/>
+  <!-- Pin top cap -->
+  <circle cx="184" cy="138" r="5.5" fill="white" opacity="0.92"/>
+
+  <!-- Flag body -->
+  <path d="M187 138 L187 228 L302 183 Z"
+        fill="url(#flagGrad)" filter="url(#glow)"/>
+  <!-- Flag highlight (lighter wedge near pole) -->
+  <path d="M187 138 L187 182 L248 160 Z"
+        fill="#fef9c3" opacity="0.48"/>
+  <!-- Flag edge crispness -->
+  <path d="M187 138 L187 228 L302 183 Z"
+        fill="none" stroke="#fbbf24" stroke-width="1.5" opacity="0.38"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 4 · GOLF BALL               -->
+  <!-- ═══════════════════════════════════ -->
+  <!-- Pre-shadow bloom -->
+  <circle cx="325" cy="330" r="80"
+          fill="#000" opacity="0.12" filter="url(#ballShadow)"/>
+  <!-- Ball body -->
+  <circle cx="322" cy="322" r="74" fill="url(#ballBody)"/>
+
+  <!-- Dimples – outer ring (9 points) -->
+  <circle cx="298" cy="300" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="322" cy="291" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="346" cy="300" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="360" cy="322" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="353" cy="346" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="335" cy="362" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="311" cy="364" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="293" cy="350" r="5.5" fill="#bcccc4" opacity="0.68"/>
+  <circle cx="284" cy="327" r="5.5" fill="#bcccc4" opacity="0.68"/>
+
+  <!-- Dimples – inner ring (8 points) -->
+  <circle cx="310" cy="313" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="325" cy="307" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="340" cy="315" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="346" cy="332" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="337" cy="346" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="320" cy="350" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="305" cy="343" r="4.2" fill="#bcccc4" opacity="0.58"/>
+  <circle cx="298" cy="327" r="4.2" fill="#bcccc4" opacity="0.58"/>
+
+  <!-- Dimple – center -->
+  <circle cx="322" cy="328" r="3.8" fill="#b8c8c0" opacity="0.48"/>
+
+  <!-- Primary specular highlight (top-left bright) -->
+  <circle cx="294" cy="292" r="30" fill="url(#spec1)"/>
+  <!-- Secondary specular (bottom-right Liquid Glass bounce) -->
+  <circle cx="354" cy="356" r="24" fill="url(#spec2)"/>
+
+  <!-- Ball ground shadow -->
+  <ellipse cx="324" cy="398" rx="62" ry="16" fill="#020d06" opacity="0.42"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 5 · LIQUID GLASS SHEEN      -->
+  <!-- ═══════════════════════════════════ -->
+  <!-- Large lens-shaped highlight sweeping the top half -->
+  <path d="M0 0 L512 0 L512 215 Q355 305 256 275 Q157 305 0 215 Z"
+        fill="url(#glassTop)"/>
+
+  <!-- Rim highlight: a thin bright sliver right at the top edge -->
+  <rect x="0" y="0" width="512" height="2.5" fill="url(#rimLine)"/>
+
+  <!-- Warm reflected ground glow at the bottom -->
+  <rect width="512" height="512" fill="url(#groundGlow)"/>
+
+  <!-- ═══════════════════════════════════ -->
+  <!--  LAYER 6 · OUTER FRAME POLISH      -->
+  <!-- ═══════════════════════════════════ -->
+  <rect x="0.5" y="0.5" width="511" height="511"
+        fill="none" stroke="white" stroke-width="1.5" opacity="0.07"/>
 </svg>
