@@ -1,8 +1,13 @@
 name: Pick Deadline Reminders
 
 on:
-  # Wednesday at 8 PM Eastern (1 AM Thursday UTC)
+  # GitHub cron has no timezone/DST support, so these UTC times are pinned to
+  # Eastern Standard Time (UTC-5), matching the project's existing convention.
+  # During EDT (the golf season) they land one hour later in local time.
   schedule:
+    # Wednesday at noon Eastern (5 PM UTC)
+    - cron: '0 17 * * 3'
+    # Wednesday at 8 PM Eastern (1 AM Thursday UTC)
     - cron: '0 1 * * 4'
 
   # Allow manual trigger
