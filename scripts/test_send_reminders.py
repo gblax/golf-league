@@ -10,13 +10,21 @@ from datetime import datetime, timedelta, timezone
 from send_reminders import select_reminder_tournament
 
 
-def _t(week, lock_time, completed=False, name=None):
-    """Build a fake tournament row. lock_time may be a datetime or None."""
-    raw = lock_time.isoformat() if isinstance(lock_time, datetime) else lock_time
+def _iso(value):
+    """Render a datetime as ISO; pass through strings/None untouched."""
+    return value.isoformat() if isinstance(value, datetime) else value
+
+
+def _t(week, lock_time, completed=False, name=None, tournament_date=None):
+    """Build a fake tournament row.
+
+    lock_time / tournament_date may each be a datetime, a raw string, or None.
+    """
     return {
         "week": week,
         "name": name or f"Week {week} Event",
-        "picks_lock_time": raw,
+        "picks_lock_time": _iso(lock_time),
+        "tournament_date": _iso(tournament_date),
         "completed": completed,
     }
 
@@ -86,15 +94,39 @@ class SelectReminderTournamentTests(unittest.TestCase):
         result = select_reminder_tournament(tournaments, now=NOW)
         self.assertEqual(result["name"], "This Week")
 
-    def test_fallback_to_incomplete_when_no_lock_time(self):
-        """Misconfigured rows with no lock time still get a best-effort pick."""
+    def test_tournament_date_used_as_deadline_when_no_lock(self):
+        """With no picks_lock_time, first-round tee-off (tournament_date) is the
+        deadline proxy — and an imminent, future one is a valid target."""
         tournaments = [
-            _t(20, None, completed=True),
-            _t(21, None, completed=False, name="Earliest Incomplete"),
-            _t(22, None, completed=False, name="Later Incomplete"),
+            _t(20, None, tournament_date=NOW + timedelta(hours=6), name="This Week"),
         ]
         result = select_reminder_tournament(tournaments, now=NOW)
-        self.assertEqual(result["name"], "Earliest Incomplete")
+        self.assertEqual(result["name"], "This Week")
+
+    def test_no_lock_and_past_tournament_date_is_skipped(self):
+        """Regression for the 'middle of the night, too late, already picked'
+        bug: a past week with no lock time (e.g. never marked complete) used to
+        fall through the timing checks and get reminded. It must not."""
+        tournaments = [
+            _t(19, None, tournament_date=NOW - timedelta(days=3),
+               completed=False, name="Already Played"),
+        ]
+        self.assertIsNone(select_reminder_tournament(tournaments, now=NOW))
+
+    def test_no_lock_and_no_date_is_skipped(self):
+        """No deadline known at all → we cannot tell if a nudge is on time, so
+        we send nothing rather than risk a late one."""
+        tournaments = [_t(21, None, tournament_date=None, completed=False)]
+        self.assertIsNone(select_reminder_tournament(tournaments, now=NOW))
+
+    def test_explicit_lock_wins_over_tournament_date(self):
+        """When both are present, the explicit lock time is authoritative."""
+        tournaments = [
+            _t(20, NOW + timedelta(hours=6),
+               tournament_date=NOW + timedelta(hours=30), name="Locks Early"),
+        ]
+        result = select_reminder_tournament(tournaments, now=NOW)
+        self.assertEqual(result["name"], "Locks Early")
 
     def test_empty_returns_none(self):
         self.assertIsNone(select_reminder_tournament([], now=NOW))

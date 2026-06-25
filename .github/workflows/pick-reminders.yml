@@ -4,11 +4,19 @@ on:
   # GitHub cron has no timezone/DST support, so these UTC times are pinned to
   # Eastern Standard Time (UTC-5), matching the project's existing convention.
   # During EDT (the golf season) they land one hour later in local time.
+  #
+  # Both slots are kept in the afternoon/early evening on purpose. GitHub's
+  # scheduled runs are frequently delayed (top-of-hour by 30 min to a few
+  # hours), so a late slot creeps toward "middle of the night" — exactly the
+  # 3 AM ping we're trying to avoid. The Thursday-morning pick lock leaves
+  # plenty of room for an evening-before nudge without going late.
   schedule:
     # Wednesday at noon Eastern (5 PM UTC)
     - cron: '0 17 * * 3'
-    # Wednesday at 8 PM Eastern (1 AM Thursday UTC)
-    - cron: '0 1 * * 4'
+    # Wednesday at 6 PM Eastern (11 PM UTC) — last call the evening before the
+    # Thursday lock. Even with a couple hours of cron slippage it stays in the
+    # evening rather than drifting past midnight.
+    - cron: '0 23 * * 3'
 
   # Allow manual trigger
   workflow_dispatch:
