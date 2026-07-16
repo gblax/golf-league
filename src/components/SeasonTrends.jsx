@@ -68,6 +68,11 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
     return { week: wk, winnings: w ? (w.winnings || 0) : 0 };
   });
   const myMax = Math.max(1, ...myWeekly.map((d) => d.winnings));
+  // Late in the season the bar row holds 25+ columns on a phone-width card:
+  // bars must be free to shrink below their labels' width, gaps tighten, and
+  // only every Nth week gets an axis label (always including the last week).
+  const manyWeeks = weeks.length > 12;
+  const labelStep = Math.max(1, Math.ceil(weeks.length / 8));
 
   // Legend ordered by current standing (final cumulative desc).
   const legend = [...series].sort((a, b) => b.final - a.final);
@@ -137,18 +142,34 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
         <div className="card p-4 sm:p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Your Week-by-Week Winnings</h3>
           <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{me.name}'s winnings each week.</p>
-          <div className="flex items-end gap-1.5 h-32">
+          <div className={`flex items-end h-32 ${manyWeeks ? 'gap-0.5' : 'gap-1.5'}`}>
             {myWeekly.map((d) => {
               const h = Math.round((d.winnings / myMax) * 100);
               return (
-                <div key={d.week} className="flex-1 flex flex-col items-center justify-end h-full group" title={`Wk ${d.week}: ${compactMoney(d.winnings)}`}>
+                <div key={d.week} className="flex-1 min-w-0 flex items-end h-full" title={`Wk ${d.week}: ${compactMoney(d.winnings)}`}>
                   <div
-                    className="w-full rounded-t bg-emerald-500 dark:bg-emerald-400"
+                    className={`w-full bg-emerald-500 dark:bg-emerald-400 ${manyWeeks ? 'rounded-t-sm' : 'rounded-t'}`}
                     style={{ height: `${Math.max(2, h)}%` }}
                   />
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500 mt-1 tabular-nums">{d.week}</span>
                 </div>
               );
+            })}
+          </div>
+          {/* Axis labels sit outside the flex columns (absolute, centered on the
+              bar) so their text width can never force the row wider than the card. */}
+          <div className="relative h-4 mt-1">
+            {myWeekly.map((d, i) => {
+              const last = myWeekly.length - 1;
+              const show = i === last || (i % labelStep === 0 && last - i >= labelStep / 2);
+              return show ? (
+                <span
+                  key={d.week}
+                  className="absolute -translate-x-1/2 text-[9px] text-slate-400 dark:text-slate-500 tabular-nums"
+                  style={{ left: `${((i + 0.5) / myWeekly.length) * 100}%` }}
+                >
+                  {d.week}
+                </span>
+              ) : null;
             })}
           </div>
         </div>
