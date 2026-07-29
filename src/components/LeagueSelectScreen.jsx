@@ -20,6 +20,28 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
   handleJoinLeague,
   onSignOut,
 }) {
+  const leagueActionIds = userLeagues.length > 0
+    ? ['select', 'join', 'create']
+    : ['join', 'create'];
+  const visibleLeagueAction = userLeagues.length === 0 && leagueAction === 'select'
+    ? 'join'
+    : leagueAction;
+  const handleLeagueTabKeyDown = (event, actionId) => {
+    const currentIndex = leagueActionIds.indexOf(actionId);
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % leagueActionIds.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + leagueActionIds.length) % leagueActionIds.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = leagueActionIds.length - 1;
+    else return;
+
+    event.preventDefault();
+    const nextAction = leagueActionIds[nextIndex];
+    setLeagueAction(nextAction);
+    requestAnimationFrame(() => document.getElementById(`league-action-${nextAction}`)?.focus());
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 transition-colors duration-300">
       <button
@@ -49,32 +71,50 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
         )}
 
         {/* League selection tabs */}
-        <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6">
+        <div className="flex border-b border-slate-200 dark:border-slate-700 mb-6" role="tablist" aria-label="League actions">
           {userLeagues.length > 0 && (
             <button
+              id="league-action-select"
               onClick={() => setLeagueAction('select')}
-              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'select' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+              onKeyDown={(event) => handleLeagueTabKeyDown(event, 'select')}
+              role="tab"
+              aria-selected={visibleLeagueAction === 'select'}
+              aria-controls="league-action-panel"
+              tabIndex={visibleLeagueAction === 'select' ? 0 : -1}
+              className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${visibleLeagueAction === 'select' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
             >
               My Leagues
             </button>
           )}
           <button
+            id="league-action-join"
             onClick={() => setLeagueAction('join')}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'join' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+            onKeyDown={(event) => handleLeagueTabKeyDown(event, 'join')}
+            role="tab"
+            aria-selected={visibleLeagueAction === 'join'}
+            aria-controls="league-action-panel"
+            tabIndex={visibleLeagueAction === 'join' ? 0 : -1}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${visibleLeagueAction === 'join' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
           >
             Join League
           </button>
           <button
+            id="league-action-create"
             onClick={() => setLeagueAction('create')}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${leagueAction === 'create' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
+            onKeyDown={(event) => handleLeagueTabKeyDown(event, 'create')}
+            role="tab"
+            aria-selected={visibleLeagueAction === 'create'}
+            aria-controls="league-action-panel"
+            tabIndex={visibleLeagueAction === 'create' ? 0 : -1}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${visibleLeagueAction === 'create' ? 'border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}
           >
             Create League
           </button>
         </div>
 
         {/* Select existing league */}
-        {leagueAction === 'select' && userLeagues.length > 0 && (
-          <div className="space-y-3">
+        {visibleLeagueAction === 'select' && userLeagues.length > 0 && (
+          <div id="league-action-panel" role="tabpanel" aria-labelledby="league-action-select" className="space-y-3">
             {userLeagues.map(league => (
               <button
                 key={league.id}
@@ -96,14 +136,15 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
         )}
 
         {/* Join a league */}
-        {leagueAction === 'join' && (
-          <div className="space-y-4">
+        {visibleLeagueAction === 'join' && (
+          <div id="league-action-panel" role="tabpanel" aria-labelledby="league-action-join" className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Enter the invite code from your league commissioner to join an existing league.
             </p>
             <div>
-              <label className="label">Invite Code</label>
+              <label htmlFor="league-invite-code" className="label">Invite Code</label>
               <input
+                id="league-invite-code"
                 type="text"
                 value={joinInviteCode}
                 onChange={(e) => setJoinInviteCode(e.target.value)}
@@ -127,14 +168,15 @@ const LeagueSelectScreen = React.memo(function LeagueSelectScreen({
         )}
 
         {/* Create a league */}
-        {leagueAction === 'create' && (
-          <div className="space-y-4">
+        {visibleLeagueAction === 'create' && (
+          <div id="league-action-panel" role="tabpanel" aria-labelledby="league-action-create" className="space-y-4">
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Create a new league and invite your friends with a unique invite code.
             </p>
             <div>
-              <label className="label">League Name</label>
+              <label htmlFor="league-name" className="label">League Name</label>
               <input
+                id="league-name"
                 type="text"
                 value={newLeagueName}
                 onChange={(e) => setNewLeagueName(e.target.value)}

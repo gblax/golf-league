@@ -46,7 +46,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
   if (weeks.length === 0) {
     return (
       <div className="card p-5 text-center">
-        <p className="text-sm text-slate-400 dark:text-slate-500">Charts appear once weekly results are posted.</p>
+        <p className="text-sm text-slate-400 dark:text-slate-400">Charts appear once weekly results are posted.</p>
       </div>
     );
   }
@@ -82,14 +82,14 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
       {/* Cumulative net winnings */}
       <div className="card p-4 sm:p-5">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Cumulative Winnings</h3>
-        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Season winnings total through each week.</p>
+        <p className="text-xs text-slate-400 dark:text-slate-400 mb-3">Season winnings total through each week.</p>
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Cumulative winnings by week">
           {/* y reference lines: top, zero, bottom */}
           {[yMax, 0, yMin].filter((v, i, arr) => arr.indexOf(v) === i).map((v) => (
             <g key={v}>
               <line x1={padL} y1={yFor(v)} x2={W - padR} y2={yFor(v)}
                 stroke="currentColor" strokeOpacity={v === 0 ? 0.25 : 0.1} className="text-slate-400" />
-              <text x={padL - 6} y={yFor(v) + 3} textAnchor="end" className="fill-slate-400 dark:fill-slate-500" fontSize="10">
+              <text x={padL - 6} y={yFor(v) + 3} textAnchor="end" className="fill-slate-400 dark:fill-slate-400" fontSize="10">
                 {compactMoney(v)}
               </text>
             </g>
@@ -98,7 +98,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
           {weeks.map((wk, i) => {
             const show = i === 0 || i === weeks.length - 1 || (weeks.length > 4 && i === Math.floor((weeks.length - 1) / 2));
             return show ? (
-              <text key={wk} x={xFor(i)} y={H - 8} textAnchor="middle" className="fill-slate-400 dark:fill-slate-500" fontSize="10">
+              <text key={wk} x={xFor(i)} y={H - 8} textAnchor="middle" className="fill-slate-400 dark:fill-slate-400" fontSize="10">
                 Wk {wk}
               </text>
             ) : null;
@@ -131,7 +131,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
             <span key={s.id} className={`inline-flex items-center gap-1.5 text-[11px] ${s.isUser ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>
               <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: colorById[s.id] }} />
               {s.name}{s.isUser ? ' (you)' : ''}
-              <span className="tabular-nums text-slate-400 dark:text-slate-500">{compactMoney(s.final)}</span>
+              <span className="tabular-nums text-slate-400 dark:text-slate-400">{compactMoney(s.final)}</span>
             </span>
           ))}
         </div>
@@ -141,7 +141,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
       {me && (
         <div className="card p-4 sm:p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Your Week-by-Week Winnings</h3>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">{me.name}'s winnings each week.</p>
+          <p className="text-xs text-slate-400 dark:text-slate-400 mb-3">{me.name}'s winnings each week.</p>
           <div className={`flex items-end h-32 ${manyWeeks ? 'gap-0.5' : 'gap-1.5'}`}>
             {myWeekly.map((d) => {
               const h = Math.round((d.winnings / myMax) * 100);
@@ -164,7 +164,7 @@ const SeasonTrends = React.memo(function SeasonTrends({ standings, currentUser, 
               return show ? (
                 <span
                   key={d.week}
-                  className="absolute -translate-x-1/2 text-[9px] text-slate-400 dark:text-slate-500 tabular-nums"
+                  className="absolute -translate-x-1/2 text-[9px] text-slate-400 dark:text-slate-400 tabular-nums"
                   style={{ left: `${((i + 0.5) / myWeekly.length) * 100}%` }}
                 >
                   {d.week}

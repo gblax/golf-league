@@ -26,11 +26,11 @@ function LiveStatus({ live, showThru = true }) {
       ) : (
         <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{live.position || '—'}</span>
       )}
-      <span className={`text-xs font-semibold ${out ? 'text-slate-400 dark:text-slate-500' : scoreClass(live.score)}`}>
+      <span className={`text-xs font-semibold ${out ? 'text-slate-400 dark:text-slate-400' : scoreClass(live.score)}`}>
         {live.score || ''}
       </span>
       {showThru && !out && live.thru && !isThruFinished(live.thru) && (
-        <span className="text-[10px] text-slate-400 dark:text-slate-500">{`thru ${live.thru}`}</span>
+        <span className="text-[10px] text-slate-400 dark:text-slate-400">{`thru ${live.thru}`}</span>
       )}
     </span>
   );
@@ -96,14 +96,14 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
             </span>
           )}
           {index.cutLine && (
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 tabular-nums">Cut: {index.cutLine}</p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-400 mt-1 tabular-nums">Cut: {index.cutLine}</p>
           )}
         </div>
       </div>
 
       {/* Freshness disclaimer — always visible so snapshot scores aren't mistaken for live or final */}
       {updatedLabel && (
-        <p className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 mb-3">
+        <p className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-400 mb-3">
           <Clock size={11} />
           {isOfficial
             ? `Final results as of ${updatedLabel}`
@@ -143,7 +143,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
                 {m.golferName ? (
                   <LiveStatus live={m.live} />
                 ) : (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shrink-0">
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 shrink-0">
                     —
                   </span>
                 )}
@@ -154,7 +154,7 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
       ) : (
         <div className="px-3 py-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-center">
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300">No league picks on the board yet.</p>
-          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Members' picks appear here once their golfers are on the leaderboard.</p>
+          <p className="text-[11px] text-slate-400 dark:text-slate-400 mt-0.5">Members' picks appear here once their golfers are on the leaderboard.</p>
         </div>
       )}
 
@@ -173,10 +173,10 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-slate-100 dark:bg-slate-800">
               <tr>
-                <th className="py-1.5 px-2 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pos</th>
-                <th className="py-1.5 px-2 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Player</th>
-                <th className="py-1.5 px-2 text-right text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Score</th>
-                <th className="py-1.5 px-2 text-right text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Thru</th>
+                <th className="py-1.5 px-2 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pos</th>
+                <th className="py-1.5 px-2 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Player</th>
+                <th className="py-1.5 px-2 text-right text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Score</th>
+                <th className="py-1.5 px-2 text-right text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Thru</th>
               </tr>
             </thead>
             <tbody>
@@ -199,10 +199,10 @@ const LiveLeaderboard = React.memo(function LiveLeaderboard({
                         {p.player_name}
                       </span>
                     </td>
-                    <td className={`py-1.5 px-2 text-right text-xs font-semibold tabular-nums ${out ? 'text-slate-400 dark:text-slate-500' : scoreClass(p.score)}`}>
+                    <td className={`py-1.5 px-2 text-right text-xs font-semibold tabular-nums ${out ? 'text-slate-400 dark:text-slate-400' : scoreClass(p.score)}`}>
                       {p.score || ''}
                     </td>
-                    <td className="py-1.5 px-2 text-right text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+                    <td className="py-1.5 px-2 text-right text-[10px] text-slate-400 dark:text-slate-400 tabular-nums">
                       {out ? '' : isThruFinished(p.thru) ? 'F' : p.thru || ''}
                     </td>
                   </tr>

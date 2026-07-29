@@ -29,7 +29,7 @@ function SealedChip({ size = 'default' }) {
   return (
     <span
       title="Sealed until picks lock"
-      className={`inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 font-medium ${
+      className={`inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-400 font-medium ${
         size === 'small' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
       }`}
     >
@@ -128,7 +128,7 @@ function WinnerBadge({ size = 'default', winnerName }) {
 function MobileExpandedDetails({ player, currentUser, currentWeek, currentTournament, leagueSettings }) {
   return (
     <div className="px-3 pb-3 pt-2">
-      <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Week-by-Week</p>
+      <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide mb-2">Week-by-Week</p>
       <div className="space-y-1.5">
         {player.picksByWeek.filter(w => w.week <= currentWeek + 1).map((weekData, weekIdx) => {
           const isCurrentWeekRow = weekData.week === currentWeek;
@@ -146,7 +146,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
                 : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
             }`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase">
+                <span className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase">
                   Wk {weekData.week}
                   {isWinnerRow && <WinnerBadge size="small" winnerName={weekData.tournamentWinner} />}
                 </span>
@@ -165,7 +165,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
               </div>
               <div className="text-xs text-slate-600 dark:text-slate-300 mb-1">{weekData.tournamentName}</div>
               <div className="flex items-center gap-1.5 text-xs">
-                <span className="text-slate-400 dark:text-slate-500">Pick:</span>
+                <span className="text-slate-400 dark:text-slate-400">Pick:</span>
                 {shouldHidePick ? (
                   weekData.golfer ? (
                     <SealedChip size="small" />
@@ -182,7 +182,7 @@ function MobileExpandedDetails({ player, currentUser, currentWeek, currentTourna
               </div>
               {leagueSettings.backup_picks_enabled && !shouldHidePick && weekData.backup && (
                 <div className="flex items-center gap-1.5 text-xs mt-0.5">
-                  <span className="text-slate-400 dark:text-slate-500">Backup:</span>
+                  <span className="text-slate-400 dark:text-slate-400">Backup:</span>
                   <span className="text-amber-600 dark:text-amber-400">{weekData.backup}</span>
                 </div>
               )}
@@ -309,7 +309,7 @@ const StandingsTab = React.memo(function StandingsTab({
                       </span>
                     )}
                   </div>
-                  <span className="text-slate-400 dark:text-slate-500 flex-shrink-0 ml-2">
+                  <span className="text-slate-400 dark:text-slate-400 flex-shrink-0 ml-2">
                     {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </span>
                 </div>
@@ -319,13 +319,13 @@ const StandingsTab = React.memo(function StandingsTab({
                   return (
                     <div className="grid grid-cols-3 gap-1 ml-8 mt-1 text-xs">
                       <div className="tabular-nums">
-                        <span className="text-slate-400 dark:text-slate-500">Won</span>{' '}
+                        <span className="text-slate-400 dark:text-slate-400">Won</span>{' '}
                         <span className="font-semibold text-slate-900 dark:text-white">${player.winnings.toLocaleString()}</span>
                       </div>
                       <div className="tabular-nums">
                         {player.penalties > 0 && (
                           <>
-                            <span className="text-slate-400 dark:text-slate-500">Pen</span>{' '}
+                            <span className="text-slate-400 dark:text-slate-400">Pen</span>{' '}
                             <span className="font-semibold text-red-500 dark:text-red-400">${player.penalties}</span>
                           </>
                         )}
@@ -375,12 +375,12 @@ const StandingsTab = React.memo(function StandingsTab({
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-800">
-              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">#</th>
-              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Player</th>
-              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Won</th>
-              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pen.</th>
-              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Pick</th>
-              <th className="py-3 px-2 text-center text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide"></th>
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">#</th>
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Player</th>
+              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Won</th>
+              <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pen.</th>
+              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pick</th>
+              <th className="py-3 px-2 text-center text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide"></th>
             </tr>
           </thead>
           <tbody>
@@ -430,7 +430,7 @@ const StandingsTab = React.memo(function StandingsTab({
                       onClick={() => toggleRowExpansion(player.id)}
                       aria-expanded={!!expandedRows[player.id]}
                       aria-label={`${expandedRows[player.id] ? 'Collapse' : 'Expand'} week-by-week results for ${player.name}`}
-                      className="text-slate-400 dark:text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="text-slate-400 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       {expandedRows[player.id] ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
@@ -442,21 +442,21 @@ const StandingsTab = React.memo(function StandingsTab({
                   <tr className="bg-slate-50 dark:bg-slate-900/50">
                     <td colSpan="6" className="py-4 px-4">
                       <div className="max-w-5xl mx-auto">
-                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-3">
+                        <p className="text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide mb-3">
                           Week-by-Week &mdash; {player.name}
                         </p>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-slate-200 dark:border-slate-700">
-                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Wk</th>
-                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Tournament</th>
-                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Golfer</th>
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Wk</th>
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Tournament</th>
+                                <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Golfer</th>
                                 {leagueSettings.backup_picks_enabled && (
-                                  <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Backup</th>
+                                  <th className="py-2 px-3 text-left text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Backup</th>
                                 )}
-                                <th className="py-2 px-3 text-right text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Won</th>
-                                <th className="py-2 px-3 text-center text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Penalty</th>
+                                <th className="py-2 px-3 text-right text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Won</th>
+                                <th className="py-2 px-3 text-center text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Penalty</th>
                               </tr>
                             </thead>
                             <tbody>

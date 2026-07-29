@@ -56,7 +56,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
 
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">
             Week {recap.week} Recap
           </p>
           <p className="text-sm font-semibold text-slate-900 dark:text-white truncate mt-0.5">
@@ -87,7 +87,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
       <div className="mt-2.5 space-y-1 text-xs text-slate-600 dark:text-slate-300">
         {me && (
           <p>
-            <span className="text-slate-400 dark:text-slate-500">Your week:</span>{' '}
+            <span className="text-slate-400 dark:text-slate-400">Your week:</span>{' '}
             {me.golfer ? (
               <>
                 <span className="font-medium">{me.golfer}</span>
@@ -108,7 +108,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
         )}
         {recap.topEarner && (
           <p>
-            <span className="text-slate-400 dark:text-slate-500">Week&rsquo;s best:</span>{' '}
+            <span className="text-slate-400 dark:text-slate-400">Week&rsquo;s best:</span>{' '}
             <span className="font-medium">{recap.topEarner.name}</span>
             {recap.topEarner.golfer ? ` (${recap.topEarner.golfer})` : ''}
             {' — '}
@@ -119,7 +119,7 @@ const WeekRecapCard = React.memo(function WeekRecapCard({ recap, storageKey }) {
         )}
         {recap.leader && (
           <p>
-            <span className="text-slate-400 dark:text-slate-500">League lead:</span>{' '}
+            <span className="text-slate-400 dark:text-slate-400">League lead:</span>{' '}
             <span className="font-medium">{recap.leader.name}</span>
             {' — '}
             <span className="font-semibold tabular-nums">{formatWinnings(recap.leader.winnings)}</span>

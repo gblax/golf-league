@@ -46,8 +46,9 @@ const LoginScreen = React.memo(function LoginScreen({
         <div className="space-y-5">
           {isSignup && (
             <div>
-              <label className="label">Name</label>
+              <label htmlFor="login-name" className="label">Name</label>
               <input
+                id="login-name"
                 type="text"
                 value={signupName}
                 onChange={(e) => setSignupName(e.target.value)}
@@ -62,8 +63,9 @@ const LoginScreen = React.memo(function LoginScreen({
           )}
 
           <div>
-            <label className="label">Email</label>
+            <label htmlFor="login-email" className="label">Email</label>
             <input
+              id="login-email"
               type="email"
               value={loginEmail}
               onChange={(e) => setLoginEmail(e.target.value)}
@@ -81,8 +83,9 @@ const LoginScreen = React.memo(function LoginScreen({
 
           {!showForgotPassword && (
             <div>
-              <label className="label">Password</label>
+              <label htmlFor="login-password" className="label">Password</label>
               <input
+                id="login-password"
                 type="password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
@@ -130,7 +133,7 @@ const LoginScreen = React.memo(function LoginScreen({
               {!isSignup && (
                 <button
                   onClick={() => setShowForgotPassword(true)}
-                  className="w-full text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-sm font-medium transition-colors duration-150"
+                  className="w-full text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white text-sm font-medium transition-colors duration-150"
                 >
                   Forgot password?
                 </button>

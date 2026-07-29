@@ -214,7 +214,7 @@ const PicksTab = React.memo(function PicksTab({
 
     return (
       <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
-        <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">
+        <p className="text-xs font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide mb-2">
           Season Scorecard ({sorted.length})
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -226,14 +226,14 @@ const PicksTab = React.memo(function PicksTab({
                 className="inline-flex items-center gap-1.5 px-2 py-1 bg-slate-100 dark:bg-slate-800 text-xs rounded-md"
               >
                 {info && (
-                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 tabular-nums">Wk {info.week}</span>
+                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-400 tabular-nums">Wk {info.week}</span>
                 )}
                 <span className="text-slate-500 dark:text-slate-400 line-through decoration-slate-300 dark:decoration-slate-600">{golfer}</span>
                 {info && (
                   info.winnings > 0 ? (
                     <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatWinnings(info.winnings)}</span>
                   ) : (
-                    <span className="text-slate-400 dark:text-slate-500 tabular-nums">$0</span>
+                    <span className="text-slate-400 dark:text-slate-400 tabular-nums">$0</span>
                   )
                 )}
               </span>
@@ -285,7 +285,7 @@ const PicksTab = React.memo(function PicksTab({
                       {myLive.score || ''}
                       {/* Finished rounds show nothing — "thru N" only for a partial round */}
                       {myLive.thru && !isThruFinished(myLive.thru) && (
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-400 font-medium">
                           {` · thru ${myLive.thru}`}
                         </span>
                       )}
@@ -293,7 +293,7 @@ const PicksTab = React.memo(function PicksTab({
                   </div>
                 )
               ) : (
-                <p className="shrink-0 max-w-[45%] text-[11px] text-slate-400 dark:text-slate-500 text-right">
+                <p className="shrink-0 max-w-[45%] text-[11px] text-slate-400 dark:text-slate-400 text-right">
                   Scores post after each round wraps up
                 </p>
               )}
@@ -324,7 +324,7 @@ const PicksTab = React.memo(function PicksTab({
         )}
 
         {lockTimeLabel && (
-          <p className="mt-3 text-xs text-slate-400 dark:text-slate-500 text-center">{lockTimeLabel}</p>
+          <p className="mt-3 text-xs text-slate-400 dark:text-slate-400 text-center">{lockTimeLabel}</p>
         )}
 
         {seasonScorecard}
@@ -488,7 +488,7 @@ const PicksTab = React.memo(function PicksTab({
                           inField(golfer) ? (
                             <span className="shrink-0 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">in field</span>
                           ) : (
-                            <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">not in field</span>
+                            <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-400">not in field</span>
                           )
                         )}
                       </span>
@@ -586,7 +586,7 @@ const PicksTab = React.memo(function PicksTab({
               </div>
             )}
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+          <p className="text-xs text-slate-400 dark:text-slate-400 mt-1.5">
             Auto-activates if your primary pick withdraws before the tournament.
           </p>
         </div>
@@ -626,7 +626,7 @@ const PicksTab = React.memo(function PicksTab({
       </button>
 
       {lockTime && (
-        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500 text-center">
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-400 text-center">
           Locks {lockTime.toLocaleString('en-US', {
             weekday: 'short',
             month: 'short',

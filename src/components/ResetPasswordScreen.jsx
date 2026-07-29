@@ -21,8 +21,9 @@ const ResetPasswordScreen = React.memo(function ResetPasswordScreen({
         </div>
         <div className="space-y-5">
           <div>
-            <label className="label">New Password</label>
+            <label htmlFor="reset-password" className="label">New Password</label>
             <input
+              id="reset-password"
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, XCircle } from 'lucide-react';
+import ModalDialog from './ModalDialog';
 
 const AccountSettingsModal = React.memo(function AccountSettingsModal({
   editName,
@@ -15,11 +16,10 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
   handleChangePassword,
 }) {
   return (
-    <div className="modal-overlay">
-      <div className="modal-panel max-w-lg">
-        <div className="p-5 sm:p-6">
+    <ModalDialog onClose={onClose} titleId="account-settings-title" panelClassName="max-w-lg">
+      <div className="p-5 sm:p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 id="account-settings-title" className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Users className="text-emerald-600 dark:text-emerald-400" size={20} />
               Account Settings
             </h2>
@@ -38,8 +38,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
 
             <div className="space-y-4">
               <div>
-                <label className="label">Name</label>
+                <label htmlFor="account-name" className="label">Name</label>
                 <input
+                  id="account-name"
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
@@ -52,8 +53,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
               </div>
 
               <div>
-                <label className="label">Email Address</label>
+                <label htmlFor="account-email" className="label">Email Address</label>
                 <input
+                  id="account-email"
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
@@ -83,8 +85,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
 
             <div className="space-y-4">
               <div>
-                <label className="label">New Password</label>
+                <label htmlFor="account-new-password" className="label">New Password</label>
                 <input
+                  id="account-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -96,8 +99,9 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
               </div>
 
               <div>
-                <label className="label">Confirm New Password</label>
+                <label htmlFor="account-confirm-password" className="label">Confirm New Password</label>
                 <input
+                  id="account-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -126,9 +130,8 @@ const AccountSettingsModal = React.memo(function AccountSettingsModal({
               Close
             </button>
           </div>
-        </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 });
 
