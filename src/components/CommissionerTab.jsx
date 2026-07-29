@@ -211,7 +211,7 @@ const CommissionerTab = React.memo(function CommissionerTab({
                 {savingSettings ? 'Saving…' : 'Save Settings'}
               </button>
 
-              <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              <p className="text-[10px] text-slate-400 dark:text-slate-400">
                 Changes take effect immediately for new picks and penalties.
               </p>
             </div>

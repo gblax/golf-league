@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell, XCircle } from 'lucide-react';
+import ModalDialog from './ModalDialog';
 
 const NotificationSettingsModal = React.memo(function NotificationSettingsModal({
   onClose,
@@ -14,11 +15,10 @@ const NotificationSettingsModal = React.memo(function NotificationSettingsModal(
   handleToggleNotifyPref,
 }) {
   return (
-    <div className="modal-overlay">
-      <div className="modal-panel">
-        <div className="p-5 sm:p-6">
+    <ModalDialog onClose={onClose} titleId="notification-settings-title">
+      <div className="p-5 sm:p-6">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 id="notification-settings-title" className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
               <Bell className="text-emerald-600 dark:text-emerald-400" size={20} />
               Notifications
             </h2>
@@ -112,9 +112,8 @@ const NotificationSettingsModal = React.memo(function NotificationSettingsModal(
               Close
             </button>
           </div>
-        </div>
       </div>
-    </div>
+    </ModalDialog>
   );
 });
 

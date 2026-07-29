@@ -13,6 +13,8 @@ import NotificationSettingsModal from './components/NotificationSettingsModal';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import NotificationToast from './components/NotificationToast';
 import Spinner from './components/Spinner';
+import DesktopLeagueSnapshot from './components/DesktopLeagueSnapshot';
+import ModalDialog from './components/ModalDialog';
 import { indexLiveLeaderboard, normalizeName } from './utils/liveLeaderboard';
 import { friendlyError } from './utils/errors';
 import { buildPlayerColors } from './utils/playerColors';
@@ -1672,6 +1674,21 @@ const handleSubmitPick = async () => {
   // A hash like #results is valid only for commissioners; fall back to picks
   // rather than rendering an empty tab panel.
   const visibleTab = navTabs.some(t => t.id === activeTab) ? activeTab : 'picks';
+  const handleNavTabKeyDown = (event, tabId) => {
+    const currentIndex = navTabs.findIndex(tab => tab.id === tabId);
+    let nextIndex = currentIndex;
+
+    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % navTabs.length;
+    else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + navTabs.length) % navTabs.length;
+    else if (event.key === 'Home') nextIndex = 0;
+    else if (event.key === 'End') nextIndex = navTabs.length - 1;
+    else return;
+
+    event.preventDefault();
+    const nextTab = navTabs[nextIndex];
+    setActiveTab(nextTab.id);
+    requestAnimationFrame(() => document.getElementById(`league-tab-${nextTab.id}`)?.focus());
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
@@ -1707,7 +1724,7 @@ const handleSubmitPick = async () => {
                       </span>
                     )}
                     {lockTimeLabel && (
-                      <span className="hidden sm:inline text-xs text-slate-400 dark:text-slate-500">{lockTimeLabel}</span>
+                      <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-300">{lockTimeLabel}</span>
                     )}
                   </>
                 )}
@@ -1715,7 +1732,7 @@ const handleSubmitPick = async () => {
             </div>
             <div className="shrink-0 flex items-center gap-2">
               <div className="text-right hidden sm:block mr-2">
-                <p className="text-xs text-slate-400 dark:text-slate-500">Playing as</p>
+                <p className="text-xs text-slate-500 dark:text-slate-300">Playing as</p>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">{currentUser?.name}</p>
               </div>
                 <div className="relative profile-menu">
@@ -1738,7 +1755,7 @@ const handleSubmitPick = async () => {
                       {/* Menu dropdown */}
                       <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto top-auto sm:top-full bottom-[calc(1rem+env(safe-area-inset-bottom))] sm:bottom-auto sm:right-0 sm:mt-2 w-auto sm:w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl sm:rounded-xl shadow-modal sm:shadow-elevated z-50 overflow-hidden animate-scale-in">
                         <div className="p-1.5 sm:p-1">
-                          <p className="sm:hidden px-3 pt-2 pb-1 text-xs font-medium text-slate-400 dark:text-slate-500">{currentUser?.name}</p>
+                          <p className="sm:hidden px-3 pt-2 pb-1 text-xs font-medium text-slate-500 dark:text-slate-300">{currentUser?.name}</p>
                           {[
                             { icon: Users, label: 'Account', action: () => { openAccountSettings(); setShowProfileMenu(false); } },
                             { icon: Bell, label: 'Notifications', action: () => { setShowSettings(!showSettings); setShowProfileMenu(false); } },
@@ -1822,12 +1839,21 @@ const handleSubmitPick = async () => {
             A top nav in normal document flow sidesteps the iOS fixed-position
             and PWA viewport-height quirks that plagued the bottom bar. */}
         <div className="card mb-4 sm:mb-5 overflow-hidden">
-          <div className="flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50">
+          <div
+            className="flex p-1.5 gap-1 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50"
+            role="tablist"
+            aria-label="League navigation"
+          >
             {navTabs.map(tab => (
               <button
                 key={tab.id}
+                id={`league-tab-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                aria-current={visibleTab === tab.id ? 'page' : undefined}
+                onKeyDown={(event) => handleNavTabKeyDown(event, tab.id)}
+                role="tab"
+                aria-selected={visibleTab === tab.id}
+                aria-controls={`league-panel-${tab.id}`}
+                tabIndex={visibleTab === tab.id ? 0 : -1}
                 className={`flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[11px] sm:text-sm font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 rounded-lg transition-all duration-150 active:scale-95 ${
                   visibleTab === tab.id
                     ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-soft'
@@ -1841,46 +1867,65 @@ const handleSubmitPick = async () => {
           </div>
 
           {/* Tab Content — keyed so switching tabs replays the fade */}
-          <div key={visibleTab} className="p-3 sm:p-5 animate-fade-in">
+          <div
+            key={visibleTab}
+            id={`league-panel-${visibleTab}`}
+            role="tabpanel"
+            aria-labelledby={`league-tab-${visibleTab}`}
+            className="p-3 sm:p-5 animate-fade-in"
+          >
             {visibleTab === 'picks' && (
-              <PicksTab
-                currentWeek={currentWeek}
-                currentTournament={currentTournament}
-                currentWeekPick={currentWeekPick}
-                selectedPlayer={selectedPlayer}
-                backupPlayer={backupPlayer}
-                primarySearchTerm={primarySearchTerm}
-                backupSearchTerm={backupSearchTerm}
-                showPrimaryDropdown={showPrimaryDropdown}
-                showBackupDropdown={showBackupDropdown}
-                timeUntilLock={timeUntilLock}
-                lockUrgent={lockUrgent}
-                lockTimeLabel={lockTimeLabel}
-                leagueSettings={leagueSettings}
-                userPicks={userPicks}
-                pickHistory={myPickHistory}
-                filteredPrimaryGolfers={filteredPrimaryGolfers}
-                filteredBackupGolfers={filteredBackupGolfers}
-                picksLoading={picksLoading}
-                formatPrizePool={formatPrizePool}
-                setSelectedPlayer={setSelectedPlayer}
-                setBackupPlayer={setBackupPlayer}
-                setPrimarySearchTerm={setPrimarySearchTerm}
-                setBackupSearchTerm={setBackupSearchTerm}
-                setShowPrimaryDropdown={setShowPrimaryDropdown}
-                setShowBackupDropdown={setShowBackupDropdown}
-                handleSubmitPick={handleSubmitPick}
-                submittingPick={submittingPick}
-                liveIndex={liveIndex}
-                liveMembers={liveMembers}
-                playerColors={playerColors}
-                currentUserId={currentUser?.id}
-                weekRecap={weekRecap}
-                leagueId={currentLeague?.id}
-                fieldNames={fieldNames}
-                fieldLoaded={tournamentField.length > 0}
-                fieldCount={tournamentField.length}
-              />
+              <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-5 xl:items-start">
+                <PicksTab
+                  currentWeek={currentWeek}
+                  currentTournament={currentTournament}
+                  currentWeekPick={currentWeekPick}
+                  selectedPlayer={selectedPlayer}
+                  backupPlayer={backupPlayer}
+                  primarySearchTerm={primarySearchTerm}
+                  backupSearchTerm={backupSearchTerm}
+                  showPrimaryDropdown={showPrimaryDropdown}
+                  showBackupDropdown={showBackupDropdown}
+                  timeUntilLock={timeUntilLock}
+                  lockUrgent={lockUrgent}
+                  lockTimeLabel={lockTimeLabel}
+                  leagueSettings={leagueSettings}
+                  userPicks={userPicks}
+                  pickHistory={myPickHistory}
+                  filteredPrimaryGolfers={filteredPrimaryGolfers}
+                  filteredBackupGolfers={filteredBackupGolfers}
+                  picksLoading={picksLoading}
+                  formatPrizePool={formatPrizePool}
+                  setSelectedPlayer={setSelectedPlayer}
+                  setBackupPlayer={setBackupPlayer}
+                  setPrimarySearchTerm={setPrimarySearchTerm}
+                  setBackupSearchTerm={setBackupSearchTerm}
+                  setShowPrimaryDropdown={setShowPrimaryDropdown}
+                  setShowBackupDropdown={setShowBackupDropdown}
+                  handleSubmitPick={handleSubmitPick}
+                  submittingPick={submittingPick}
+                  liveIndex={liveIndex}
+                  liveMembers={liveMembers}
+                  playerColors={playerColors}
+                  currentUserId={currentUser?.id}
+                  weekRecap={weekRecap}
+                  leagueId={currentLeague?.id}
+                  fieldNames={fieldNames}
+                  fieldLoaded={tournamentField.length > 0}
+                  fieldCount={tournamentField.length}
+                />
+                <DesktopLeagueSnapshot
+                  sortedStandings={sortedStandings}
+                  currentUser={currentUser}
+                  currentWeek={currentWeek}
+                  currentWeekPick={currentWeekPick}
+                  tournaments={tournaments}
+                  playerColors={playerColors}
+                  formatPrizePool={formatPrizePool}
+                  onGoToStandings={() => setActiveTab('standings')}
+                  onGoToSchedule={() => setActiveTab('schedule')}
+                />
+              </div>
             )}
 
             {visibleTab === 'results' && (
@@ -1933,10 +1978,10 @@ const handleSubmitPick = async () => {
                 currentWeek={currentWeek}
                 players={players}
                 currentUser={currentUser}
-                leagueSettings={leagueSettings}
                 expandedScheduleTournament={expandedScheduleTournament}
                 setExpandedScheduleTournament={setExpandedScheduleTournament}
                 formatPrizePool={formatPrizePool}
+                onGoToPick={() => setActiveTab('picks')}
               />
             )}
 
@@ -1956,34 +2001,33 @@ const handleSubmitPick = async () => {
                 setNewGolferName={setNewGolferName}
                 handleAddGolfer={handleAddGolfer}
               />
-            )}          </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Mark-complete confirmation (themed, replaces window.confirm) */}
       {confirmCompleteTournament && (
-        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirm-complete-title">
-          <div className="modal-panel p-5">
-            <h3 id="confirm-complete-title" className="text-base font-semibold text-slate-900 dark:text-white mb-2">
-              Mark tournament complete?
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-              &ldquo;{confirmCompleteTournament.name}&rdquo; (Week {confirmCompleteTournament.week}) will be marked complete.
-            </p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-              Use this only when the automated results script didn&rsquo;t mark it complete.
-              Make sure all picks have winnings/penalties entered first.
-            </p>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setConfirmCompleteTournament(null)} className="btn-secondary">
-                Cancel
-              </button>
-              <button onClick={confirmMarkTournamentComplete} className="btn-primary">
-                Mark Complete
-              </button>
-            </div>
+        <ModalDialog onClose={() => setConfirmCompleteTournament(null)} titleId="confirm-complete-title" panelClassName="p-5">
+          <h3 id="confirm-complete-title" className="text-base font-semibold text-slate-900 dark:text-white mb-2">
+            Mark tournament complete?
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+            &ldquo;{confirmCompleteTournament.name}&rdquo; (Week {confirmCompleteTournament.week}) will be marked complete.
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+            Use this only when the automated results script didn&rsquo;t mark it complete.
+            Make sure all picks have winnings/penalties entered first.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setConfirmCompleteTournament(null)} className="btn-secondary">
+              Cancel
+            </button>
+            <button onClick={confirmMarkTournamentComplete} className="btn-primary">
+              Mark Complete
+            </button>
           </div>
-        </div>
+        </ModalDialog>
       )}
     </div>
   );

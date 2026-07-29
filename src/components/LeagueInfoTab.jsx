@@ -45,15 +45,15 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
               <div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Players</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Players</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums mt-0.5">{numPlayers}</p>
                   </div>
                   <div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Buy-ins</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Buy-ins</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white tabular-nums mt-0.5">${numPlayers * buyIn}</p>
                   </div>
                   <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">Penalties</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Penalties</p>
                     <p className="text-xl font-bold text-red-500 dark:text-red-400 tabular-nums mt-0.5">${totalPenalties}</p>
                   </div>
                   <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl text-center border border-emerald-200 dark:border-emerald-800">
@@ -64,15 +64,15 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
 
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">1st ({pctFirst}%)</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">1st ({pctFirst}%)</p>
                     <p className="text-lg font-bold text-amber-700 dark:text-amber-400 tabular-nums mt-0.5">${firstPlace}</p>
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">2nd ({pctSecond}%)</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">2nd ({pctSecond}%)</p>
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300 tabular-nums mt-0.5">${secondPlace}</p>
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-3 rounded-xl text-center">
-                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide">3rd ({pctThird}%)</p>
+                    <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">3rd ({pctThird}%)</p>
                     <p className="text-lg font-bold text-orange-600 dark:text-orange-400 tabular-nums mt-0.5">${thirdPlace}</p>
                   </div>
                 </div>
@@ -177,7 +177,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                     className="absolute left-1/2 -translate-x-1/2 -top-1 h-4 w-px bg-slate-300 dark:bg-slate-600"
                   />
                 </div>
-                <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">{seasonCopy}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400 mt-2">{seasonCopy}</p>
               </div>
             );
           })()}
@@ -292,7 +292,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <CheckCircle className="text-emerald-500 dark:text-emerald-400" size={14} />
-                            <span className="text-xs text-slate-400 dark:text-slate-500">Submitted</span>
+                            <span className="text-xs text-slate-400 dark:text-slate-400">Submitted</span>
                           </div>
                         );
                       }
@@ -304,7 +304,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                       ) : (
                         <div className="flex items-center gap-1.5">
                           <XCircle className="text-slate-300 dark:text-slate-600" size={14} />
-                          <span className="text-xs text-slate-400 dark:text-slate-500">Pending</span>
+                          <span className="text-xs text-slate-400 dark:text-slate-400">Pending</span>
                         </div>
                       );
                     })()}
