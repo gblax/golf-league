@@ -9,6 +9,12 @@ on:
   # per week — negligible against the Slash Golf rate budget. Re-running weekly
   # is self-healing: new events, name corrections, and purse updates get picked
   # up automatically.
+  #
+  # Scheduled runs always target the CURRENT calendar year. In the off-season
+  # (after the season's last event, before next January) that is still the
+  # finished season, which is harmless: everything already matches and nothing
+  # is written. Loading the next season is a manual dispatch with `year` and
+  # `create` — see docs/handoff/season-rollover.md.
   schedule:
     - cron: '0 13 * * 3'
 
@@ -19,8 +25,18 @@ on:
         required: false
         default: 'false'
         type: boolean
+      year:
+        description: 'Season year to sync (leave blank for the current calendar year). Set to next year to load the next season.'
+        required: false
+        default: ''
+        type: string
       create:
-        description: 'Also insert schedule events with no matching DB tournament (review the run log — week numbers come from the PGA calendar)'
+        description: 'Also insert schedule events with no matching DB tournament — this is how a new season is loaded. New rows get season=year and sequential week numbers by date. Review the run log; prune events the league will not play, then run with renumber.'
+        required: false
+        default: 'false'
+        type: boolean
+      renumber:
+        description: 'Renumber the season''s weeks 1..N in date order (after pruning). Refuses once the season has picks.'
         required: false
         default: 'false'
         type: boolean
@@ -52,15 +68,21 @@ jobs:
         run: |
           cd scripts
           # Scheduled runs always apply the (safe) ID + purse mapping and never
-          # create new tournaments. Manual runs can dry-run and/or opt into
-          # --create.
+          # create new tournaments. Manual runs can dry-run, target another
+          # season year, and opt into --create / --renumber.
           FLAGS="--apply"
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             if [ "${{ inputs.dry_run }}" == "true" ]; then
               FLAGS=""
             fi
+            if [ -n "${{ inputs.year }}" ]; then
+              FLAGS="$FLAGS --year ${{ inputs.year }}"
+            fi
             if [ "${{ inputs.create }}" == "true" ]; then
               FLAGS="$FLAGS --create"
+            fi
+            if [ "${{ inputs.renumber }}" == "true" ]; then
+              FLAGS="$FLAGS --renumber"
             fi
           fi
           python sync_schedule.py $FLAGS

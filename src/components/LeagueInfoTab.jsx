@@ -1,15 +1,22 @@
 import React from 'react';
-import { Trophy, Users, Calendar, CheckCircle, XCircle, Shield } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, XCircle, Shield, Crown } from 'lucide-react';
 import PlayerAvatar from './PlayerAvatar';
+import { computePayouts } from '../utils/payouts';
+import { formatWinnings } from '../utils/money';
 
 const LeagueInfoTab = React.memo(function LeagueInfoTab({
   leagueSettings,
   players,
+  sortedStandings = [],
   playerColors = {},
   currentUser,
   currentWeek,
   currentTournament,
   tournaments,
+  currentSeason,
+  seasonComplete = false,
+  seasonChampions = [],
+  payouts,
   availableGolfers,
   showAddGolfer,
   newGolferName,
@@ -26,20 +33,16 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Trophy className="text-amber-500" size={16} />
-            Prize Pool & Payouts
+            {seasonComplete ? 'Final Prize Pool & Payouts' : 'Prize Pool & Payouts'}
           </h3>
 
           {(() => {
-            const buyIn = leagueSettings.buy_in_amount ?? 50;
-            const pctFirst = leagueSettings.payout_first_pct ?? 65;
-            const pctSecond = leagueSettings.payout_second_pct ?? 25;
-            const pctThird = leagueSettings.payout_third_pct ?? 10;
-            const numPlayers = players.length;
-            const totalPenalties = players.reduce((sum, p) => sum + (p.penalties || 0), 0);
-            const totalPot = (numPlayers * buyIn) + totalPenalties;
-            const firstPlace = Math.round(totalPot * pctFirst / 100);
-            const secondPlace = Math.round(totalPot * pctSecond / 100);
-            const thirdPlace = Math.round(totalPot * pctThird / 100);
+            const pot = payouts || computePayouts(leagueSettings, players);
+            const { buyIn, numPlayers, totalPenalties, totalPot } = pot;
+            const [pctFirst, pctSecond, pctThird] = pot.pcts;
+            const [firstPlace, secondPlace, thirdPlace] = pot.amounts;
+            // Once the season is final the split has names on it.
+            const placeName = (idx) => (seasonComplete && sortedStandings[idx] ? sortedStandings[idx].name : null);
 
             return (
               <div>
@@ -66,14 +69,17 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
                   <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-xl text-center">
                     <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">1st ({pctFirst}%)</p>
                     <p className="text-lg font-bold text-amber-700 dark:text-amber-400 tabular-nums mt-0.5">${firstPlace}</p>
+                    {placeName(0) && <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight mt-1">{placeName(0)}</p>}
                   </div>
                   <div className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-center">
                     <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">2nd ({pctSecond}%)</p>
                     <p className="text-lg font-bold text-slate-600 dark:text-slate-300 tabular-nums mt-0.5">${secondPlace}</p>
+                    {placeName(1) && <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight mt-1">{placeName(1)}</p>}
                   </div>
                   <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800 p-3 rounded-xl text-center">
                     <p className="text-[10px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">3rd ({pctThird}%)</p>
                     <p className="text-lg font-bold text-orange-600 dark:text-orange-400 tabular-nums mt-0.5">${thirdPlace}</p>
+                    {placeName(2) && <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight mt-1">{placeName(2)}</p>}
                   </div>
                 </div>
               </div>
@@ -136,11 +142,41 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
           )}
         </div>
 
+        {/* Champions honor roll — one line per finished season */}
+        {seasonChampions.length > 0 && (
+          <div className="card p-5">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+              <Crown className="text-amber-500 fill-amber-400/40" size={16} />
+              Champions
+            </h3>
+            <ol className="space-y-1.5">
+              {seasonChampions.map(c => (
+                <li
+                  key={c.season}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl ${
+                    c.season === currentSeason
+                      ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800'
+                      : 'bg-slate-50 dark:bg-slate-800'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-300 tabular-nums w-10 shrink-0">{c.season}</span>
+                  <PlayerAvatar name={c.name} color={playerColors[c.id]} size="sm" />
+                  <span className="min-w-0 flex-1 text-sm font-semibold text-slate-900 dark:text-white truncate">
+                    {c.name}
+                    {c.tied && <span className="ml-1.5 text-[10px] font-medium text-slate-400 dark:text-slate-400">(tied)</span>}
+                  </span>
+                  <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatWinnings(c.winnings)}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         {/* Season Progress */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
             <Calendar className="text-emerald-600 dark:text-emerald-400" size={16} />
-            Season Progress
+            {currentSeason ? `${currentSeason} Season Progress` : 'Season Progress'}
           </h3>
           {(() => {
             const completedWeeks = tournaments.filter(t => t.completed).length;
@@ -264,7 +300,9 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
           </div>
         </div>
 
-        {/* Pick Status Overview */}
+        {/* Pick Status Overview — in season only; there is no "this week" once
+            the season is complete */}
+        {!seasonComplete && (
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3">Week {currentWeek} Pick Status</h3>
           <div className="space-y-1.5">
@@ -314,6 +352,7 @@ const LeagueInfoTab = React.memo(function LeagueInfoTab({
             })}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

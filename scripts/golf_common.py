@@ -17,10 +17,62 @@ any credentials present.
 
 import json
 import os
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def parse_utc(raw):
+    """Parse a DB date/timestamp value into an aware UTC datetime, or None.
+
+    Accepts the shapes PostgREST hands back ("2026-06-18", "2026-06-18
+    07:00:00+00", ISO with Z); a naive value is taken as UTC.
+    """
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def days_from_start(tournament, now=None):
+    """How many days ``now`` is past a tournament's first-round date (negative
+    before it starts), or None when the date is unknown.
+
+    The live-board and field jobs use this to decide whether a Slash Golf
+    call is worth making at all. Their target is "the earliest tournament not
+    yet scored", which is exactly right during the season but, once the next
+    season's schedule is loaded in the autumn, resolves to week 1 of NEXT year
+    for months. Every scheduled run would then spend an API call to learn the
+    event hasn't started — and on the free tier those calls are the budget the
+    real season needs. A tournament far outside its play window is skipped
+    before any network access.
+    """
+    start = parse_utc(tournament.get("tournament_date"))
+    if start is None:
+        return None
+    now = now or datetime.now(timezone.utc)
+    return (now - start).total_seconds() / 86400.0
+
+
+def season_of(tournament):
+    """The season a tournament belongs to: the explicit ``season`` column
+    (scripts/add-tournament-season.sql), else the year of its first-round
+    date. Mirrors seasonOf() in src/utils/seasons.js."""
+    season = tournament.get("season")
+    if season is not None:
+        try:
+            return int(season)
+        except (TypeError, ValueError):
+            pass
+    start = parse_utc(tournament.get("tournament_date"))
+    return start.year if start else None
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 # The workflows pass the service key under both names; accept either.

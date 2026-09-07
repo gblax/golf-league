@@ -24,25 +24,49 @@ import sys
 from datetime import datetime, timezone
 
 import slashgolf
-from golf_common import get_supabase_client
+from golf_common import get_supabase_client, days_from_start
 # Reuse the schedule->Slash Golf event mapping the scorer already implements.
 from update_results import resolve_tourn_id, tournament_season_year
 
 ORG_ID = slashgolf.DEFAULT_ORG_ID
 
+# A leaderboard exists from the Thursday first round through the Monday after;
+# a snapshot is worth a Slash Golf call from the day before tee-off (a manual
+# run to catch tee times) until a week after (a late re-snapshot of the final
+# board). Outside that window the run is a no-op that never touches the API —
+# see golf_common.days_from_start for why that matters in the off-season.
+PLAY_WINDOW_DAYS = (-1, 7)
+
 
 def get_current_tournament(supabase):
-    """The tournament the league is currently on: earliest by week that isn't
-    completed. Returns None when everything is already scored."""
+    """The tournament the league is currently on: the earliest (by date) that
+    isn't completed. Returns None when everything is already scored.
+
+    Ordered by date rather than week because week numbers restart each
+    season; once next year's schedule is loaded alongside this year's, "lowest
+    week" would jump to next year's opener while this year's finale is still
+    being scored.
+    """
     resp = (
         supabase.table("tournaments")
         .select("*")
         .eq("completed", False)
-        .order("week")
+        .order("tournament_date")
         .limit(1)
         .execute()
     )
     return resp.data[0] if resp.data else None
+
+
+def in_play_window(tournament, now=None, window=PLAY_WINDOW_DAYS):
+    """Whether a tournament is close enough to (or recently past) its first
+    round that fetching its leaderboard makes sense. Unknown dates are treated
+    as in-window so a malformed row is surfaced by the API call, not hidden."""
+    d = days_from_start(tournament, now)
+    if d is None:
+        return True
+    lo, hi = window
+    return lo <= d <= hi
 
 
 def store_snapshot(supabase, tournament_id, parsed):
@@ -71,6 +95,16 @@ def update_leaderboard(dry_run=True):
 
     year = tournament_season_year(tournament)
     print(f"Active tournament: '{tournament['name']}' (Week {tournament['week']}, season {year})")
+
+    if not in_play_window(tournament):
+        d = days_from_start(tournament)
+        when = f"{abs(d):.0f} days {'from now' if d < 0 else 'ago'}"
+        print(f"First round is {when} ({tournament.get('tournament_date')}) — outside the "
+              f"{PLAY_WINDOW_DAYS[0]}..{PLAY_WINDOW_DAYS[1]} day play window. Skipping the API call.")
+        if d > 0:
+            print("If this tournament is over, mark it complete (CommissionerTab or update_results.py) "
+                  "so the pipeline moves on.")
+        return
 
     tourn_id = resolve_tourn_id(tournament, year)
     if not tourn_id:

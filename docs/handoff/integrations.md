@@ -47,7 +47,7 @@ that (see the long comment in `pick-reminders.yml`).
 
 | Workflow | Cron (UTC) | Script & flags | Secrets used |
 |---|---|---|---|
-| `sync-schedule.yml` | Wed 13:00 | `sync_schedule.py --apply` (never `--create` on schedule) | SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RAPIDAPI_KEY |
+| `sync-schedule.yml` | Wed 13:00 | `sync_schedule.py --apply` (never `--create` on schedule; manual dispatch adds `--year`, `--create`, `--renumber` to load/curate a new season) | SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RAPIDAPI_KEY |
 | `sync-field.yml` | Tue+Wed 14:00, 22:00 | `sync_field.py --apply` | same |
 | `update-leaderboard.yml` | Fri/Sat/Sun/Mon 00:00, 02:00 | `update_leaderboard.py --apply` | same |
 | `update-results.yml` | Mon 09:00 | `update_results.py --apply --complete` | same + VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT |
@@ -58,7 +58,13 @@ Details that matter:
 
 - Every data workflow has `workflow_dispatch` with a `dry_run` input;
   `update-results` also has `mark_complete` and `force` inputs;
-  `sync-schedule` has `create`.
+  `sync-schedule` has `year`, `create` and `renumber` (the season-rollover
+  controls — see `season-rollover.md`).
+- **Off-season safety:** `update_leaderboard.py` and `sync_field.py` skip
+  (before any API call) unless the target tournament is inside its play /
+  field window, so a loaded-but-months-away next season doesn't burn the
+  Slash Golf budget on empty leaderboards. Ordering of "current tournament"
+  is by date, not week, so two seasons in the table can't confuse it.
 - Workflows pass the service key as **both** `SUPABASE_SERVICE_KEY` and
   `SUPABASE_SERVICE_ROLE_KEY`; `golf_common.py` accepts either name.
 - Python deps install from pinned `scripts/requirements.txt` on Python 3.11.

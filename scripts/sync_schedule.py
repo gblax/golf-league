@@ -8,23 +8,34 @@ maps by ID, not a runtime name lookup) and the real ``prize_pool`` (the PGA
 purse shown in the app).
 
 Optional ``--create`` inserts schedule events that have no matching DB
-tournament yet. Use with care: ``week`` is set from Slash Golf's PGA calendar
-week number, which may differ from a league's own sequential week scheme, and
-``picks_lock_time`` defaults to first-round tee-off — review before relying on
-it. Always dry-run first.
+tournament yet — this is how a NEW SEASON gets loaded (see
+docs/handoff/season-rollover.md). New rows are stamped with ``season`` (the
+``--year``) and numbered sequentially by start date in the league's own
+``week`` scheme, continuing after that season's highest existing week (so a
+brand-new season runs 1..N). ``picks_lock_time`` defaults to first-round
+tee-off — review before relying on it. The full PGA calendar has more events
+than the league plays (opposite-field events, the fall series), so prune the
+extras afterwards and run ``--renumber`` to close the gaps.
+
+Optional ``--renumber`` rewrites a season's ``week`` numbers as 1..N in date
+order. It refuses to run once that season has picks (week numbers are how
+members recognise results), unless ``--force``.
+
+Always dry-run first.
 
 Usage:
-    python sync_schedule.py                 # dry run, current season
-    python sync_schedule.py --year 2026     # dry run, explicit season
-    python sync_schedule.py --apply         # write tournId + purse onto matches
-    python sync_schedule.py --apply --create  # also insert unmatched events
+    python sync_schedule.py                        # dry run, current season
+    python sync_schedule.py --year 2027            # dry run, explicit season
+    python sync_schedule.py --apply                # write tournId + purse onto matches
+    python sync_schedule.py --year 2027 --apply --create     # load next season
+    python sync_schedule.py --year 2027 --apply --renumber   # weeks -> 1..N by date
 """
 
 import sys
 from datetime import datetime, timezone
 
 import slashgolf
-from golf_common import get_supabase_client
+from golf_common import get_supabase_client, season_of
 from slashgolf import normalize_name, tournament_names_match
 
 ORG_ID = slashgolf.DEFAULT_ORG_ID
@@ -36,16 +47,6 @@ def _iso(ms):
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat()
 
 
-def _year_of(tournament):
-    date_str = tournament.get("tournament_date")
-    if date_str:
-        try:
-            return datetime.fromisoformat(date_str.replace("Z", "+00:00")).year
-        except ValueError:
-            return None
-    return None
-
-
 def match_event(tournament, events, by_norm):
     """Find the schedule event for a DB tournament: exact normalized name
     first, then the looser tournament_names_match."""
@@ -55,8 +56,74 @@ def match_event(tournament, events, by_norm):
     return next((e for e in events if tournament_names_match(e["name"], tournament["name"])), None)
 
 
-def sync_schedule(year, apply=False, create=False):
+# ---------------------------------------------------------------------------
+# Week numbering (pure — unit-tested in test_sync_schedule.py)
+# ---------------------------------------------------------------------------
+def assign_weeks(existing_weeks, events):
+    """League week numbers for events about to be created.
+
+    Events are ordered by start date (name as a tiebreak) and numbered
+    consecutively after the highest week already present in that season —
+    so an empty season yields 1..N, and events added to a season that already
+    has rows slot in after them rather than colliding.
+
+    Slash Golf's own ``weekNumber`` (the PGA calendar week) is deliberately NOT
+    used: the league's week is a sequence over the events it plays, and the
+    calendar week leaves gaps wherever the league skips an event.
+    """
+    start = max(existing_weeks) if existing_weeks else 0
+    ordered = sorted(events, key=lambda e: (e.get("start_ms") or 0, e.get("name") or ""))
+    return [(start + i + 1, e) for i, e in enumerate(ordered)]
+
+
+def renumber_weeks(rows):
+    """Plan a 1..N renumbering of a season's tournaments in date order.
+
+    Returns ``[(row, new_week)]`` for the rows whose week would change; an
+    already-sequential season yields an empty list. Same-day events (there
+    shouldn't be any once the extras are pruned) tie-break on name so the
+    result is deterministic.
+    """
+    ordered = sorted(rows, key=lambda t: (str(t.get("tournament_date") or ""), t.get("name") or ""))
+    return [(t, i + 1) for i, t in enumerate(ordered) if t.get("week") != i + 1]
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def sync_schedule(year, apply=False, create=False, renumber=False, force=False):
     supabase = get_supabase_client()
+    season = int(year)
+
+    db = supabase.table("tournaments").select("*").execute().data or []
+    db_this_season = [t for t in db if season_of(t) in (season, None)]
+    print(f"DB tournaments in season {season}: {len(db_this_season)}")
+
+    # --- Optional: renumber weeks 1..N by date (no API call needed) ---
+    if renumber:
+        plan = renumber_weeks(db_this_season)
+        print(f"\n{'=' * 60}\nWeek renumbering ({len(plan)} change(s)):\n{'=' * 60}")
+        for t, new_week in plan:
+            print(f"  {t['name']}: week {t.get('week')} -> {new_week}")
+        if plan and apply:
+            ids = [t["id"] for t in db_this_season]
+            picks = supabase.table("picks").select("id").in_("tournament_id", ids).limit(1).execute().data or []
+            if picks and not force:
+                print("\n" + "!" * 60)
+                print(f"SEASON {season} ALREADY HAS PICKS — refusing to renumber weeks.")
+                print("Members know their results by week number; changing them mid-season")
+                print("rewrites history. Use --force only if you're sure.")
+                print("!" * 60)
+                return False
+            # Two passes through a temporary offset: `week` isn't unique in
+            # the schema today, but a future constraint shouldn't break this.
+            for t, new_week in plan:
+                supabase.table("tournaments").update({"week": new_week + 1000}).eq("id", t["id"]).execute()
+            for t, new_week in plan:
+                supabase.table("tournaments").update({"week": new_week}).eq("id", t["id"]).execute()
+            print(f"  Renumbered {len(plan)} tournament(s).")
+        elif not plan:
+            print("  Weeks already run 1..N in date order. Nothing to do.")
 
     events = [e for e in slashgolf.parse_schedule(slashgolf.fetch_schedule(year, ORG_ID)) if e["tourn_id"]]
     by_norm = {}
@@ -64,15 +131,11 @@ def sync_schedule(year, apply=False, create=False):
         by_norm.setdefault(normalize_name(e["name"]), e)
     print(f"Slash Golf schedule: {len(events)} events for season {year}")
 
-    db = supabase.table("tournaments").select("*").execute().data or []
-    db_this_year = [t for t in db if _year_of(t) in (int(year), None)]
-    print(f"DB tournaments in scope: {len(db_this_year)}")
-
     existing_ids = {str(t["slashgolf_tourn_id"]) for t in db if t.get("slashgolf_tourn_id")}
     matched_event_ids = set()
     updates = []  # (tournament, event, changes)
 
-    for t in db_this_year:
+    for t in db_this_season:
         ev = match_event(t, events, by_norm)
         if not ev:
             continue
@@ -97,20 +160,22 @@ def sync_schedule(year, apply=False, create=False):
             supabase.table("tournaments").update(changes).eq("id", t["id"]).execute()
         print(f"  Applied {len(updates)} update(s).")
 
-    # --- Optional: create unmatched events ---
+    # --- Optional: create unmatched events (= load a season) ---
     if create:
         to_create = [
             e for e in events
             if e["tourn_id"] not in matched_event_ids
             and e["tourn_id"] not in existing_ids
-            and e["start_ms"] and e["week_number"]
+            and e["start_ms"]
         ]
-        print(f"\n{'=' * 60}\nNew tournaments to create ({len(to_create)}):\n{'=' * 60}")
+        existing_weeks = [t["week"] for t in db_this_season if t.get("week") is not None]
+        print(f"\n{'=' * 60}\nNew tournaments to create ({len(to_create)}) in season {season}:\n{'=' * 60}")
         rows = []
-        for e in to_create:
+        for week, e in assign_weeks(existing_weeks, to_create):
             row = {
                 "name": e["name"],
-                "week": e["week_number"],
+                "season": season,
+                "week": week,
                 "tournament_date": _iso(e["start_ms"]),
                 "picks_lock_time": _iso(e["start_ms"]),
                 "prize_pool": int(e["purse"]) if e["purse"] else None,
@@ -118,7 +183,12 @@ def sync_schedule(year, apply=False, create=False):
                 "completed": False,
             }
             rows.append(row)
-            print(f"  week {row['week']:>2}  {row['name']}  (tournId={e['tourn_id']}, purse=${(row['prize_pool'] or 0):,})")
+            print(f"  week {row['week']:>2}  {row['tournament_date'][:10]}  {row['name']}  "
+                  f"(tournId={e['tourn_id']}, purse=${(row['prize_pool'] or 0):,})")
+        if rows:
+            print("\n  Review this list: the PGA calendar includes events the league may not play")
+            print("  (opposite-field weeks, the fall series). Delete the extras in the Supabase SQL")
+            print("  editor, then run --renumber so weeks run 1..N.")
         if apply and rows:
             supabase.table("tournaments").insert(rows).execute()
             print(f"  Inserted {len(rows)} tournament(s).")
@@ -127,16 +197,22 @@ def sync_schedule(year, apply=False, create=False):
 
     if not apply:
         print("\n[DRY RUN] No changes made. Re-run with --apply to write.")
+    return True
 
 
 if __name__ == "__main__":
     args = sys.argv[1:]
     apply = "--apply" in args
     create = "--create" in args
+    renumber = "--renumber" in args
+    force = "--force" in args
     year = str(datetime.now(timezone.utc).year)
     if "--year" in args:
         year = args[args.index("--year") + 1]
 
     if not apply:
-        print("Running in DRY RUN mode. Use --apply to write, --create to add new events.\n")
-    sync_schedule(year, apply=apply, create=create)
+        print("Running in DRY RUN mode. Use --apply to write, --create to add new events, "
+              "--renumber to close week gaps.\n")
+    ok = sync_schedule(year, apply=apply, create=create, renumber=renumber, force=force)
+    if not ok:
+        sys.exit(1)

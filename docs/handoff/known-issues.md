@@ -37,7 +37,10 @@ production via Vercel. This was the previous assistant workflow. With the
 move to a different agent this is now a booby trap: an agent (or human)
 pushing to a leftover `claude/...` branch ships to production instantly.
 Decide: delete the workflow, or update the prefix to the new agent's branch
-naming — see the gap report.
+naming — see the gap report. (The season-model branch
+`claude/league-landing-page-redesign-kwka6r` is excluded by name in the
+workflow so it could go through a PR; that exclusion can be removed once
+the branch is gone.)
 
 ## 🟠 Broken-but-masked: `penalties` table writes
 
@@ -95,14 +98,16 @@ logic when you're already touching it; don't attempt a big-bang refactor.
 
 ## 🟡 Data & pipeline quirks
 
-- **Season rollover is manual and unspecified.** 32 weeks of 2026 exist;
-  nothing archives a season or scopes picks/standings by year. Reusing the
-  same DB for 2027 without a plan will mix seasons (one-golfer-once and
-  standings read ALL picks in the league).
-- **`sync_schedule.py --create` week numbering:** inserts Slash Golf calendar
-  `weekNumber` as `week`, which won't match the league's own 1–32 sequence;
-  `picks_lock_time` defaults to first-round tee-off. Review anything it
-  creates. (Scheduled runs never use `--create`.)
+- **Season rollover** (specified 2026-09-07, see `season-rollover.md`):
+  `tournaments.season` scopes everything and the newest season is active.
+  Remaining rough edges: pruning events / fixing lock times is SQL-editor
+  work; the Champions honor roll only counts current members; ties for
+  first are flagged, not broken.
+- **`sync_schedule.py --create` lock times:** `picks_lock_time` defaults to
+  Slash Golf's start timestamp, not the 07:00 UTC Thursday convention the
+  2026 rows use. Review (and `UPDATE`) after loading a season. Week numbers
+  are now sequential by date; `--renumber` closes gaps after pruning.
+  (Scheduled runs never use `--create`.)
 - **US Open name mapping** needed a special-case (initialism collapsing) —
   `tournament_names_match` handles "US Open" ↔ "U.S. Open"; be careful
   editing that function (tests cover it).

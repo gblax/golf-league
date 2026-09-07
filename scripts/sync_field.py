@@ -24,7 +24,7 @@ import sys
 from datetime import datetime, timezone
 
 import slashgolf
-from golf_common import get_supabase_client
+from golf_common import get_supabase_client, days_from_start
 from slashgolf import normalize_name
 # Reuse the scorer's event mapping + id backfill, and the live updater's
 # schedule-driven tournament selection.
@@ -33,9 +33,15 @@ from update_results import (
     tournament_season_year,
     backfill_available_golfer_ids,
 )
-from update_leaderboard import get_current_tournament
+from update_leaderboard import get_current_tournament, in_play_window
 
 ORG_ID = slashgolf.DEFAULT_ORG_ID
+
+# Entry lists post in the week before the event and stay meaningful through
+# the first rounds (withdrawals). Outside that window — most obviously the
+# months between a season ending and the next one starting, once next year's
+# schedule is loaded — the run skips without spending a Slash Golf call.
+FIELD_WINDOW_DAYS = (-8, 3)
 
 
 def replace_field(supabase, tournament_id, players):
@@ -102,6 +108,13 @@ def sync_field(dry_run=True):
 
     year = tournament_season_year(tournament)
     print(f"Active tournament: '{tournament['name']}' (Week {tournament['week']}, season {year})")
+
+    if not in_play_window(tournament, window=FIELD_WINDOW_DAYS):
+        d = days_from_start(tournament)
+        when = f"{abs(d):.0f} days {'from now' if d < 0 else 'ago'}"
+        print(f"First round is {when} ({tournament.get('tournament_date')}) — outside the "
+              f"{FIELD_WINDOW_DAYS[0]}..{FIELD_WINDOW_DAYS[1]} day field window. Skipping the API call.")
+        return
 
     tourn_id = resolve_tourn_id(tournament, year)
     if not tourn_id:

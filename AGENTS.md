@@ -32,7 +32,9 @@ are the only other writer and they bypass RLS via the service role.
 src/App.jsx              ~2,000-line root component: ALL app state, data loading,
                          auth, league selection, pick submission, admin handlers.
 src/components/          Presentational tab/screen components (props-drilled from App).
-src/utils/               Small pure helpers (errors, live leaderboard, money, colors).
+                         SeasonCompleteTab is the off-season landing (champion/standings).
+src/utils/               Small pure helpers (errors, live leaderboard, money, colors,
+                         seasons, payouts, seasonSummary).
 public/sw-push.js        Push-notification handlers imported into the generated SW.
 scripts/*.py             Backend jobs (Slash Golf client, scoring, syncs, push).
 scripts/test_*.py        Offline unit tests for the Python pipeline.
@@ -55,7 +57,7 @@ npm run preview    # serve the production build locally
 pip install -r scripts/requirements.txt   # full set; pywebpush→http-ece needs a C toolchain
 pip install requests python-dotenv        # enough for ALL unit tests (parsers/logic are pure)
 
-# Tests — 67 unit tests, offline, no credentials needed
+# Tests — 87 unit tests, offline, no credentials needed
 cd scripts && python -m unittest discover -s . -p 'test_*.py' -v
 
 # Run a pipeline job manually (ALWAYS dry-run first; --apply to write)
@@ -134,6 +136,11 @@ production project.
 - Tournaments and `available_golfers` are **shared across all leagues**
   (`league_id NULL`); picks, penalties, settings, and members are league-scoped.
   Changing shared rows affects every league.
+- **Seasons are `tournaments.season`; the newest year is the active season.**
+  Inserting next year's rows is the rollover (the app switches immediately),
+  so never insert future-season tournaments casually. Scope any new
+  standings/picks logic to the season being viewed (`src/utils/seasons.js`).
+  Runbook: `docs/handoff/season-rollover.md`.
 - The frontend shows friendly errors via `friendlyError()` (`src/utils/errors.js`)
   and toast notifications; keep raw errors on the console.
 - Don't commit `.env` / `scripts/.env` (gitignored). `scripts/.env.example`
