@@ -11,7 +11,11 @@ const PlayerAvatar = React.memo(function PlayerAvatar({ name, color, size = 'sm'
     .slice(0, 2)
     .join('')
     .toUpperCase() || '?';
-  const sizeClasses = size === 'xs' ? 'w-4 h-4 text-[8px]' : size === 'md' ? 'w-6 h-6 text-[10px]' : 'w-5 h-5 text-[9px]';
+  const sizeClasses = size === 'xs' ? 'w-4 h-4 text-[8px]'
+    : size === 'md' ? 'w-6 h-6 text-[10px]'
+    : size === 'lg' ? 'w-9 h-9 text-xs'
+    : size === 'xl' ? 'w-14 h-14 text-lg'
+    : 'w-5 h-5 text-[9px]';
 
   return (
     <span

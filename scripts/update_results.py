@@ -46,16 +46,18 @@ def get_tournament_to_update(supabase):
         supabase.table("tournaments")
         .select("*")
         .eq("completed", False)
-        .order("week", desc=True)
+        .order("tournament_date", desc=True)
         .execute()
     )
     if not response.data:
         return None
 
     now = datetime.now(timezone.utc)
-    # Ordered week-DESC, so the first ended-but-incomplete tournament is the
-    # most recent. Play starts Thursday and ends Sunday night, so it's over
-    # once we're past start + 3 days 23:59.
+    # Ordered by date DESC (not week — week numbers restart every season, so
+    # with two seasons in the table "highest week" would be ambiguous), so the
+    # first ended-but-incomplete tournament is the most recent. Play starts
+    # Thursday and ends Sunday night, so it's over once we're past
+    # start + 3 days 23:59.
     for tournament in response.data:
         date_str = tournament.get("tournament_date")
         if not date_str:

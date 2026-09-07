@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Trophy, Users, Calendar, CheckCircle, TrendingUp, Bell, Shield, LogOut, ChevronRight, Sun, Moon, RefreshCw, Menu } from 'lucide-react';
+import { Trophy, Users, Calendar, CheckCircle, TrendingUp, Bell, Shield, LogOut, ChevronRight, Sun, Moon, RefreshCw, Menu, Archive } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import PicksTab from './components/PicksTab';
 import StandingsTab from './components/StandingsTab';
@@ -15,16 +15,20 @@ import NotificationToast from './components/NotificationToast';
 import Spinner from './components/Spinner';
 import DesktopLeagueSnapshot from './components/DesktopLeagueSnapshot';
 import ModalDialog from './components/ModalDialog';
+import SeasonCompleteTab from './components/SeasonCompleteTab';
 import { indexLiveLeaderboard, normalizeName } from './utils/liveLeaderboard';
 import { friendlyError } from './utils/errors';
 import { buildPlayerColors } from './utils/playerColors';
+import { listSeasons, tournamentsInSeason, isSeasonComplete, isSeasonAwaitingFinal, activeWindowEnd } from './utils/seasons';
+import { computePayouts } from './utils/payouts';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Tab ids that may appear in the URL hash (#standings etc.).
-const TAB_IDS = ['picks', 'standings', 'schedule', 'admin', 'results'];
+// Tab ids that may appear in the URL hash (#standings etc.). 'season' is the
+// off-season landing that takes the Pick tab's slot once a season is complete.
+const TAB_IDS = ['picks', 'season', 'standings', 'schedule', 'admin', 'results'];
 const tabFromHash = () => {
   const h = window.location.hash.replace('#', '');
   return TAB_IDS.includes(h) ? h : 'picks';
@@ -97,7 +101,18 @@ const App = () => {
   const [lockTimeLabel, setLockTimeLabel] = useState('');
 
   const [players, setPlayers] = useState([]);
+  // Every tournament row across all seasons (shared by every league), and the
+  // slice for the season being viewed. The newest season in the table is the
+  // active one; `viewSeason` (null = active) lets members browse an older
+  // season as a read-only archive.
+  const [allTournaments, setAllTournaments] = useState([]);
   const [tournaments, setTournaments] = useState([]);
+  const [viewSeason, setViewSeason] = useState(null);
+  // Past seasons' champions for this league (honor roll on the League tab).
+  const [seasonChampions, setSeasonChampions] = useState([]);
+  // Membership rows (user_id + role) so the commissioner can manage members.
+  const [leagueMembers, setLeagueMembers] = useState([]);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState(null);
   const [resultsData, setResultsData] = useState({});
   // Live leaderboard snapshot + weekly field/golfer-id lookups (Phases 1 & 2)
   const [liveLeaderboard, setLiveLeaderboard] = useState(null);
@@ -206,6 +221,7 @@ const App = () => {
     setCurrentLeague(league);
     setUserRole(league.role);
     setShowLeagueSelect(false);
+    setViewSeason(null);
     localStorage.setItem('currentLeagueId', league.id);
   };
 
@@ -506,6 +522,7 @@ const App = () => {
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setCurrentLeague(null);
+        setViewSeason(null);
         setUserLeagues([]);
         setShowLogin(true);
         setShowLeagueSelect(false);
@@ -516,12 +533,13 @@ const App = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-// Load initial data when user and league are set
+// Load initial data when user and league are set (and reload when the viewer
+  // switches seasons — the whole standings/picks slice changes with it).
   useEffect(() => {
     if (currentUser && currentLeague) {
       loadData();
     }
-  }, [currentUser, currentLeague]);
+  }, [currentUser, currentLeague, viewSeason]);
 
   // Keep the active tab in sync with the hash (back/forward, deep links).
   useEffect(() => {
@@ -580,8 +598,11 @@ const App = () => {
   // Countdown timer for picks lock
   useEffect(() => {
     const updateCountdown = () => {
-      if (!tournaments || tournaments.length === 0) {
+      // Nothing to count down to once the season is over (or when browsing
+      // an archive) — a "Locked" badge on a finished season is just noise.
+      if (!tournaments || tournaments.length === 0 || isSeasonComplete(tournaments)) {
         setTimeUntilLock('');
+        setLockTimeLabel('');
         return;
       }
 
@@ -661,13 +682,26 @@ const loadData = async (opts = {}) => {
         setLeagueSettings(settingsData);
       }
 
-      // Load tournaments (shared across all leagues)
-      const { data: tournamentsData } = await supabase
+      // Load tournaments (shared across all leagues, every season). The app
+      // works on one season at a time: the newest season in the table unless
+      // the viewer has switched to an older one. Loading next year's schedule
+      // is therefore the season rollover — the moment those rows exist, the
+      // app moves to them and the finished season becomes an archive.
+      const { data: allTournamentsData } = await supabase
         .from('tournaments')
         .select('*')
         .order('week');
 
-      setTournaments(tournamentsData || []);
+      const allRows = allTournamentsData || [];
+      setAllTournaments(allRows);
+      const seasons = listSeasons(allRows);
+      const activeSeasonYear = seasons[0] ?? null;
+      const seasonYear = viewSeason != null && seasons.includes(viewSeason) ? viewSeason : activeSeasonYear;
+      const tournamentsData = tournamentsInSeason(allRows, seasonYear);
+      setTournaments(tournamentsData);
+      // Picks join to a season through their tournament, so this id set scopes
+      // standings and the one-golfer-once rule to the season being viewed.
+      const seasonTournamentIds = new Set(tournamentsData.map(t => t.id));
 
       // Load available golfers (shared across all leagues)
       const { data: golfersData } = await supabase
@@ -692,6 +726,7 @@ const loadData = async (opts = {}) => {
         .eq('league_id', leagueId);
 
       const memberIds = memberData?.map(m => m.user_id) || [];
+      setLeagueMembers(memberData || []);
 
       const { data: usersData } = await supabase
         .from('profiles')
@@ -703,9 +738,11 @@ const loadData = async (opts = {}) => {
         `)
         .in('id', memberIds.length > 0 ? memberIds : ['none']);
       
-// Calculate standings with detailed pick history (filtered to current league)
+// Calculate standings with detailed pick history (filtered to the current
+// league AND the season being viewed — a member's 2026 picks must not count
+// toward 2027 totals or block golfers next year).
 const playersWithWinnings = (usersData || []).map(user => {
-  const leaguePicks = user.picks?.filter(p => p.league_id === leagueId) || [];
+  const leaguePicks = user.picks?.filter(p => p.league_id === leagueId && seasonTournamentIds.has(p.tournament_id)) || [];
   const picksByWeek = (tournamentsData || []).map(tournament => {
     const pick = leaguePicks.find(p => p.tournament_id === tournament.id);
     const lockTime = tournament.picks_lock_time ? new Date(tournament.picks_lock_time) : null;
@@ -740,10 +777,38 @@ const playersWithWinnings = (usersData || []).map(user => {
       
       setPlayers(playersWithWinnings);
 
+      // Honor roll: the champion of every finished season this league has
+      // played, from the same pick rows (current members only — a past
+      // champion who has since left the league won't appear).
+      const champions = [];
+      seasons.forEach(s => {
+        const seasonRows = tournamentsInSeason(allRows, s);
+        if (!isSeasonComplete(seasonRows)) return;
+        const ids = new Set(seasonRows.map(t => t.id));
+        const totals = (usersData || [])
+          .map(u => ({
+            id: u.id,
+            name: u.name,
+            winnings: (u.picks || [])
+              .filter(p => p.league_id === leagueId && ids.has(p.tournament_id))
+              .reduce((sum, p) => sum + (p.winnings || 0), 0),
+          }))
+          .sort((a, b) => b.winnings - a.winnings || a.name.localeCompare(b.name));
+        if (totals[0] && totals[0].winnings > 0) {
+          champions.push({
+            season: s,
+            ...totals[0],
+            tied: totals.length > 1 && totals[1].winnings === totals[0].winnings,
+          });
+        }
+      });
+      setSeasonChampions(champions);
+
       // Live leaderboard snapshot + weekly field for the active tournament.
       // Both are shared across leagues (keyed by tournament), written by the
-      // backend; the browser only reads them.
-      const activeTournament = getCurrentTournament(tournamentsData);
+      // backend; the browser only reads them. Neither applies to a finished
+      // season, so skip the reads rather than fetch a stale final snapshot.
+      const activeTournament = isSeasonComplete(tournamentsData) ? null : getCurrentTournament(tournamentsData);
       if (activeTournament) {
         const { data: liveData } = await supabase
           .from('live_leaderboard')
@@ -776,11 +841,16 @@ const playersWithWinnings = (usersData || []).map(user => {
     // the loading state to avoid a spinner flicker over the confirmed card.
     if (!opts.preservePick) setPicksLoading(true);
 
-    const { data: picksData } = await supabase
+    const { data: rawPicksData } = await supabase
       .from('picks')
       .select('*')
       .eq('user_id', currentUser.id)
       .eq('league_id', currentLeague.id);
+
+    // Only this season's picks count as "used" golfers — every golfer is
+    // available again when a new season starts.
+    const seasonIds = new Set((tournamentsData || []).map(t => t.id));
+    const picksData = (rawPicksData || []).filter(p => seasonIds.has(p.tournament_id));
 
     const allUserPicks = (picksData?.map(p => p.golfer_name) || []).filter(n => n && n !== 'No Pick');
     // When reconciling after a write, trust the fresh read but make sure the
@@ -831,18 +901,10 @@ const playersWithWinnings = (usersData || []).map(user => {
     // this tournament until the following Monday at 5 AM ET so results can
     // be reviewed before the UI advances to the next week.
     const activeTournament = list.find(t => {
-      const anchor = t.picks_lock_time || t.tournament_date;
-      if (anchor) {
-        const anchorDate = new Date(anchor);
-        // Find the next Monday after the anchor date
-        const dayOfWeek = anchorDate.getUTCDay(); // 0=Sun, 1=Mon, ..., 4=Thu
-        const daysUntilMonday = (8 - dayOfWeek) % 7 || 7; // days from anchor to next Monday
-        const windowEnd = new Date(anchorDate);
-        windowEnd.setUTCDate(windowEnd.getUTCDate() + daysUntilMonday);
-        windowEnd.setUTCHours(10, 0, 0, 0); // Monday 10:00 UTC = Monday 5 AM ET
-        if (now > windowEnd) return false;
-        return true;
-      }
+      // Window end = the Monday 10:00 UTC (5 AM ET) after the lock time —
+      // see activeWindowEnd in utils/seasons.js.
+      const windowEnd = activeWindowEnd(t);
+      if (windowEnd) return now <= windowEnd;
       return !t.completed;
     });
 
@@ -851,6 +913,17 @@ const playersWithWinnings = (usersData || []).map(user => {
 
   const currentTournamentMemo = useMemo(() => getCurrentTournament(), [tournaments]);
   const currentWeek = currentTournamentMemo?.week || 1;
+
+  // Season bookkeeping. `seasons` is newest-first; the first entry is the
+  // active season, anything else the viewer picks is a read-only archive.
+  const seasons = useMemo(() => listSeasons(allTournaments), [allTournaments]);
+  const activeSeason = seasons[0] ?? null;
+  const currentSeason = viewSeason != null && seasons.includes(viewSeason) ? viewSeason : activeSeason;
+  const isArchive = currentSeason != null && currentSeason !== activeSeason;
+  const seasonComplete = useMemo(() => isSeasonComplete(tournaments), [tournaments]);
+  // Calendar says the season is over but the last week hasn't been marked
+  // complete — surfaced to the commissioner so the wrap-up isn't stuck.
+  const seasonAwaitingFinal = useMemo(() => isSeasonAwaitingFinal(tournaments), [tournaments]);
 
   const handleLogin = async () => {
     if (!loginEmail.trim() || !loginPassword) {
@@ -1340,6 +1413,49 @@ const handleSaveResults = async (playerId) => {
     }
   };
 
+  // Membership management (commissioner). Removing a member drops their
+  // league_members row only — their picks stay as history, and the scorer
+  // stops inserting "No Pick" penalty rows for them from then on. That's the
+  // off-season use case: prune members who aren't returning before the next
+  // schedule loads.
+  const handleRemoveMember = (memberUserId) => {
+    const player = players.find(p => p.id === memberUserId);
+    if (!player) {
+      showNotification('error', 'Member not found');
+      return;
+    }
+    setConfirmRemoveMember(player);
+  };
+
+  const confirmRemoveMemberNow = async () => {
+    const player = confirmRemoveMember;
+    if (!player) return;
+    setConfirmRemoveMember(null);
+    if (player.id === currentUser?.id) {
+      showNotification('error', "You can't remove yourself from the league");
+      return;
+    }
+    try {
+      // Select the deleted rows back: RLS filters silently, so a delete the
+      // policy rejects "succeeds" with zero rows — don't report that as done.
+      const { data, error } = await supabase
+        .from('league_members')
+        .delete()
+        .eq('league_id', currentLeague.id)
+        .eq('user_id', player.id)
+        .select('id');
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        showNotification('error', 'Nothing was removed — only a league commissioner can remove members');
+        return;
+      }
+      showNotification('success', `${player.name} removed from the league`);
+      loadData();
+    } catch (error) {
+      showNotification('error', friendlyError(error, 'Could not remove the member. Please try again.'));
+    }
+  };
+
   const handleSaveTournamentWinner = async (tournamentId, name) => {
     const trimmed = (name || '').trim();
     setSavingTournamentWinner(true);
@@ -1540,11 +1656,15 @@ const handleSubmitPick = async () => {
   // Stable identity color per league member, shared across surfaces.
   const playerColors = useMemo(() => buildPlayerColors(players), [players]);
 
+  // Season pot and payout split (League tab, standings chips, season landing).
+  const payouts = useMemo(() => computePayouts(leagueSettings, players), [leagueSettings, players]);
+
   // Summary of the most recent completed tournament for the one-time Monday
-  // recap card on the Picks tab. Null until a tournament has completed.
+  // recap card on the Picks tab. Null until a tournament has completed, and
+  // once the season is over the season landing tells the whole story instead.
   const weekRecap = useMemo(() => {
     const completed = tournaments.filter(t => t.completed);
-    if (completed.length === 0 || players.length === 0) return null;
+    if (completed.length === 0 || players.length === 0 || isSeasonComplete(tournaments)) return null;
     const tournament = completed.reduce((a, b) => (b.week > a.week ? b : a));
     const rows = players.map(p => {
       const w = (p.picksByWeek || []).find(x => x.week === tournament.week);
@@ -1663,17 +1783,24 @@ const handleSubmitPick = async () => {
     );
   }
 
+  // Once a season is complete (or while browsing an archive) there is nothing
+  // to pick, so the landing slot shows the season wrap-up instead of a dead
+  // pick form. It comes back as "Pick" the moment the next schedule loads.
+  const showSeasonTab = seasonComplete || isArchive;
   const navTabs = [
-    { id: 'picks', icon: CheckCircle, label: 'Pick' },
+    showSeasonTab
+      ? { id: 'season', icon: Trophy, label: 'Season' }
+      : { id: 'picks', icon: CheckCircle, label: 'Pick' },
     { id: 'standings', icon: TrendingUp, label: 'Standings' },
     { id: 'schedule', icon: Calendar, label: 'Schedule' },
     { id: 'admin', icon: Users, label: 'League' },
     ...(userRole === 'commissioner' ? [{ id: 'results', icon: Shield, label: 'Admin' }] : []),
   ];
 
-  // A hash like #results is valid only for commissioners; fall back to picks
-  // rather than rendering an empty tab panel.
-  const visibleTab = navTabs.some(t => t.id === activeTab) ? activeTab : 'picks';
+  // A hash like #results is valid only for commissioners (and #picks only in
+  // season); fall back to the first tab rather than rendering an empty panel.
+  const visibleTab = navTabs.some(t => t.id === activeTab) ? activeTab : navTabs[0].id;
+  const seasonChampion = seasonChampions.find(c => c.season === currentSeason) || null;
   const handleNavTabKeyDown = (event, tabId) => {
     const currentIndex = navTabs.findIndex(tab => tab.id === tabId);
     let nextIndex = currentIndex;
@@ -1706,10 +1833,51 @@ const handleSubmitPick = async () => {
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white truncate">{currentLeague?.name || 'Golf One and Done'}</h1>
               </div>
               <div className="flex items-center gap-2 sm:gap-3 mt-2 flex-wrap">
-                <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Wk {currentWeek} · {currentTournament?.name}</span>
-                <span className="badge bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  {formatPrizePool(currentTournament?.prize_pool)}
-                </span>
+                {/* Season label — a picker once there is more than one season
+                    to browse, plain text until then. */}
+                {seasons.length > 1 ? (
+                  <label className="inline-flex items-center">
+                    <span className="sr-only">Season</span>
+                    <select
+                      value={currentSeason ?? ''}
+                      onChange={(e) => setViewSeason(Number(e.target.value) === activeSeason ? null : Number(e.target.value))}
+                      className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-md pl-2 pr-6 py-0.5 cursor-pointer transition-colors duration-150"
+                    >
+                      {seasons.map(s => (
+                        <option key={s} value={s}>{s} Season{s === activeSeason ? '' : ' (archive)'}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : currentSeason ? (
+                  <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">{currentSeason} Season</span>
+                ) : null}
+                {seasonComplete ? (
+                  <>
+                    <span className="badge bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                      <Trophy size={11} className="fill-amber-400/40" />
+                      Season complete
+                    </span>
+                    {seasonChampion && (
+                      <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-300">
+                        Champion: <span className="font-semibold text-slate-700 dark:text-slate-100">{seasonChampion.name}</span>
+                      </span>
+                    )}
+                  </>
+                ) : tournaments.length === 0 ? (
+                  <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Schedule coming soon</span>
+                ) : (
+                  <>
+                    <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Wk {currentWeek} · {currentTournament?.name}</span>
+                    <span className="badge bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                      {formatPrizePool(currentTournament?.prize_pool)}
+                    </span>
+                    {seasonAwaitingFinal && (
+                      <span className="badge bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                        Final results pending
+                      </span>
+                    )}
+                  </>
+                )}
                 {timeUntilLock && (
                   <>
                     {timeUntilLock === 'Locked' ? (
@@ -1835,6 +2003,23 @@ const handleSubmitPick = async () => {
           )}
         </div>
 
+        {/* Archive banner — everything below is a finished season, read-only */}
+        {isArchive && (
+          <div className="mb-4 sm:mb-5 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 animate-fade-in">
+            <p className="text-xs text-slate-600 dark:text-slate-300 inline-flex items-center gap-1.5 min-w-0">
+              <Archive size={13} className="shrink-0 text-slate-400" />
+              <span className="truncate">Viewing the <span className="font-semibold">{currentSeason}</span> season archive</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setViewSeason(null)}
+              className="shrink-0 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 dark:hover:text-white"
+            >
+              Back to {activeSeason}
+            </button>
+          </div>
+        )}
+
         {/* Navigation Tabs — top strip on every screen size (phones included).
             A top nav in normal document flow sidesteps the iOS fixed-position
             and PWA viewport-height quirks that plagued the bottom bar. */}
@@ -1866,14 +2051,30 @@ const handleSubmitPick = async () => {
             ))}
           </div>
 
-          {/* Tab Content — keyed so switching tabs replays the fade */}
+          {/* Tab Content — keyed so switching tabs (or seasons) replays the fade */}
           <div
-            key={visibleTab}
+            key={`${visibleTab}-${currentSeason}`}
             id={`league-panel-${visibleTab}`}
             role="tabpanel"
             aria-labelledby={`league-tab-${visibleTab}`}
             className="p-3 sm:p-5 animate-fade-in"
           >
+            {visibleTab === 'season' && (
+              <SeasonCompleteTab
+                season={currentSeason}
+                seasonComplete={seasonComplete}
+                isArchive={isArchive}
+                sortedStandings={sortedStandings}
+                tournaments={tournaments}
+                currentUser={currentUser}
+                playerColors={playerColors}
+                payouts={payouts}
+                isCommissioner={userRole === 'commissioner'}
+                onGoToStandings={() => setActiveTab('standings')}
+                onGoToAdmin={() => setActiveTab('results')}
+              />
+            )}
+
             {visibleTab === 'picks' && (
               <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_18rem] xl:gap-5 xl:items-start">
                 <PicksTab
@@ -1934,6 +2135,15 @@ const handleSubmitPick = async () => {
                 leagueSettings={leagueSettings}
                 tournaments={tournaments}
                 currentWeek={currentWeek}
+                currentSeason={currentSeason}
+                seasonComplete={seasonComplete}
+                seasonAwaitingFinal={seasonAwaitingFinal}
+                isArchive={isArchive}
+                players={players}
+                leagueMembers={leagueMembers}
+                playerColors={playerColors}
+                currentUser={currentUser}
+                handleRemoveMember={handleRemoveMember}
                 editTournamentId={editTournamentId}
                 editTournamentPicks={editTournamentPicks}
                 editResultsData={editResultsData}
@@ -1969,6 +2179,8 @@ const handleSubmitPick = async () => {
                 toggleRowExpansion={toggleRowExpansion}
                 liveIndex={liveIndex}
                 playerColors={playerColors}
+                seasonComplete={seasonComplete}
+                payouts={payouts}
               />
             )}
 
@@ -1976,6 +2188,7 @@ const handleSubmitPick = async () => {
               <ScheduleTab
                 tournaments={tournaments}
                 currentWeek={currentWeek}
+                seasonComplete={seasonComplete}
                 players={players}
                 currentUser={currentUser}
                 expandedScheduleTournament={expandedScheduleTournament}
@@ -1989,11 +2202,16 @@ const handleSubmitPick = async () => {
               <LeagueInfoTab
                 leagueSettings={leagueSettings}
                 players={players}
+                sortedStandings={sortedStandings}
                 playerColors={playerColors}
                 currentUser={currentUser}
                 currentWeek={currentWeek}
                 currentTournament={currentTournament}
                 tournaments={tournaments}
+                currentSeason={currentSeason}
+                seasonComplete={seasonComplete}
+                seasonChampions={seasonChampions}
+                payouts={payouts}
                 availableGolfers={availableGolfers}
                 showAddGolfer={showAddGolfer}
                 newGolferName={newGolferName}
@@ -2025,6 +2243,29 @@ const handleSubmitPick = async () => {
             </button>
             <button onClick={confirmMarkTournamentComplete} className="btn-primary">
               Mark Complete
+            </button>
+          </div>
+        </ModalDialog>
+      )}
+
+      {/* Remove-member confirmation */}
+      {confirmRemoveMember && (
+        <ModalDialog onClose={() => setConfirmRemoveMember(null)} titleId="confirm-remove-title" panelClassName="p-5">
+          <h3 id="confirm-remove-title" className="text-base font-semibold text-slate-900 dark:text-white mb-2">
+            Remove {confirmRemoveMember.name}?
+          </h3>
+          <p className="text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+            They&rsquo;ll leave &ldquo;{currentLeague?.name}&rdquo; and drop out of the standings and weekly scoring.
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
+            Their past picks are kept as history. They can rejoin later with the invite code.
+          </p>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setConfirmRemoveMember(null)} className="btn-secondary">
+              Cancel
+            </button>
+            <button onClick={confirmRemoveMemberNow} className="btn-danger">
+              Remove Member
             </button>
           </div>
         </ModalDialog>

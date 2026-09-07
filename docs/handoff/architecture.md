@@ -64,6 +64,9 @@ Web-push notifications are sent from the Python side using VAPID keys.
   down into memoized presentational components in `src/components/`:
   - `PicksTab` — weekly pick form (searchable comboboxes), off-field warning,
     season scorecard, Monday recap card, watch mode once picks lock.
+  - `SeasonCompleteTab` — takes the Pick tab's slot once every tournament
+    of the season is complete (or when browsing a past season): champion
+    hero, podium with payouts, final standings, superlatives, "what's next".
   - `StandingsTab` — season standings, expandable week-by-week rows,
     rank-movement arrows, `SeasonTrends` (hand-rolled SVG chart, no chart lib).
   - `ScheduleTab` — 32-week schedule with purses and per-week results.
@@ -72,8 +75,12 @@ Web-push notifications are sent from the Python side using VAPID keys.
     mark-complete, winner entry (visible only to `role='commissioner'`).
   - `LoginScreen`, `LeagueSelectScreen`, `ResetPasswordScreen`, modals, etc.
 - **Navigation:** no router. The active tab lives in the URL hash
-  (`#picks`, `#standings`, `#schedule`, `#admin`, `#results`) so the browser
-  back button moves between tabs and notifications can deep-link.
+  (`#picks`, `#season`, `#standings`, `#schedule`, `#admin`, `#results`) so
+  the browser back button moves between tabs and notifications can
+  deep-link.
+- **Seasons:** all tournaments (every season) load once; the app works on
+  the newest season unless the viewer picks an older one from the header
+  (read-only archive). See `season-rollover.md`.
 - **State management:** none beyond React hooks + props drilling. Data loads
   via `loadData()` in App.jsx on login/league-switch, on manual refresh, and
   silently when the app regains visibility (throttled to once/60s, using a
@@ -92,7 +99,7 @@ There is no server. The "backend" is `scripts/` run by GitHub Actions:
 
 | Script | Workflow / schedule (UTC) | What it does |
 |---|---|---|
-| `sync_schedule.py` | Wed 13:00 | Maps each DB tournament to its Slash Golf event: stores `tournaments.slashgolf_tourn_id` + real `prize_pool`. `--create` (manual only) can insert missing events. |
+| `sync_schedule.py` | Wed 13:00 | Maps each DB tournament to its Slash Golf event: stores `tournaments.slashgolf_tourn_id` + real `prize_pool`. `--year N --create` (manual only) loads a new season's events with `season` + sequential weeks; `--renumber` closes week gaps after pruning. |
 | `sync_field.py` | Tue/Wed 14:00 & 22:00 | Replaces `tournament_field` with the current entry list once tee times post; attaches `golfer_id` to matching picks; backfills `available_golfers.golfer_id`. Empty field = no-op. |
 | `update_leaderboard.py` | Fri/Sat/Sun/Mon 00:00 & 02:00 (evening ET of each round day) | Upserts ONE snapshot row per tournament into `live_leaderboard` (JSONB players, cut line, status). Single API call, no earnings. |
 | `update_results.py` | Mon 09:00 | The Monday scorer. See below. |

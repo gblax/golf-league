@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - 'claude/**'
+      # The season-model / off-season landing change is big enough to go
+      # through a reviewed PR rather than an instant production deploy, so
+      # its branch is opted out of auto-merge. Delete this line once that
+      # branch is merged — or retire this workflow altogether (see
+      # docs/handoff/known-issues.md, "Auto-merge to production").
+      - '!claude/league-landing-page-redesign-kwka6r'
 
 permissions:
   contents: write

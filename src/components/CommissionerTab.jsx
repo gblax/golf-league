@@ -1,13 +1,29 @@
 import React from 'react';
-import { Trophy, Shield, Mail, Settings, ChevronDown } from 'lucide-react';
+import { Trophy, Shield, Mail, Settings, ChevronDown, CalendarPlus, ExternalLink, UserMinus, Users, AlertTriangle, Archive } from 'lucide-react';
 import EmptyState from './EmptyState';
 import Spinner from './Spinner';
+import PlayerAvatar from './PlayerAvatar';
+
+// Where the commissioner loads next season's schedule from. The sync runs in
+// GitHub Actions (it needs the Slash Golf key, which the browser must never
+// hold), so the app links to the workflow's dispatch page rather than calling
+// the API itself. See docs/handoff/season-rollover.md.
+const SCHEDULE_WORKFLOW_URL = 'https://github.com/gblax/golf-league/actions/workflows/sync-schedule.yml';
 
 const CommissionerTab = React.memo(function CommissionerTab({
   currentLeague,
   leagueSettings,
   tournaments,
   currentWeek,
+  currentSeason,
+  seasonComplete = false,
+  seasonAwaitingFinal = false,
+  isArchive = false,
+  players = [],
+  leagueMembers = [],
+  playerColors = {},
+  currentUser,
+  handleRemoveMember,
   editTournamentId,
   editTournamentPicks,
   editResultsData,
@@ -34,11 +50,71 @@ const CommissionerTab = React.memo(function CommissionerTab({
   const [savingSettings, setSavingSettings] = React.useState(false);
   const [savingResultsUserId, setSavingResultsUserId] = React.useState(null);
 
+  const roleOf = (userId) => leagueMembers.find(m => m.user_id === userId)?.role || 'member';
+  const memberRows = [...players].sort((a, b) => a.name.localeCompare(b.name));
+  const unfinished = tournaments.filter(t => !t.completed);
+  const nextSeason = currentSeason ? currentSeason + 1 : null;
+
   return (
     <div className="max-w-2xl mx-auto">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Commissioner</h2>
 
       <div className="space-y-4">
+        {/* Archive notice — edits here touch a finished season */}
+        {isArchive && (
+          <div className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-start gap-2.5">
+            <Archive size={16} className="text-slate-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              You&rsquo;re editing the <span className="font-semibold">{currentSeason}</span> archive. Result corrections here change that season&rsquo;s final standings.
+            </p>
+          </div>
+        )}
+
+        {/* Season wrap-up needs the last week closed */}
+        {seasonAwaitingFinal && !isArchive && (
+          <div className="px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 flex items-start gap-2.5">
+            <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-800 dark:text-amber-300">
+              <p className="font-semibold">The season can&rsquo;t wrap up yet.</p>
+              <p className="mt-0.5">
+                {unfinished.length === 1
+                  ? `Week ${unfinished[0].week} (${unfinished[0].name}) hasn't been marked complete.`
+                  : `${unfinished.length} weeks haven't been marked complete.`}
+                {' '}Check the results below, then use &ldquo;Mark as Complete&rdquo; — the champion page appears once every week is closed.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Next season — the rollover checklist */}
+        {seasonComplete && !isArchive && (
+          <div className="card p-5 border-emerald-200 dark:border-emerald-800">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+              <CalendarPlus className="text-emerald-600 dark:text-emerald-400" size={16} />
+              Set up the {nextSeason || 'next'} season
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              The {currentSeason} season is complete and its standings are final. The app switches to {nextSeason || 'the new season'} on its own the moment that schedule is in the database — picks open for week 1 and every golfer is available again. {currentSeason} stays browsable as an archive.
+            </p>
+            <ol className="space-y-2 text-xs text-slate-600 dark:text-slate-300 list-decimal list-inside">
+              <li>Settle the payouts (League tab shows who gets what).</li>
+              <li>Remove anyone who isn&rsquo;t returning — see Members below. The scorer charges a no-pick penalty to every member each week, so a departed member would rack them up.</li>
+              <li>Adjust the buy-in, penalties or payout split in League Settings if they&rsquo;re changing.</li>
+              <li>
+                Load the {nextSeason || 'new'} schedule: run the <span className="font-semibold">Sync Tournament Schedule</span> workflow with <span className="font-mono">year = {nextSeason || 'YYYY'}</span> and <span className="font-mono">create</span> ticked — dry-run first, read the log, then run it for real. Prune any events you don&rsquo;t want to play and tick <span className="font-mono">renumber</span> so weeks run 1‑N.
+              </li>
+            </ol>
+            <a
+              href={SCHEDULE_WORKFLOW_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary btn-sm mt-4 inline-flex"
+            >
+              Open the schedule workflow
+              <ExternalLink size={14} />
+            </a>
+          </div>
+        )}
         {/* Invite Code */}
         <div className="card p-5">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
@@ -66,6 +142,50 @@ const CommissionerTab = React.memo(function CommissionerTab({
             >
               {inviteCopied ? 'Copied ✓' : 'Copy'}
             </button>
+          </div>
+        </div>
+
+        {/* Members */}
+        <div className="card p-5">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1 flex items-center gap-2">
+            <Users className="text-emerald-500" size={16} />
+            Members ({memberRows.length})
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            Removing a member takes them out of the standings and weekly scoring. Their past picks are kept.
+          </p>
+          <div className="space-y-1.5">
+            {memberRows.map(player => {
+              const isSelf = player.id === currentUser?.id;
+              const role = roleOf(player.id);
+              return (
+                <div key={player.id} className="flex items-center justify-between gap-2 p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <PlayerAvatar name={player.name} color={playerColors[player.id]} size="sm" />
+                    <p className="text-xs font-medium text-slate-900 dark:text-white truncate">
+                      {player.name}
+                      {isSelf && <span className="ml-1 text-emerald-600 dark:text-emerald-400 text-[10px]">(you)</span>}
+                    </p>
+                    {role === 'commissioner' && (
+                      <span className="badge bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                        Commissioner
+                      </span>
+                    )}
+                  </div>
+                  {!isSelf && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMember(player.id)}
+                      aria-label={`Remove ${player.name} from the league`}
+                      className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                    >
+                      <UserMinus size={14} />
+                      Remove
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

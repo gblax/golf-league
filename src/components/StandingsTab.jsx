@@ -219,9 +219,24 @@ const StandingsTab = React.memo(function StandingsTab({
   toggleRowExpansion,
   liveIndex,
   playerColors = {},
+  // Off-season: the table becomes the final table — payout chips for the top
+  // three and no "this week's pick" column (there is no week).
+  seasonComplete = false,
+  payouts = null,
 }) {
   const winCounts = React.useMemo(() => computeCorrectPickCounts(sortedStandings), [sortedStandings]);
   const [showTrends, setShowTrends] = React.useState(false);
+  const payoutFor = (idx) => (seasonComplete && payouts?.amounts?.[idx] > 0 ? payouts.amounts[idx] : 0);
+  const PayoutChip = ({ idx }) => (
+    payoutFor(idx) > 0 ? (
+      <span
+        title={`Final payout: $${payoutFor(idx).toLocaleString()}`}
+        className="badge flex-shrink-0 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300"
+      >
+        ${payoutFor(idx).toLocaleString()}
+      </span>
+    ) : null
+  );
 
   // Movement vs. the standings before the most recent results week.
   // picksByWeek already carries every week's winnings, so "last week's
@@ -250,7 +265,7 @@ const StandingsTab = React.memo(function StandingsTab({
   return (
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Standings</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{seasonComplete ? 'Final Standings' : 'Standings'}</h2>
         <button
           onClick={() => setShowTrends((v) => !v)}
           className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${
@@ -331,17 +346,23 @@ const StandingsTab = React.memo(function StandingsTab({
                         )}
                       </div>
                       <div className="truncate text-right">
-                        {pickDisplay.type === 'pick' && (
-                          <span className="text-emerald-700 dark:text-emerald-400 font-medium">
-                            {pickDisplay.name}
-                            <LiveChip liveIndex={liveIndex} player={player} pickName={pickDisplay.name} />
-                          </span>
-                        )}
-                        {pickDisplay.type === 'locked' && (
-                          <SealedChip size="small" />
-                        )}
-                        {pickDisplay.type === 'none' && (
-                          <span className="text-red-500 dark:text-red-400">No pick</span>
+                        {seasonComplete ? (
+                          <PayoutChip idx={idx} />
+                        ) : (
+                          <>
+                            {pickDisplay.type === 'pick' && (
+                              <span className="text-emerald-700 dark:text-emerald-400 font-medium">
+                                {pickDisplay.name}
+                                <LiveChip liveIndex={liveIndex} player={player} pickName={pickDisplay.name} />
+                              </span>
+                            )}
+                            {pickDisplay.type === 'locked' && (
+                              <SealedChip size="small" />
+                            )}
+                            {pickDisplay.type === 'none' && (
+                              <span className="text-red-500 dark:text-red-400">No pick</span>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
@@ -379,7 +400,9 @@ const StandingsTab = React.memo(function StandingsTab({
               <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Player</th>
               <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Won</th>
               <th className="py-3 px-4 text-right text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pen.</th>
-              <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pick</th>
+              {!seasonComplete && (
+                <th className="py-3 px-4 text-left text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide">Pick</th>
+              )}
               <th className="py-3 px-2 text-center text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide"></th>
             </tr>
           </thead>
@@ -410,6 +433,7 @@ const StandingsTab = React.memo(function StandingsTab({
                           {winCounts[player.id]}
                         </span>
                       )}
+                      <PayoutChip idx={idx} />
                     </span>
                   </td>
                   <td className="py-3 px-4 text-right text-sm tabular-nums font-semibold text-slate-900 dark:text-white">
@@ -422,9 +446,11 @@ const StandingsTab = React.memo(function StandingsTab({
                       <span className="text-slate-300 dark:text-slate-600">-</span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-sm">
-                    {renderDesktopPick(player, currentUser, currentTournament, leagueSettings, liveIndex)}
-                  </td>
+                  {!seasonComplete && (
+                    <td className="py-3 px-4 text-sm">
+                      {renderDesktopPick(player, currentUser, currentTournament, leagueSettings, liveIndex)}
+                    </td>
+                  )}
                   <td className="py-3 px-2 text-center">
                     <button
                       onClick={() => toggleRowExpansion(player.id)}
@@ -440,7 +466,7 @@ const StandingsTab = React.memo(function StandingsTab({
                 {/* Expanded weekly results row */}
                 {expandedRows[player.id] && (
                   <tr className="bg-slate-50 dark:bg-slate-900/50">
-                    <td colSpan="6" className="py-4 px-4">
+                    <td colSpan={seasonComplete ? 5 : 6} className="py-4 px-4">
                       <div className="max-w-5xl mx-auto">
                         <p className="text-[11px] font-medium text-slate-400 dark:text-slate-400 uppercase tracking-wide mb-3">
                           Week-by-Week &mdash; {player.name}

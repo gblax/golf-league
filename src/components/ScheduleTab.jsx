@@ -10,6 +10,9 @@ const VIEW_OPTIONS = [
 const ScheduleTab = React.memo(function ScheduleTab({
   tournaments,
   currentWeek,
+  // Off-season: there is no "this week" — the last event is done like all the
+  // others, so open on Completed and don't badge anything as Current.
+  seasonComplete = false,
   players,
   currentUser,
   expandedScheduleTournament,
@@ -17,21 +20,23 @@ const ScheduleTab = React.memo(function ScheduleTab({
   formatPrizePool,
   onGoToPick,
 }) {
-  const [scheduleView, setScheduleView] = React.useState('current');
+  const [scheduleView, setScheduleView] = React.useState(seasonComplete ? 'completed' : 'current');
 
   const groupedTournaments = React.useMemo(() => {
-    const current = tournaments
-      .filter(tournament => tournament.week === currentWeek)
-      .sort((a, b) => a.week - b.week);
+    const current = seasonComplete
+      ? []
+      : tournaments
+        .filter(tournament => tournament.week === currentWeek)
+        .sort((a, b) => a.week - b.week);
     const upcoming = tournaments
       .filter(tournament => tournament.week > currentWeek && !tournament.completed)
       .sort((a, b) => a.week - b.week);
     const completed = tournaments
-      .filter(tournament => tournament.week !== currentWeek && (tournament.completed || tournament.week < currentWeek))
+      .filter(tournament => (seasonComplete || tournament.week !== currentWeek) && (tournament.completed || tournament.week < currentWeek))
       .sort((a, b) => b.week - a.week);
 
     return { current, upcoming, completed };
-  }, [tournaments, currentWeek]);
+  }, [tournaments, currentWeek, seasonComplete]);
 
   const visibleTournaments = groupedTournaments[scheduleView] || [];
   const handleScheduleTabKeyDown = (event, viewId) => {
@@ -57,7 +62,9 @@ const ScheduleTab = React.memo(function ScheduleTab({
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Schedule</h2>
           <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
-            Start with this week, then look ahead or revisit results.
+            {seasonComplete
+              ? 'Season complete — revisit any week’s results.'
+              : 'Start with this week, then look ahead or revisit results.'}
           </p>
         </div>
         <span className="text-xs font-medium text-slate-500 dark:text-slate-300 tabular-nums">
@@ -122,11 +129,13 @@ const ScheduleTab = React.memo(function ScheduleTab({
               No {scheduleView} tournaments
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">
-              Choose another schedule view.
+              {seasonComplete && scheduleView !== 'completed'
+                ? 'The season is over — every event is under Completed.'
+                : 'Choose another schedule view.'}
             </p>
           </div>
         ) : visibleTournaments.map((tournament) => {
-          const isCurrent = tournament.week === currentWeek;
+          const isCurrent = !seasonComplete && tournament.week === currentWeek;
           const isCompleted = tournament.completed || tournament.week < currentWeek;
           const isExpanded = expandedScheduleTournament === tournament.id;
           const winnerGolfer = tournament.winner_golfer_name || null;

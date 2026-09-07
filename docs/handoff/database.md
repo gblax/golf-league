@@ -8,11 +8,14 @@ are a same-day snapshot to convey scale.
 **Global facts**
 
 - All 11 tables live in `public` and all have **RLS enabled**.
-- There are **no user-defined functions, triggers, or views** in `public`,
+- One user-defined function + trigger in `public`:
+  `tournaments_default_season()` / `tournaments_default_season` (BEFORE
+  INSERT on `tournaments`, fills `season` from `tournament_date`). No views,
   **no Edge Functions**, and no Storage buckets in use.
-- Only **one tracked migration** exists (`20260611012102_add_tee_timezone`).
-  Everything else was applied by hand in the SQL editor; the `scripts/*.sql`
-  files are the historical record of those changes (see "Schema history").
+- Two tracked migrations exist (`20260611012102_add_tee_timezone`,
+  `20260907122254_add_tournament_season`). Everything else was applied by
+  hand in the SQL editor; the `scripts/*.sql` files are the historical record
+  of those changes (see "Schema history").
 - The backend Python jobs use the service-role key and **bypass RLS**; several
   tables have no INSERT/UPDATE policies at all because only the backend writes
   them.
@@ -75,11 +78,16 @@ RLS: `league_members_select` SELECT `true` · `league_members_insert` INSERT
 **Shared across all leagues**: `league_id` is nullable and NULL in practice
 (NULL = shared row; see `scripts/share-tournaments-golfers.sql`).
 
+**Seasons live here.** `season` scopes a row to a year; the newest season in
+the table is the active one and older seasons are read-only archives in the
+app (see `docs/handoff/season-rollover.md`).
+
 | Column | Type | Constraints / default |
 |---|---|---|
 | id | uuid | PK, default `gen_random_uuid()` |
 | name | text | NOT NULL |
-| week | integer | NOT NULL — the league's own sequential week (1–32), not the PGA calendar week |
+| season | integer | NOT NULL — season year (2026); defaulted from `tournament_date` by the `tournaments_default_season` trigger on insert (`scripts/add-tournament-season.sql`, 2026-09-07) |
+| week | integer | NOT NULL — the league's own sequential week (1–32) **within a season**, not the PGA calendar week |
 | tournament_date | date | NOT NULL — first-round day (Thursday) |
 | completed | boolean | default `false` — set by the Monday scorer (or commissioner) |
 | created_at | timestamptz | default `now()` |
@@ -92,7 +100,7 @@ RLS: `league_members_select` SELECT `true` · `league_members_insert` INSERT
 | slashgolf_tourn_id | text | Slash Golf tournId (e.g. "021"); written by sync_schedule.py |
 | tee_timezone | text | NOT NULL, default `'America/New_York'` — **data-only; nothing reads it yet** |
 
-Indexes: `(league_id)`, `(slashgolf_tourn_id)`.
+Indexes: `(league_id)`, `(slashgolf_tourn_id)`, `(season)`.
 
 RLS: `tournaments_select` SELECT `auth.uid() IS NOT NULL` ·
 `tournaments_write_commissioner` ALL — shared rows (`league_id IS NULL`)
@@ -293,6 +301,10 @@ Rough chronological order, per file comments and git history:
 10. `add-tee-timezone.sql` — applied 2026-06-11 as tracked migration
     `add_tee_timezone`; per-event IANA timezones; column not yet read by code.
 11. `enable-rls-policies.sql` and `disable-rls.sql` — see discrepancies below.
+12. `add-tournament-season.sql` — applied 2026-09-07 as tracked migration
+    `add_tournament_season`; `tournaments.season` + backfill + default
+    trigger + index. The first schema change that gives the app a notion of
+    seasons.
 
 ## Where code/docs and the live database disagree (verified)
 

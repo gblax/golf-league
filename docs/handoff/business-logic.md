@@ -14,16 +14,27 @@ Verified 2026-07-09.
 
 ## Season structure
 
-- The season is the `tournaments` table: **32 rows, `week` 1–32** for 2026
-  (Sony Open → BMW Championship). There is no "season" entity — one season is
-  simply the current contents of the table. No code handles multiple seasons
-  or archiving yet.
+- A season is the set of `tournaments` rows with the same `season` year —
+  **32 rows, `week` 1–32** for 2026 (Sony Open → BMW Championship). There is
+  no separate season table; the **newest season in the table is the active
+  one**, and older seasons are browsable as read-only archives (header
+  picker). Loading next year's schedule is the rollover — full runbook in
+  `season-rollover.md`.
+- Everything below is computed **per season**: standings, the one-golfer-
+  once rule, the schedule, the pot. Picks join to a season through
+  `tournament_id` (`src/utils/seasons.js`).
+- A season is **complete** once every one of its tournaments is
+  `completed`. The Pick tab then becomes the Season tab: champion, podium
+  with payouts, final standings, superlatives. If every week's window has
+  passed but one isn't marked complete, the header shows "Final results
+  pending" and the Admin tab names the week to close.
 - Tournaments are **shared across all leagues** (`league_id NULL`). Both
   production leagues play the same schedule; picks/penalties/settings are
   league-scoped.
-- `week` is the league's own sequence, not the PGA calendar week.
-  (`sync_schedule.py --create` inserts events with Slash Golf's calendar
-  `weekNumber` — a known mismatch to review whenever `--create` is used.)
+- `week` is the league's own sequence within a season, not the PGA calendar
+  week. `sync_schedule.py --create` numbers new events sequentially by date
+  (continuing after the season's highest existing week) and `--renumber`
+  closes gaps after pruning events the league won't play.
 - **"Current tournament"** (`getCurrentTournament` in App.jsx): the first
   tournament in week order whose "active window" hasn't ended. The window
   anchor is `picks_lock_time` (fallback `tournament_date`); the window ends
@@ -154,6 +165,11 @@ Per-league amounts from `league_settings`, applied by the scorer per pick:
 
 ## Commissioner powers (CommissionerTab, role `commissioner`)
 
+- Remove a member (drops the `league_members` row; picks are kept as
+  history). Meant for the off-season prune, since the scorer penalizes every
+  member without a pick each week.
+- Off-season: a "Set up next season" checklist with a link to the schedule
+  workflow; a "can't wrap up yet" notice naming any unclosed week.
 - Edit league settings (penalty amounts, backup toggle, buy-in, payout split).
 - Enter/override results for any tournament & member: set winnings, set a
   penalty type (amount derived from settings), create a `No Pick` row for a
